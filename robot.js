@@ -92,7 +92,7 @@ function sourceFrame(){
  if(mode==='live'&&live)return {frame:live.snapshot(),meta:{...geometry,obstacles:live.obstacles}};
  if(!scene?.trace?.length)return null;
  const duration=scene.metrics?.time||STAGES[stage].duration,t=traceTime%duration,frames=scene.trace;
- let index=Math.min(frames.length-1,Math.max(0,Math.floor(t/(DT*4))));
+ let index=Math.min(frames.length-1,Math.max(0,Math.floor(t/(DT*4))-1));
  const a=frames[index],b=frames[Math.min(index+1,frames.length-1)],mix=clamp((t-a.time)/(DT*4),0,1);
  const parts=a.parts.map((p,i)=>[p[0]+(b.parts[i][0]-p[0])*mix,p[1]+(b.parts[i][1]-p[1])*mix,p[2]+Math.atan2(Math.sin(b.parts[i][2]-p[2]),Math.cos(b.parts[i][2]-p[2]))*mix]);
  return {frame:{...a,parts},meta:scene};
