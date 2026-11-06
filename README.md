@@ -29,8 +29,24 @@ python3 -m http.server 8000
 
 외부 Google Fonts를 불러오며, 연결되지 않으면 기본 글꼴을 사용합니다. 학습 결과는 현재 브라우저 탭의 메모리에 유지되며 새로고침하면 초기화됩니다.
 
-## 배포
+## GitHub에서 수정하기
 
-현재 Sites 배포: https://curiosity-rl-lab-q7n4.younghuni0117.chatgpt.site
+이 저장소의 `main` 브랜치에서 홈페이지를 관리합니다. 파일을 열고 연필(Edit) 버튼으로 수정한 뒤 Commit changes를 누르세요.
 
-Sites 배포는 소유자 전용입니다. 이 GitHub 저장소는 홈페이지 소스를 보관하며, GitHub의 변경 사항이 Sites에 자동 배포되도록 연결되어 있지는 않습니다.
+- 글과 메뉴: `index.html`
+- 색상과 화면 구성: `style.css`
+- 강화학습과 게임 동작: `app.js`
+
+## GitHub Pages 연결 (최초 한 번)
+
+저장소 소유자가 https://github.com/younghuni0117-cloud/mydesk/settings/pages 에서 다음을 설정하세요.
+
+1. Build and deployment → Source: **Deploy from a branch**
+2. Branch: **main**, 폴더: **/ (root)**
+3. **Save**
+
+연결 후 GitHub Pages 배포가 완료되면 https://younghuni0117-cloud.github.io/mydesk/ 에서 홈페이지를 볼 수 있습니다. 이후 main 브랜치에 수정 내용을 커밋하면 자동으로 다시 배포됩니다. 배포 진행 상황은 저장소 Actions 탭에서 확인할 수 있습니다.
+
+Pages 활성화는 현재 GitHub 연결의 관리자 권한 부족으로 자동 설정하지 못했습니다. 위 설정 전에는 GitHub Pages 주소가 열리지 않을 수 있습니다.
+
+기존 Sites 사이트(https://curiosity-rl-lab-q7n4.younghuni0117.chatgpt.site)는 별도 배포이며, 이 저장소에서 수정한 내용은 그 주소에 자동 반영되지 않습니다.
