@@ -14,13 +14,13 @@ export function initialState(random = Math.random, difficulty = 'normal') {
   const config = environment(difficulty);
   return Array.from({ length: config.dimension }, () => (random() * 2 - 1) * config.initial);
 }
-function singleStep(state, action, config) {
+function singleStep(state, action, config, dt = DT) {
   const [x, velocity, angle, angularVelocity] = state;
   const sin = Math.sin(angle), cos = Math.cos(angle), length = config.length;
   const temp = (Math.max(-1, Math.min(1, action)) * config.force + .1 * length * angularVelocity ** 2 * sin) / 1.1;
   const angularAcceleration = (config.gravity * sin - cos * temp) / (length * (4 / 3 - .1 * cos ** 2 / 1.1));
   const acceleration = temp - .1 * length * angularAcceleration * cos / 1.1;
-  return [x + DT * velocity, velocity + DT * acceleration, angle + DT * angularVelocity, angularVelocity + DT * angularAcceleration];
+  return [x + dt * velocity, velocity + dt * acceleration, angle + dt * angularVelocity, angularVelocity + dt * angularAcceleration];
 }
 // Two uniform rods connected in series. The 3x3 coupled mass matrix is solved
 // at each substep; the second pole has its own absolute angle and velocity.
@@ -38,10 +38,10 @@ function doubleAcceleration(s, action, config) {
   const det = a * aa + b * ab + c * ac;
   return [(aa * r0 + ab * r1 + ac * r2) / det, (ab * r0 + dd * r1 + de * r2) / det, (ac * r0 + de * r1 + ff * r2) / det];
 }
-function doubleStep(state, action, config) {
+function doubleStep(state, action, config, dt = DT) {
   // Midpoint integration, two 0.01s substeps, for the coupled dynamics.
   let s = state;
-  const h = DT / 2;
+  const h = dt / 2;
   for (let n = 0; n < 2; n++) {
     const a = doubleAcceleration(s, action, config);
     const mid = [s[0] + h / 2 * s[1], s[1] + h / 2 * a[0], s[2] + h / 2 * s[3], s[3] + h / 2 * a[1], s[4] + h / 2 * s[5], s[5] + h / 2 * a[2]];
@@ -50,10 +50,11 @@ function doubleStep(state, action, config) {
   }
   return s;
 }
-export function advance(state, action, difficulty = 'normal') {
+export function advanceWithDelta(state, action, difficulty = 'normal', dt = DT) {
   const config = environment(difficulty);
-  return config.poles === 2 ? doubleStep(state, action, config) : singleStep(state, action, config);
+  return config.poles === 2 ? doubleStep(state, action, config, dt) : singleStep(state, action, config, dt);
 }
+export function advance(state, action, difficulty = 'normal') { return advanceWithDelta(state, action, difficulty, DT); }
 export function failed(state, difficulty = 'normal') {
   const config = environment(difficulty);
   return state.length !== config.dimension || state.some(v => !Number.isFinite(v)) || Math.abs(state[0]) > X_LIMIT
@@ -64,24 +65,38 @@ export function actionFor(weights, state, difficulty = 'normal') {
   const sum = weights.reduce((total, w, i) => total + w * state[i] * scales[i], 0);
   return config.poles === 2 ? Math.tanh(sum) : sum >= 0 ? 1 : -1;
 }
-export function rollout(weights, start, difficulty = 'normal') {
-  const config = environment(difficulty);
-  let state = [...start], steps = 0;
-  while (steps < MAX_STEPS) {
-    state = advance(state, actionFor(weights, state, config), config);
-    if (failed(state, config)) break;
-    steps++;
-  }
-  return steps;
+export const REWARD_MIN = -100;
+export const REWARD_MAX = MAX_STEPS + 100;
+export const REWARD_VERSION = 1;
+export function transitionReward(state, action, outcome = {}, difficulty = 'normal') {
+  if (outcome.failure) return -100;
+  const c = environment(difficulty);
+  const angleCost = Array.from({length: c.poles}, (_, i) => (state[2 + i * 2] / c.angleLimit) ** 2).reduce((a, b) => a + b, 0) / c.poles;
+  const cost = .2 * angleCost + .05 * (state[0] / X_LIMIT) ** 2 + .01 * Math.min(1, action * action);
+  return 1 - cost + (outcome.success ? 100 : 0);
 }
+export function runEpisode(weights, start, difficulty = 'normal') {
+  const config = environment(difficulty);
+  let state = [...start], steps = 0, reward = 0;
+  while (steps < MAX_STEPS) {
+    const action = actionFor(weights, state, config);
+    state = advance(state, action, config);
+    if (failed(state, config)) { reward += transitionReward(state, action, {failure: true}, config); return {steps, reward, success: false}; }
+    steps++;
+    reward += transitionReward(state, action, {success: steps === MAX_STEPS}, config);
+  }
+  return {steps, reward, success: true};
+}
+export function rollout(weights, start, difficulty = 'normal') { return runEpisode(weights, start, difficulty).steps; }
+export function rolloutReward(weights, start, difficulty = 'normal') { return runEpisode(weights, start, difficulty).reward; }
 function seeded(seed) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; }
 export function evaluationStarts(difficulty = 'normal') {
   const config = environment(difficulty), random = seeded(9147 + Object.keys(DIFFICULTIES).indexOf(config.id));
   return Array.from({ length: 8 }, () => initialState(random, config));
 }
 export function evaluatePolicy(weights, difficulty = 'normal') {
-  const scores = evaluationStarts(difficulty).map(s => rollout(weights, s, difficulty));
-  return { mean: scores.reduce((a, b) => a + b, 0) / scores.length, success: scores.filter(v => v === MAX_STEPS).length / scores.length };
+  const results = evaluationStarts(difficulty).map(s => runEpisode(weights, s, difficulty));
+  return { mean: results.reduce((sum, v) => sum + v.reward, 0) / results.length, meanSteps: results.reduce((sum, v) => sum + v.steps, 0) / results.length, success: results.filter(v => v.success).length / results.length };
 }
 function gaussian(random) { return Math.sqrt(-2 * Math.log(Math.max(random(), 1e-12))) * Math.cos(2 * Math.PI * random()); }
 export class PolicySearch {
@@ -147,7 +162,7 @@ export class PolicySearch {
         this.pending = { starts, candidates: this.candidates(), candidateIndex: 0, trialIndex: 0, partialScore: 0, ranked: [] };
       }
       const p = this.pending;
-      p.partialScore += rollout(p.candidates[p.candidateIndex], p.starts[p.trialIndex], this.config);
+      p.partialScore += rolloutReward(p.candidates[p.candidateIndex], p.starts[p.trialIndex], this.config);
       p.trialIndex++; this.episodes++; completed++;
       if (p.trialIndex === 3) {
         p.ranked.push({ weights: p.candidates[p.candidateIndex], score: p.partialScore / 3 });
@@ -162,14 +177,14 @@ export class PolicySearch {
   }
   trainGeneration() {
     const starts = Array.from({ length: 3 }, () => initialState(this.random, this.config));
-    const ranked = this.candidates().map(weights => ({ weights, score: starts.reduce((sum, s) => sum + rollout(weights, s, this.config), 0) / starts.length }));
+    const ranked = this.candidates().map(weights => ({ weights, score: starts.reduce((sum, s) => sum + rolloutReward(weights, s, this.config), 0) / starts.length }));
     return this.finishGeneration(ranked);
   }
   async trainGenerationAsync(yieldControl, isActive = () => true) {
     const starts = Array.from({ length: 3 }, () => initialState(this.random, this.config)), ranked = [];
     for (const weights of this.candidates()) {
       if (!isActive()) return null;
-      ranked.push({ weights, score: starts.reduce((sum, s) => sum + rollout(weights, s, this.config), 0) / starts.length });
+      ranked.push({ weights, score: starts.reduce((sum, s) => sum + rolloutReward(weights, s, this.config), 0) / starts.length });
       if (ranked.length % 3 === 0) await yieldControl();
     }
     if (!isActive()) return null;

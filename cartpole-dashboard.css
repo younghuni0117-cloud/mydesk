@@ -15,3 +15,15 @@
 .cp-attempts-input input::-webkit-inner-spin-button,.cp-attempts-input input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .cp-attempts-help{font-size:9px;line-height:1.5;color:#8e9fb5;margin:5px 0 0}
 .fit-game .cp-attempts-help{font-size:8px;line-height:1.4;margin:4px 0 0}
+
+/* Reward units remain legible in the existing one-screen dock. */
+.cp-graph{grid-template-columns:36px minmax(0,1fr)}
+.cp-x-axis,.fit-game .cp-x-axis{margin-left:36px}
+.cp-scoreboard strong{font-size:27px}
+.fit-game .cp-scoreboard strong{font-size:19px}
+.fit-game .cp-scoreboard small{font-size:9px;margin-left:3px}
+.fit-game .cp-scoreboard span{font-size:9px}
+@media(max-width:599px){.fit-game .cp-scoreboard strong{font-size:17px}.fit-game .cp-scoreboard span{font-size:8px}.fit-game .cp-scoreboard small{font-size:8px;margin-left:2px}}
+@media(min-width:540px) and (max-height:539px){.fit-game .cp-scoreboard strong{font-size:16px;line-height:20px}}
+
+.fit-game .cp-controls>.cp-training-stats dd{font-size:15px}

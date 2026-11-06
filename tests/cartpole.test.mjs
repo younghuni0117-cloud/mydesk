@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { advance, failed, initialState, rollout, PolicySearch, MAX_STEPS, evaluatePolicy, DIFFICULTIES } from '../cartpole-core.mjs';
+import { advance, failed, initialState, rollout, PolicySearch, MAX_STEPS, evaluatePolicy, DIFFICULTIES, runEpisode, transitionReward, REWARD_MIN, REWARD_MAX } from '../cartpole-core.mjs';
 function seeded(seed) {
   return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
 }
@@ -104,4 +104,18 @@ test('interrupted episode training preserves completed counts and resumes partia
   assert.equal(restored.pending.candidateIndex, 1);
   assert.equal(restored.pending.trialIndex, 2);
   assert.equal(restored.history.at(-1).attempts, 5);
+});
+
+test('reward includes real posture costs and one terminal bonus or penalty', () => {
+  assert.equal(transitionReward([0,0,0,0],0),1);
+  assert.ok(transitionReward([1,0,.1,0],1)<1);
+  assert.equal(transitionReward([0,0,.3,0],1,{failure:true}),-100);
+  assert.equal(transitionReward([0,0,0,0],0,{success:true}),101);
+  const result=runEpisode([0,0,0,0],[0,0,.03,0]);
+  assert.equal(result.success,false);
+  assert.ok(result.reward<result.steps, 'failure penalty is part of training return');
+  assert.ok(result.reward>=REWARD_MIN && result.reward<=REWARD_MAX);
+  const trained=new PolicySearch(seeded(3));
+  for(let i=0;i<20;i++)trained.trainGeneration();
+  assert.equal(trained.score,evaluatePolicy(trained.weights).mean);
 });
