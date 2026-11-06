@@ -23,7 +23,7 @@ function save() {
     const data = Object.fromEntries(['weights', 'mean', 'spread', 'generations', 'episodes', 'score', 'history'].map(key => [key, learner[key]]));
     localStorage.setItem(storageKey, JSON.stringify({ ...data, bestHuman }));
   } catch {
-    section.querySelector('.cp-storage-note').textContent = '이 브라우저에서는 저장소를 사용할 수 없어, 카트폴 기록은 현재 탭에서만 유지됩니다.';
+    document.querySelector('.cp-storage-note').textContent = '이 브라우저에서는 저장소를 사용할 수 없어, 카트폴 기록은 현재 탭에서만 유지됩니다.';
   }
 }
 let mode = 'human', state = initialState(), steps = 0, playing = false, ended = false;
@@ -57,8 +57,10 @@ function draw() {
   const rect = canvas.getBoundingClientRect(), ratio = Math.min(window.devicePixelRatio || 1, 2);
   const width = Math.max(1, Math.round(rect.width * ratio)), height = Math.max(1, Math.round(rect.height * ratio));
   if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
-  ctx.setTransform(width / 800, 0, 0, height / 370, 0, 0);
-  ctx.clearRect(0, 0, 800, 370);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  const scaleToFit = Math.min(width / 800, height / 370);
+  ctx.setTransform(scaleToFit, 0, 0, scaleToFit, (width - 800 * scaleToFit) / 2, (height - 370 * scaleToFit) / 2);
   const ground = 270, scale = 120, cartX = 400 + Math.max(-2.6, Math.min(2.6, state[0])) * scale;
   ctx.strokeStyle = '#dce4d1'; ctx.lineWidth = 1;
   for (let x = 40; x < 800; x += 40) { ctx.beginPath(); ctx.moveTo(x, 30); ctx.lineTo(x, ground + 30); ctx.stroke(); }
@@ -132,7 +134,7 @@ function stopTraining() {
   get('training-note').textContent = learner.generations ? '학습 기록이 저장됐어요. AI 움직임을 관찰해 보세요.' : '초기 AI는 아직 균형을 잡는 법을 몰라요.';
 }
 function selectMode(next) {
-  stopTraining(); mode = next; ready();
+  stopTraining(); mode = next; section.dataset.mode = mode; ready();
   for (const key of ['human', 'ai']) {
     get(key).classList.toggle('selected', key === mode); get(key).setAttribute('aria-pressed', String(key === mode));
     get(`${key}-panel`).hidden = key !== mode;
@@ -187,3 +189,5 @@ document.addEventListener('visibilitychange', () => {
 if (typeof ResizeObserver !== 'undefined') new ResizeObserver(draw).observe(canvas);
 else window.addEventListener('resize', draw);
 updateStats(); updateButton(); draw();
+
+document.addEventListener('game:help-open', () => { stopTraining(); pause(); });

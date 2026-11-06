@@ -2,7 +2,8 @@
 const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.getElementById('sidebar');
 const backdrop = document.getElementById('sidebar-backdrop');
-const mobileMenu = window.matchMedia('(max-width: 760px)');
+const isGamePage = document.body.classList.contains('game-page');
+const mobileMenu = window.matchMedia(isGamePage ? '(max-width: 1100px), (pointer: coarse)' : '(max-width: 760px)');
 function setMenu(open, restoreFocus = false) {
   const visible = open && mobileMenu.matches;
   document.body.classList.toggle('menu-open', visible);
