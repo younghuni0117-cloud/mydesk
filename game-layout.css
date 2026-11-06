@@ -15,3 +15,12 @@
 }
 
 @media(max-width:359px){.fit-game .tabs button{padding:4px 8px;font-size:10px}.fit-game .policy-switch{font-size:9px}.fit-game .setting label{font-size:9px}}
+
+/* Short cover viewports reuse the top bar for help, without removing controls. */
+.fit-game.short-game .experiment{grid-template-rows:minmax(0,1fr);gap:0}
+.fit-game.short-game .section-top{display:contents}
+.fit-game.short-game .section-top>div:first-child{display:none}
+.fit-game.short-game .game-tools{position:fixed;top:calc(4px + env(safe-area-inset-top,0px));right:12px;z-index:16}
+.fit-game.short-game .game-switch-link,.fit-game.short-game .topbar-location>a,.fit-game.short-game .topbar-location>span:first-of-type{display:none}
+.fit-game.short-game .cell{font-size:13px}
+.fit-game.short-game .cell.agent:after{font-size:10px;letter-spacing:1px;text-indent:1px;border-width:1px}
