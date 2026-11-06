@@ -75,3 +75,33 @@ test('cancelled asynchronous generations do not publish partial models', async (
   assert.equal(learner.generations, 0);
   assert.equal(before, JSON.stringify({weights:learner.weights, mean:learner.mean, history:learner.history}));
 });
+
+test('episode budgets execute exactly the requested attempts for both environments', async () => {
+  for (const id of ['normal', 'double']) {
+    const learner = new PolicySearch(seeded(7), id);
+    const result = await learner.trainAttemptsAsync(1000, async () => {});
+    assert.equal(result.completed, 1000);
+    assert.equal(learner.episodes, 1000);
+    assert.equal(learner.history.at(-1).attempts, 1000);
+    await learner.trainAttemptsAsync(7, async () => {});
+    assert.equal(learner.episodes, 1007);
+    assert.equal(learner.history.at(-1).attempts, 1007);
+  }
+});
+test('interrupted episode training preserves completed counts and resumes partial policy evaluations', async () => {
+  const learner = new PolicySearch(seeded(12), 'double');
+  let active = true;
+  const result = await learner.trainAttemptsAsync(100, async () => { active = false }, () => active);
+  assert.equal(result.completed, 3);
+  assert.equal(result.cancelled, true);
+  assert.equal(learner.episodes, 3);
+  learner.checkpoint();
+  const saved = JSON.parse(JSON.stringify(learner));
+  const restored = new PolicySearch(seeded(13), 'double');
+  for (const key of ['weights','mean','spread','generations','episodes','modelGeneration','modelAttempts','score','success','history','pending']) restored[key] = saved[key];
+  await restored.trainAttemptsAsync(2, async () => {});
+  assert.equal(restored.episodes, 5);
+  assert.equal(restored.pending.candidateIndex, 1);
+  assert.equal(restored.pending.trialIndex, 2);
+  assert.equal(restored.history.at(-1).attempts, 5);
+});

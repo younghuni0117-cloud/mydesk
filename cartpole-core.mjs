@@ -90,10 +90,10 @@ export class PolicySearch {
     this.mean = Array(this.config.dimension).fill(0);
     this.spread = Array(this.config.dimension).fill(this.config.poles === 2 ? 3 : 1);
     this.weights = Array(this.config.dimension).fill(0);
-    this.generations = 0; this.episodes = 0; this.modelGeneration = 0;
+    this.generations = 0; this.episodes = 0; this.modelGeneration = 0; this.modelAttempts = 0; this.pending = null;
     const baseline = evaluatePolicy(this.weights, this.config);
     this.score = baseline.mean; this.success = baseline.success;
-    this.history = [{ generation: 0, evaluation: this.score, best: this.score, success: this.success }];
+    this.history = [{ generation: 0, attempts: 0, evaluation: this.score, best: this.score, success: this.success }];
   }
   candidates() {
     const size = this.config.poles === 2 ? 48 : 24;
@@ -101,7 +101,7 @@ export class PolicySearch {
     candidates.push([...this.weights]);
     return candidates;
   }
-  finishGeneration(ranked) {
+  finishGeneration(ranked, countAttempts = true) {
     ranked.sort((a, b) => b.score - a.score);
     const elite = ranked.slice(0, this.config.poles === 2 ? 8 : 6);
     for (let i = 0; i < this.config.dimension; i++) {
@@ -109,14 +109,56 @@ export class PolicySearch {
       const variance = elite.reduce((sum, e) => sum + (e.weights[i] - mean) ** 2, 0) / elite.length;
       this.mean[i] = mean; this.spread[i] = Math.max(.08, Math.sqrt(variance));
     }
-    this.generations++; this.episodes += ranked.length * 3;
-    const evaluation = evaluatePolicy(ranked[0].weights, this.config);
-    if (evaluation.mean > this.score || (evaluation.mean === this.score && evaluation.success >= this.success)) {
-      this.weights = [...ranked[0].weights]; this.score = evaluation.mean; this.success = evaluation.success; this.modelGeneration = this.generations;
-    }
-    this.history.push({ generation: this.generations, evaluation: evaluation.mean, best: this.score, success: this.success });
-    if (this.history.length > 120) this.history.shift();
+    this.generations++; if (countAttempts) this.episodes += ranked.length * 3;
+    const evaluation = this.considerModel(ranked[0].weights);
+    this.record(evaluation);
     return this.score;
+  }
+  considerModel(weights) {
+    const evaluation = evaluatePolicy(weights, this.config);
+    if (evaluation.mean > this.score || (evaluation.mean === this.score && evaluation.success >= this.success)) {
+      this.weights = [...weights]; this.score = evaluation.mean; this.success = evaluation.success;
+      this.modelGeneration = this.generations; this.modelAttempts = this.episodes;
+    }
+    return evaluation;
+  }
+  record(evaluation) {
+    const point = { generation: this.generations, attempts: this.episodes, evaluation: evaluation.mean, best: this.score, success: this.success };
+    if (this.history.at(-1)?.attempts === this.episodes) this.history[this.history.length - 1] = point;
+    else this.history.push(point);
+    if (this.history.length > 120) this.history.shift();
+  }
+  checkpoint() {
+    const pending = this.pending;
+    if (!pending) return;
+    const ranked = [...pending.ranked];
+    if (pending.trialIndex > 0) ranked.push({ weights: pending.candidates[pending.candidateIndex], score: pending.partialScore / pending.trialIndex });
+    if (!ranked.length) return;
+    const winner = ranked.reduce((a, b) => a.score >= b.score ? a : b);
+    this.record(this.considerModel(winner.weights));
+  }
+  async trainAttemptsAsync(count, yieldControl, isActive = () => true, onProgress = () => {}) {
+    if (!Number.isInteger(count) || count < 1) throw new RangeError('Attempt count must be a positive integer');
+    let completed = 0;
+    while (completed < count) {
+      if (!isActive()) return { completed, cancelled: true };
+      if (!this.pending) {
+        const starts = Array.from({ length: 3 }, () => initialState(this.random, this.config));
+        this.pending = { starts, candidates: this.candidates(), candidateIndex: 0, trialIndex: 0, partialScore: 0, ranked: [] };
+      }
+      const p = this.pending;
+      p.partialScore += rollout(p.candidates[p.candidateIndex], p.starts[p.trialIndex], this.config);
+      p.trialIndex++; this.episodes++; completed++;
+      if (p.trialIndex === 3) {
+        p.ranked.push({ weights: p.candidates[p.candidateIndex], score: p.partialScore / 3 });
+        p.candidateIndex++; p.trialIndex = 0; p.partialScore = 0;
+        if (p.candidateIndex === p.candidates.length) { this.finishGeneration(p.ranked, false); this.pending = null; }
+      }
+      if (completed % 3 === 0 || completed === count) { onProgress(completed); await yieldControl(); }
+    }
+    if (!isActive()) return { completed, cancelled: true };
+    this.checkpoint();
+    return { completed, cancelled: false };
   }
   trainGeneration() {
     const starts = Array.from({ length: 3 }, () => initialState(this.random, this.config));

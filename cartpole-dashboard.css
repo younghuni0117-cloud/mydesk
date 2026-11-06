@@ -5,3 +5,13 @@
 @media(max-width:599px){.fit-game .cp-controls{padding:8px 12px;gap:5px}.fit-game .cp-graph{height:50px}.fit-game .cp-performance-heading{margin-bottom:3px}.fit-game .cp-controls>.cp-training-stats dd{font-size:16px;line-height:22px;margin:0}.fit-game .cp-controls>.cp-training-stats dt{font-size:10px;line-height:13px}.fit-game .cp-experiment[data-mode=human] .cp-graph{height:32px}.fit-game .cp-graph-legend{margin-top:3px;font-size:8px;gap:6px}.fit-game .cp-graph-legend>span:last-child{font-size:7px}.fit-game .cp-difficulty select{width:125px;font-size:10px}.fit-game .cp-arena .tabs button{padding:4px 7px}}
 @media(min-width:540px) and (max-height:539px){.fit-game .cp-controls{padding:6px 10px;gap:4px}.fit-game .cp-graph{height:42px}.fit-game .cp-performance-heading{margin:0 0 2px}.fit-game .cp-graph-legend{font-size:8px;gap:5px;margin-top:2px}.fit-game .cp-graph-legend>span:last-child{font-size:7px}.fit-game .cp-controls>.cp-training-stats dd{font-size:16px;line-height:21px;margin:0}.fit-game .cp-controls>.cp-training-stats dt{font-size:9px;line-height:12px}}
 @media(max-width:359px){.fit-game .cp-difficulty select{width:111px;font-size:9px}.fit-game .cp-arena .tabs button{font-size:9px;padding:4px 6px}.fit-game .cp-model-actions button{font-size:9px}}
+
+/* A real episode budget, alongside start and run controls, in the same dock row. */
+.cp-model-actions,.fit-game .cp-model-actions{grid-template-columns:minmax(54px,.8fr) minmax(55px,.95fr) minmax(68px,1.25fr);gap:5px}
+.cp-model-actions button,.fit-game .cp-model-actions button{white-space:normal;line-height:1.35;padding:4px 3px;min-width:0}
+.cp-attempts-input{min-width:0;min-height:44px;border:1px solid #d5dfed;border-radius:5px;background:#fff;display:flex;flex-direction:column;justify-content:center;padding:3px 4px;gap:1px}
+.cp-attempts-input>span{font-size:8px;line-height:10px;color:#8b9db4;white-space:nowrap}
+.cp-attempts-input input{display:block;width:100%;min-width:0;height:24px;padding:0 2px;border:0;background:transparent;color:#506d90;font:13px/24px monospace;appearance:textfield;-moz-appearance:textfield}
+.cp-attempts-input input::-webkit-inner-spin-button,.cp-attempts-input input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.cp-attempts-help{font-size:9px;line-height:1.5;color:#8e9fb5;margin:5px 0 0}
+.fit-game .cp-attempts-help{font-size:8px;line-height:1.4;margin:4px 0 0}

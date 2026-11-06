@@ -1,18 +1,28 @@
 import { DT, MAX_STEPS, X_LIMIT, DIFFICULTIES, environment, initialState, advance, failed, actionFor, evaluatePolicy, PolicySearch } from './cartpole-core.mjs';
 const get = id => document.getElementById(`cp-${id}`);
 const section = document.getElementById('cartpole'), canvas = get('canvas'), ctx = canvas.getContext('2d');
-const fields = ['weights', 'mean', 'spread', 'generations', 'episodes', 'modelGeneration', 'score', 'success', 'history'];
+const fields = ['weights', 'mean', 'spread', 'generations', 'episodes', 'modelGeneration', 'modelAttempts', 'pending', 'score', 'success', 'history'];
 let difficulty = 'normal';
 try { const last = localStorage.getItem('mydesk.cartpole.difficulty'); if (DIFFICULTIES[last]) difficulty = last; } catch {}
 let config = environment(difficulty), learner, bestHuman = 0;
 let mode = 'ai', state, steps = 0, playing = false, ended = false, roundStarted = false;
-let training = false, trainingToken = 0, frame = null, lastTime = 0, accumulator = 0, roundWeights = [], roundGeneration = 0;
+let training = false, currentJob = null, frame = null, lastTime = 0, accumulator = 0, roundWeights = [], roundAttempts = 0;
 const keys = new Set(), pointers = new Map();
 function validArray(a, n) { return Array.isArray(a) && a.length === n && a.every(v => Number.isFinite(v) && Math.abs(v) < 1e6); }
 function validProfile(saved) {
   return saved && ['weights', 'mean', 'spread'].every(k => validArray(saved[k], config.dimension))
     && saved.spread.every(v => v >= .08) && Number.isInteger(saved.generations) && saved.generations >= 0 && saved.generations < 1e9
     && Number.isInteger(saved.episodes) && saved.episodes >= 0 && saved.episodes < 1e12;
+}
+function validPending(p) {
+  const size = config.poles === 2 ? 49 : 25;
+  return p && Array.isArray(p.candidates) && p.candidates.length === size && p.candidates.every(a => validArray(a, config.dimension))
+    && Array.isArray(p.starts) && p.starts.length === 3 && p.starts.every(a => validArray(a, config.dimension))
+    && Number.isInteger(p.candidateIndex) && p.candidateIndex >= 0 && p.candidateIndex < size
+    && Number.isInteger(p.trialIndex) && p.trialIndex >= 0 && p.trialIndex < 3
+    && Number.isFinite(p.partialScore) && p.partialScore >= 0 && p.partialScore <= p.trialIndex * MAX_STEPS
+    && Array.isArray(p.ranked) && p.ranked.length === p.candidateIndex
+    && p.ranked.every(v => v && validArray(v.weights, config.dimension) && Number.isFinite(v.score) && v.score >= 0 && v.score <= MAX_STEPS);
 }
 function load() {
   learner = new PolicySearch(Math.random, config); bestHuman = 0;
@@ -22,10 +32,14 @@ function load() {
     if (validProfile(saved)) {
       for (const k of ['weights', 'mean', 'spread', 'generations', 'episodes']) learner[k] = Array.isArray(saved[k]) ? [...saved[k]] : saved[k];
       learner.modelGeneration = Number.isInteger(saved.modelGeneration) && saved.modelGeneration >= 0 && saved.modelGeneration <= learner.generations ? saved.modelGeneration : learner.generations;
+      const batchSize = config.poles === 2 ? 147 : 75;
+      learner.modelAttempts = Number.isInteger(saved.modelAttempts) && saved.modelAttempts >= 0 && saved.modelAttempts <= learner.episodes ? saved.modelAttempts : Math.min(learner.episodes, learner.modelGeneration * batchSize);
+      learner.pending = validPending(saved.pending) ? saved.pending : null;
       const evaluation = evaluatePolicy(learner.weights, config); learner.score = evaluation.mean; learner.success = evaluation.success;
-      learner.history = raw && Array.isArray(saved.history) ? saved.history.filter(v => v && Number.isInteger(v.generation) && v.generation >= 0 && v.generation <= learner.generations && ['evaluation', 'best'].every(k => Number.isFinite(v[k]) && v[k] >= 0 && v[k] <= MAX_STEPS)).slice(-120) : [];
-      if (!learner.history.length) learner.history = [{ generation: learner.generations, evaluation: learner.score, best: learner.score, success: learner.success }];
+      learner.history = raw && Array.isArray(saved.history) ? saved.history.filter(v => v && Number.isInteger(v.generation) && v.generation >= 0 && v.generation <= learner.generations && ['evaluation', 'best'].every(k => Number.isFinite(v[k]) && v[k] >= 0 && v[k] <= MAX_STEPS)).slice(-120).map(v => ({...v, attempts: Number.isInteger(v.attempts) && v.attempts >= 0 && v.attempts <= learner.episodes ? v.attempts : Math.min(learner.episodes, v.generation * batchSize)})) : [];
+      if (!learner.history.length) learner.history = [{ generation: learner.generations, attempts: learner.episodes, evaluation: learner.score, best: learner.score, success: learner.success }];
       bestHuman = Number.isFinite(saved.bestHuman) ? Math.max(0, Math.min(MAX_STEPS, saved.bestHuman)) : 0;
+      if (learner.pending) learner.checkpoint();
     }
   } catch { /* Missing or corrupt storage starts a fresh model for this difficulty. */ }
 }
@@ -53,17 +67,17 @@ function updateStats() {
   get('progress').style.width = `${steps / MAX_STEPS * 100}%`;
 }
 function updateLearning() {
-  get('generations').textContent = `${learner.generations.toLocaleString()}세대`;
-  get('episodes').textContent = `${learner.episodes.toLocaleString()}회 시도`;
-  get('evaluation').textContent = learner.generations ? `${(learner.score * DT).toFixed(1)}초` : '—';
-  get('success').textContent = learner.generations ? `${Math.round(learner.success * 100)}%` : '—';
-  get('model-status').textContent = learner.generations ? `보존 모델 ${learner.modelGeneration}세대 · ${config.label} · 평균 ${(learner.score * DT).toFixed(1)}초` : '저장된 모델이 없습니다. 학습을 먼저 시작하세요.';
-  const history = learner.history, first = history[0].generation, last = history.at(-1).generation;
-  const point = (v, key) => [last === first ? 0 : (v.generation - first) / (last - first) * 300, 99 - v[key] / MAX_STEPS * 98];
+  get('generations').textContent = `${learner.episodes.toLocaleString()}회`;
+  get('episodes').textContent = '성능 평가 8회 별도';
+  get('evaluation').textContent = learner.episodes ? `${(learner.score * DT).toFixed(1)}초` : '—';
+  get('success').textContent = learner.episodes ? `${Math.round(learner.success * 100)}%` : '—';
+  get('model-status').textContent = learner.episodes ? `보존 모델 ${learner.modelAttempts.toLocaleString()}회 시점 · ${config.label} · 평균 ${(learner.score * DT).toFixed(1)}초` : '저장된 모델이 없습니다. 학습을 먼저 시작하세요.';
+  const history = learner.history, first = history[0].attempts, last = history.at(-1).attempts;
+  const point = (v, key) => [last === first ? 0 : (v.attempts - first) / (last - first) * 300, 99 - v[key] / MAX_STEPS * 98];
   for (const [id, key] of [['chart-line', 'best'], ['evaluation-line', 'evaluation']]) get(id).setAttribute('d', history.map((v, i) => `${i ? 'L' : 'M'}${point(v, key).join(' ')}`).join(' '));
   const [cx, cy] = point(history.at(-1), 'best'); get('chart-point').setAttribute('cx', cx); get('chart-point').setAttribute('cy', cy);
-  get('graph-first').textContent = `${first}세대`; get('graph-last').textContent = `${last}세대`;
-  get('performance-chart').setAttribute('aria-label', `${config.label}. ${first}~${last}세대의 평균 생존 시간. 최고 모델 ${(learner.score * DT).toFixed(1)}초, 20초 성공률 ${Math.round(learner.success * 100)}%. 같은 8개 조건 평가.`);
+  get('graph-first').textContent = `${first.toLocaleString()}회`; get('graph-last').textContent = `${last.toLocaleString()}회`;
+  get('performance-chart').setAttribute('aria-label', `${config.label}. ${first}~${last}회 학습 시도 구간의 평균 생존 시간. 최고 모델 ${(learner.score * DT).toFixed(1)}초, 20초 성공률 ${Math.round(learner.success * 100)}%. 같은 8개 조건 평가.`);
   updateButtons();
 }
 function draw() {
@@ -110,20 +124,21 @@ function draw() {
 }
 function updateButtons() {
   get('start').textContent = playing && mode === 'human' ? 'Ⅱ 일시정지' : ended ? '↻ 다시 도전' : '▶ 균형 잡기 시작';
-  get('run-model').disabled = training || !learner.generations;
+  get('run-model').disabled = training || !learner.episodes;
   get('run-model').textContent = playing && mode === 'ai' ? 'Ⅱ 실행 일시정지' : roundStarted && !ended && mode === 'ai' ? '▶ 모델 이어 실행' : '▶ 학습 모델 실행';
-  get('train').textContent = training ? 'Ⅱ 학습 멈추기' : learner.generations ? '+ 30세대 더 학습' : '✧ 30세대 학습';
+  get('train').textContent = training ? 'Ⅱ 중지' : '학습 시작';
+  get('attempts').disabled = training;
 }
 function pause() { playing = false; cancelAnimationFrame(frame); frame = null; clearInput(); updateButtons(); draw(); }
 function ready() {
   pause(); state = initialState(Math.random, config); steps = 0; ended = false; roundStarted = false; accumulator = 0;
-  roundWeights = [...learner.weights]; roundGeneration = learner.modelGeneration;
+  roundWeights = [...learner.weights]; roundAttempts = learner.modelAttempts;
   updateButtons(); updateStats(); draw();
 }
 function finish(success) {
   playing = false; ended = true; clearInput();
   if (mode === 'human' && steps > bestHuman) { bestHuman = steps; save(); }
-  message(`${config.label} · ${mode === 'human' ? '나의' : `${roundGeneration}세대 모델`} 기록 ${(steps * DT).toFixed(1)}초 · ${steps}점. ${success ? '20초 성공!' : '경계 또는 기울기 한도에 도달했어요.'}`);
+  message(`${config.label} · ${mode === 'human' ? '나의' : `${roundAttempts}회 시점 모델`} 기록 ${(steps * DT).toFixed(1)}초 · ${steps}점. ${success ? '20초 성공!' : '경계 또는 기울기 한도에 도달했어요.'}`);
   updateButtons(); updateStats(); draw();
 }
 function animate(time) {
@@ -138,21 +153,24 @@ function animate(time) {
 function play() {
   if (ended) ready();
   playing = true; roundStarted = true; accumulator = 0; lastTime = performance.now(); updateButtons();
-  message(mode === 'human' ? `${config.label} · ← → 또는 터치 버튼으로 균형을 잡으세요.` : `${config.label} · 보존된 ${roundGeneration}세대 모델 실행 중. 실행 중에는 학습하지 않습니다.`);
+  message(mode === 'human' ? `${config.label} · ← → 또는 터치 버튼으로 균형을 잡으세요.` : `${config.label} · 보존된 ${roundAttempts}회 시점 모델 실행 중. 실행 중에는 학습하지 않습니다.`);
   canvas.focus({ preventScroll: true }); frame = requestAnimationFrame(animate);
 }
-function stopTraining() { training = false; trainingToken++; updateButtons(); }
+function stopTraining() {
+  if (currentJob) { currentJob.cancelled = true; learner.checkpoint(); save(); currentJob = null; }
+  training = false; updateButtons();
+}
 function selectMode(next) {
-  stopTraining(); mode = next; section.dataset.mode = mode; ready();
+  stopTraining(); mode = next; section.dataset.mode = mode; ready(); updateLearning();
   for (const key of ['human', 'ai']) { get(key).classList.toggle('selected', key === mode); get(key).setAttribute('aria-pressed', String(key === mode)); get(`${key}-panel`).hidden = key !== mode; }
-  message(mode === 'human' ? `${config.label} · 직접 도전 준비. 20초를 버텨보세요.` : learner.generations ? '학습 모델 실행을 누르면 보존된 최고 모델로 시작합니다.' : '30세대 학습을 마친 뒤 학습 모델 실행을 눌러주세요.');
+  message(mode === 'human' ? `${config.label} · 직접 도전 준비. 20초를 버텨보세요.` : learner.episodes ? '학습 모델 실행을 누르면 보존된 최고 모델로 시작합니다.' : '원하는 학습 시도 횟수를 입력하고 학습 시작을 눌러주세요.');
 }
 get('human').onclick = () => selectMode('human'); get('ai').onclick = () => selectMode('ai');
 get('start').onclick = () => { if (playing) { pause(); message('잠시 멈췄어요. 시작 버튼으로 이어가세요.'); } else play(); };
 get('run-model').onclick = () => {
-  if (training || !learner.generations) return;
+  if (training || !learner.episodes) return;
   if (playing) { pause(); message('모델 실행을 멈췄어요. 이어 실행할 수 있습니다.'); }
-  else { if (roundGeneration !== learner.modelGeneration) ready(); play(); }
+  else { if (roundAttempts !== learner.modelAttempts) ready(); play(); }
 };
 get('restart').onclick = () => { stopTraining(); ready(); message('새 시작 조건으로 준비했어요. 실행 버튼을 눌러주세요.'); };
 get('difficulty').onchange = () => {
@@ -162,23 +180,35 @@ get('difficulty').onchange = () => {
   canvas.setAttribute('aria-label', `${config.label} 카트폴. 카트 좌우 조작, 각 막대 수직 기준 ±${Math.round(config.angleLimit * 180 / Math.PI)}도 또는 카트 ±2.4m 이탈 시 종료.`);
   selectMode(mode); updateLearning();
 };
+get('attempts').oninput = () => get('attempts').setCustomValidity('');
 get('train').onclick = async () => {
-  if (training) { stopTraining(); message('학습을 멈췄어요. 완료된 세대의 최고 모델이 저장되어 있습니다.'); return; }
-  if (mode !== 'ai') selectMode('ai');
-  ready(); training = true; const token = ++trainingToken, activeLearner = learner; updateButtons();
-  const yieldControl = () => new Promise(resolve => setTimeout(resolve, 0));
-  for (let i = 0; i < 30; i++) {
-    if (token !== trainingToken) return;
-    message(`${config.label} · ${i + 1}/30세대 학습 중. 실행은 학습 후 별도로 시작합니다.`);
-    const result = await activeLearner.trainGenerationAsync(yieldControl, () => token === trainingToken);
-    if (token !== trainingToken || result === null) return;
-    save(); updateLearning(); get('training-note').textContent = `${i + 1}/30세대 완료 · 최고 모델은 따로 보존합니다.`;
-    await yieldControl();
+  if (training) {
+    const job = currentJob;
+    stopTraining(); ready(); updateLearning();
+    message(`학습 중지. 이번 요청 ${job.completed.toLocaleString()}/${job.target.toLocaleString()}회 완료 · 누적 ${learner.episodes.toLocaleString()}회. 완료된 시도와 모델이 저장됐습니다.`);
+    return;
   }
-  if (token !== trainingToken) return;
-  stopTraining(); ready(); updateLearning();
-  get('training-note').textContent = '학습 완료. 학습 모델 실행 버튼으로 확인하세요.';
-  message(`30세대 학습 완료! ${learner.modelGeneration}세대 최고 모델, 검증 평균 ${(learner.score * DT).toFixed(1)}초. ‘학습 모델 실행’을 눌러주세요.`);
+  const target = Number(get('attempts').value);
+  get('attempts').setCustomValidity('');
+  if (!Number.isInteger(target) || target < 1 || target > 10000) {
+    get('attempts').setCustomValidity('1부터 10,000까지의 정수로 입력해 주세요.'); get('attempts').reportValidity(); return;
+  }
+  if (mode !== 'ai') selectMode('ai');
+  ready(); training = true;
+  const job = { learner, target, completed: 0, cancelled: false }; currentJob = job; updateButtons();
+  get('attempts').blur();
+  const yieldControl = () => new Promise(resolve => setTimeout(resolve, 0));
+  const result = await learner.trainAttemptsAsync(target, yieldControl, () => currentJob === job && !job.cancelled, completed => {
+    if (currentJob !== job) return;
+    job.completed = completed; updateLearning();
+    message(`${config.label} · 이번 학습 ${completed.toLocaleString()}/${target.toLocaleString()}회 · 누적 ${learner.episodes.toLocaleString()}회. 성능 평가 횟수는 별도입니다.`);
+    get('training-note').textContent = `게임 시도 ${completed.toLocaleString()}/${target.toLocaleString()}회 완료`;
+    if (completed % 15 === 0) save();
+  });
+  if (currentJob !== job) return;
+  currentJob = null; training = false; save(); ready(); updateLearning();
+  get('training-note').textContent = `요청한 ${result.completed.toLocaleString()}회 학습 완료. 학습 모델을 실행해 보세요.`;
+  message(`학습 시도 ${result.completed.toLocaleString()}회 완료! 누적 ${learner.episodes.toLocaleString()}회 · 검증 평균 ${(learner.score * DT).toFixed(1)}초. ‘학습 모델 실행’을 눌러주세요.`);
 };
 get('reset-ai').onclick = () => {
   stopTraining(); learner = new PolicySearch(Math.random, config); save(); ready(); updateLearning();
@@ -197,7 +227,7 @@ document.addEventListener('keyup', event => { keys.delete(event.key); updateHeld
 window.addEventListener('blur', () => { clearInput(); if (playing) { pause(); message('창을 벗어나 실행을 멈췄어요. 버튼으로 이어가세요.'); } });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { stopTraining(); pause(); message('화면을 벗어나 학습·실행을 멈췄어요. 버튼으로 다시 시작할 수 있습니다.'); } });
 document.addEventListener('game:help-open', () => { stopTraining(); pause(); });
-load(); state = initialState(Math.random, config); roundWeights = [...learner.weights]; roundGeneration = learner.modelGeneration;
+load(); state = initialState(Math.random, config); roundWeights = [...learner.weights]; roundAttempts = learner.modelAttempts;
 get('difficulty').value = difficulty; get('environment-label').textContent = config.label; get('angle-label').textContent = config.poles === 2 ? '두 막대 최대 기울기' : '막대 기울기';
 canvas.setAttribute('aria-label', `${config.label} 카트폴. 각 막대 수직 기준 ±${Math.round(config.angleLimit * 180 / Math.PI)}도 또는 카트 ±2.4m 이탈 시 종료.`);
 selectMode('ai'); updateLearning();
