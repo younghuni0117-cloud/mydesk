@@ -157,8 +157,10 @@ function play() {
   canvas.focus({ preventScroll: true }); frame = requestAnimationFrame(animate);
 }
 function stopTraining() {
+  const interrupted = Boolean(currentJob);
   if (currentJob) { currentJob.cancelled = true; learner.checkpoint(); save(); currentJob = null; }
   training = false; updateButtons();
+  if (interrupted) updateLearning();
 }
 function selectMode(next) {
   stopTraining(); mode = next; section.dataset.mode = mode; ready(); updateLearning();
