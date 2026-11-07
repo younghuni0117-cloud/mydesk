@@ -1,7 +1,7 @@
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot2';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot2';
-import {RobotSync} from './robot-sync.mjs?v=robot2';
-import {SYNC_CONFIG} from './robot-sync-config.mjs?v=robot2';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot3';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot3';
+import {RobotSync} from './robot-sync.mjs?v=robot3';
+import {SYNC_CONFIG} from './robot-sync-config.mjs?v=robot3';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v2';let owner='guest',dirty=false,cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
@@ -23,11 +23,11 @@ function renderModel(){if(!model)return;get('attempts-total').textContent=model.
  get('chart-range').textContent=`${start}~${end}회`;get('chart-svg').setAttribute('aria-label',`공통 모델 ${model.policyVersion}, 전체 보상 지수 ${rows.at(-1)?.overall.toFixed(1)}. 파란선 보존 모델, 점선 후보.`);
 }
 const sync=new RobotSync(SYNC_CONFIG,{validate:RobotLearner.valid,onSaved:()=>{dirty=Boolean(sync.pending);persist();},onState:text=>{get('sync-open').textContent=text;get('sync-detail').textContent=text;},onIdentity:uid=>{
- if(owner!==uid){const previousOwner=owner;backup();let saved=null;try{saved=JSON.parse(localStorage.getItem('mydesk.robot.backup.'+uid)||'null');}catch{}owner=uid;dirty=false;sync.pending=null;sync.baseRevision=0;if(RobotLearner.valid(saved?.model)){model=saved.model;dirty=Boolean(saved.dirty);configure(model,true);}else if(previousOwner!=='guest'){model=null;configure(null,true);}}
+ if(owner!==uid){const previousOwner=owner,previousDirty=dirty;backup();let saved=null;try{saved=JSON.parse(localStorage.getItem('mydesk.robot.backup.'+uid)||'null');}catch{}owner=uid;dirty=Boolean(previousOwner==='guest'&&previousDirty&&model?.attempts>0);sync.pending=null;sync.baseRevision=0;if(RobotLearner.valid(saved?.model)){model=saved.model;dirty=Boolean(saved.dirty);configure(model,true);}else if(previousOwner!=='guest'){model=null;configure(null,true);}}
  else sync.baseRevision=cache.cloudRevision||0;
  if(dirty&&model)sync.pending=structuredClone(model);persist();
 },onEmpty:()=>{if(model){dirty=true;sync.queue(model);persist();}},onRemote:remote=>{backup();dirty=false;model=remote;configure(remote,true);persist();},onConflict:()=>{worker.postMessage({type:'stop'});get('conflict').hidden=false;status('다른 기기 모델과 충돌했습니다. 도움말·저장에서 사용할 모델을 선택하세요.');}});
-const worker=new Worker(new URL('./robot-worker.mjs?v=robot2',import.meta.url),{type:'module'});
+const worker=new Worker(new URL('./robot-worker.mjs?v=robot3',import.meta.url),{type:'module'});
 function configure(saved=model,remote=false,legacy=null,legacyCounts=null){initializing=true;restoring=remote;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles};controls();worker.postMessage({type:'init',stage,focus:get('focus').value,saved,legacy,legacyCounts});}
 function settings(){worker.postMessage({type:'settings',interval:Number(get('interval').value),source:get('source').value,light:get('light').checked});}
 worker.onmessage=({data})=>{
@@ -115,5 +115,5 @@ window.addEventListener('pagehide',()=>{worker.postMessage({type:'stop'});viewPa
 let legacy=null,legacyCounts=null;
 if(!model)try{const old=JSON.parse(localStorage.getItem('mydesk.robot.v1')||'{}'),valid=Object.entries(old).filter(([k,m])=>/^(balance|recover|walk|run|obstacles)-(0|30|60)$/.test(k)&&Array.isArray(m?.weights)&&m.weights.length===32&&m.weights.every(v=>Number.isFinite(v)&&Math.abs(v)<20));legacy=valid.sort((a,b)=>(b[1].bestReward||0)-(a[1].bestReward||0)).slice(0,3).map(([,v])=>v);legacyCounts=Object.fromEntries(Object.keys(STAGES).map(k=>[k,valid.filter(([name])=>name.startsWith(k+'-')).reduce((s,[,m])=>s+(Number.isSafeInteger(m.attempts)&&m.attempts>0&&m.attempts<1e10?m.attempts:0),0)]));}catch{}
 get('light').checked=window.matchMedia('(pointer: coarse)').matches;
-settings();configure(model,false,legacy,legacyCounts);
+settings();configure(model,Boolean(model&&!dirty),legacy,legacyCounts);
 sync.start(location.hash).then(()=>{if(new URLSearchParams(location.hash.slice(1)).has('access_token'))history.replaceState(null,'',location.pathname+location.search);});

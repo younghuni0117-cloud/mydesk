@@ -114,6 +114,6 @@ CEM(Cross-Entropy Method)으로 1단은 4개 가중치, 2단은 6개 가중치�
 
 `mydesk.robot.v2`에 공통 모델·분포·과제별 횟수·검증·보상 기록을 저장합니다. v2 파일 내보내기·불러오기를 지원합니다. 기존 v1 원본은 지우지 않으며, 가장 높은 기존 보상의 후보 최대 3개를 새 무보조 조건에서 다시 평가해 초기 공통 정책을 선택하고 과제별 실제 시도 수를 이관합니다. 기존 보조 상태의 성공률·보상 그래프는 이어 붙이지 않습니다. 저장된 모델은 불러올 때도 실제 물리로 다시 검증합니다.
 
-Supabase 자동 공유 클라이언트·사용자별 RLS SQL·동시 편집 충돌 처리는 준비했지만, 현재 `robot-sync-config.mjs`가 비어 있어 자동 공유는 아직 비활성입니다. 새 서버 생성·연결 절차와 검증 범위는 [sync/README.md](sync/README.md)를 참고하세요. 서버 연결 전 PC·모바일 간 이동은 모델 파일을 사용합니다.
+Supabase `mydesk-robot-sync`(서울) 서버에 연결했습니다. PC와 모바일의 로봇 페이지에서 같은 이메일로 로그인하면 공통 모델·시도 횟수·학습 분포를 공유합니다. 브라우저에는 공개 publishable 키만 포함합니다. 사용자별 RLS와 버전 조건부 저장으로 다른 계정 접근과 동시 편집 덮어쓰기를 막습니다. 자세한 동작과 검증 범위는 [sync/README.md](sync/README.md)를 참고하세요. 파일로 옮기는 방법도 유지합니다.
 
-검증: `node --test tests/robot.test.mjs tests/robot-sync.test.mjs`. 실제 Fold 브라우저 시각 검증과 실제 Supabase 서버 검증은 별도입니다.
+검증: `node --test tests/robot.test.mjs tests/robot-sync.test.mjs`. 실제 서버에서 계정별 RLS·조건부 수정·익명 접근 차단·CORS·이메일 로그인 활성화·홈페이지 복귀 주소를 검증했습니다. 개인 이메일 수신·실제 두 기기 로그인과 Fold 브라우저 시각 검증은 사용 기기에서 확인이 필요합니다.

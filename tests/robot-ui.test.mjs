@@ -25,6 +25,6 @@ try{
  el('rb-export').onclick();const data=JSON.parse(await exported.text());assert.equal(data.format,'mydesk-robot-v2');assert.deepEqual(data.model.weights,weights);
  await el('rb-import').onchange({target:{files:[{size:exported.size,text:()=>exported.text()}],value:'model.json'}});await wait(()=>!el('rb-train').disabled);assert.equal(JSON.parse(storage.get('mydesk.robot.v2')).model.attempts,saved.attempts);
  el('rb-count').value='100';el('rb-train').onclick();await wait(()=>el('rb-status').textContent.includes('학습 2/100'));document.hidden=true;events.visibilitychange();await wait(()=>el('rb-status').textContent.includes('학습 중지'));
- assert.match(el('rb-sync-open').textContent,/연결 대기/);assert.equal(el('rb-login-form').hidden,true);
+ assert.match(el('rb-sync-open').textContent,/로그인 전/);assert.equal(el('rb-login-form').hidden,false);
  console.log('PASS real worker UI: 100000 target without clamp, cancellation, shared policy across goals, five abilities, live physics, pushes, zoom, pinch, file roundtrip, background stop, honest cloud state');
 }finally{await Promise.all(workers.map(w=>w.terminate()))}
