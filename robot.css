@@ -79,3 +79,5 @@ body[data-page=robot].robot-wide-fit .robot-force-label{font-size:9px}
 body[data-page=robot].robot-wide-fit .robot-push-options{flex:none;gap:4px}
 body[data-page=robot].robot-wide-fit .robot-push-options select{min-height:26px;font-size:9px;padding:2px}
 body[data-page=robot].robot-wide-fit footer{display:none}
+/* Short cover viewports keep the gauge above the fixed action bar. */
+@media(max-width:599px) and (max-height:700px){body[data-page=robot] main{padding-top:8px}body[data-page=robot] .section-top{margin-bottom:6px}body[data-page=robot] .robot-stage{height:clamp(200px,34dvh,240px);min-height:200px}body[data-page=robot] .robot-metrics span{font-size:8px;line-height:12px}body[data-page=robot] .robot-metrics strong{font-size:14px;line-height:20px}body[data-page=robot] .robot-progress{padding:4px 0}body[data-page=robot] .robot-progress>div{font-size:9px;line-height:14px}body[data-page=robot] .robot-progress progress{height:7px;margin-top:3px}}
