@@ -154,7 +154,7 @@ export class RobotWorld {
       const target=clamp((targets[name]||0)+(recovering?.45:.13)*p(16+i)+independent,motor.lower+.01,motor.upper-.01);
       joint.setMotorSpeed(clamp(kp*(target-joint.getJointAngle())-kd*joint.getJointSpeed(),-9,9));joint.setMaxMotorTorque(motor.torque*gain);
 
-      work+=Math.abs(joint.getMotorTorque(1/DT)*joint.getJointSpeed())*DT;
+      work+=Math.abs(joint.getMotorTorque(2/DT)*joint.getJointSpeed())*DT;
     }
     return work;
   }
