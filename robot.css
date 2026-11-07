@@ -150,3 +150,10 @@ body[data-page=robot] .robot-details .robot-camera label select{min-width:120px}
 /* Keep the robot viewport stationary while the whole right panel scrolls. */
 body[data-page=robot].robot-wide-fit .robot-controls{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-gutter:stable}
 body[data-page=robot].robot-wide-fit .robot-details-content{max-height:none;overflow:visible}
+
+/* Quiet progress text and compact, outcome-based feedback. */
+.robot-progress>div{min-height:18px;font-variant-numeric:tabular-nums;white-space:nowrap}
+body[data-page=robot] .robot-progress progress::-webkit-progress-value{transition:width .5s linear}
+.robot-quality-summary{margin:0;color:#607b97;font-size:12px;line-height:18px;font-variant-numeric:tabular-nums}
+body[data-page=robot].robot-wide-fit .robot-quality-summary{font-size:11px;line-height:16px;flex:none}
+#rb-view-label{display:none!important}

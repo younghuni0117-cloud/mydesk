@@ -1,0 +1,10 @@
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+// Measures outcomes; these scores never choose joint angles or motor commands.
+export function motionQuality(height,angle,footDown,bodyDown=false,low=false){const heightScore=clamp((height-(low?.25:.4))/(low?.37:.55)),orientation=clamp((Math.cos(angle)-.5)/.5);return heightScore*orientation*(footDown?1:.1)*(bodyDown?.15:1);}
+export function abilityProgress(ability,stage){
+ const cases=ability?.cases||[];if(!cases.length)return 0;
+ return cases.reduce((sum,c)=>{const m=c.metrics;if(!m||!Number.isFinite(m.upright))return sum+clamp(ability.passRate||0);if(m.terminationReason&&m.terminationReason!=='duration')return sum;const quality=m.motionQuality??m.upright,longest=(m.longestUpright??m.upright*m.time)/Math.max(.1,m.plannedDuration??m.time),push=m.pushes?clamp((m.pushResistance||0)/(m.pushes*1.5)):m.upright;
+ const score=stage==='balance'?.55*m.upright+.25*quality+.1*longest+.1*push:stage==='recover'?.45*clamp(m.recoveries)+.35*m.upright+.2*quality:stage==='obstacles'?.4*m.upright+.2*quality+.4*clamp(m.passed/2):.45*m.upright+.25*quality+.3*clamp(m.distance/(stage==='run'?6:2.5));return sum+score;},0)/cases.length;
+}
+export function compareAbilities(next,previous,stage){const pass=(next.passRate||0)-(previous.passRate||0);if(Math.abs(pass)>1e-9)return Math.sign(pass);const progress=abilityProgress(next,stage)-abilityProgress(previous,stage);if(Math.abs(progress)>1e-4)return Math.sign(progress);const reward=next.meanReward-previous.meanReward;return Math.abs(reward)>1e-7?Math.sign(reward):0;}
+export function abilitySummary(ability,duration){const rows=(ability?.cases||[]).map(c=>c.metrics).filter(m=>m&&Number.isFinite(m.upright));if(!rows.length)return null;const mean=f=>rows.reduce((s,m)=>s+f(m),0)/rows.length;return {standing:mean(m=>m.upright*m.time),longest:mean(m=>m.longestUpright??m.upright*m.time),duration,pushRecovery:mean(m=>m.pushes?clamp((m.pushResistance||0)/(m.pushes*1.5)):m.upright)};}

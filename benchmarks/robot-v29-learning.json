@@ -1,0 +1,81 @@
+{
+  "rewardVersion": 4,
+  "terrain": "meadow",
+  "attemptsPerRun": 240,
+  "seeds": [
+    42,
+    73
+  ],
+  "baselineStandingSeconds": 0.3875,
+  "evaluationSeconds": 8,
+  "monitorSeeds": [
+    700001,
+    700009
+  ],
+  "independentFinalTestSeeds": [
+    700011,
+    700027,
+    700031,
+    700043
+  ],
+  "note": "Short diagnostic only. Each seed has a fresh zero-torque integrated policy; training balance may terminate early, so equal attempt counts are not equal physical-simulation budgets. Scores use reward v4 and cannot be compared numerically to v3. All four runs still have 0% selection-case pass rate; this is not convergence or general algorithm-superiority evidence. Elapsed timings omitted because other checks ran concurrently.",
+  "results": [
+    {
+      "algorithm": "cem",
+      "seed": 42,
+      "count": 240,
+      "physicalSeconds": 257.1166666666668,
+      "reward": -69.91058378307153,
+      "standing": 0.8333333333333337,
+      "passRate": 0,
+      "heldOutStanding": 0.7000000000000005,
+      "restarts": 2,
+      "valid": true
+    },
+    {
+      "algorithm": "ppo",
+      "seed": 42,
+      "count": 240,
+      "physicalSeconds": 426.8499999999999,
+      "reward": -62.88925987229157,
+      "standing": 0.49166666666666664,
+      "passRate": 0,
+      "heldOutStanding": 0.46249999999999997,
+      "updates": 30,
+      "restarts": 0,
+      "valid": true
+    },
+    {
+      "algorithm": "cem",
+      "seed": 73,
+      "count": 240,
+      "physicalSeconds": 254.2500000000001,
+      "reward": -63.852926945029964,
+      "standing": 0.850000000000001,
+      "passRate": 0,
+      "heldOutStanding": 0.8000000000000008,
+      "restarts": 2,
+      "valid": true
+    },
+    {
+      "algorithm": "ppo",
+      "seed": 73,
+      "count": 240,
+      "physicalSeconds": 425.83333333333286,
+      "reward": -71.50685942363467,
+      "standing": 0.46249999999999997,
+      "passRate": 0,
+      "heldOutStanding": 0.44999999999999996,
+      "updates": 30,
+      "restarts": 0,
+      "valid": true
+    }
+  ],
+  "resumeCheck": {
+    "startingAttempts": 240,
+    "endingAttempts": 304,
+    "ppoRestarts": 1,
+    "optimizerUpdates": 38,
+    "valid": true
+  }
+}
