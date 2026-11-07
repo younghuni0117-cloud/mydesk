@@ -1,9 +1,9 @@
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot18';
-import {STAGES} from './robot-core.mjs?v=robot18';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot19';
+import {STAGES} from './robot-core.mjs?v=robot19';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
-function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[]});}
+function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[]});}
 async function initialize(data,token){
  environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
  if(token!==initToken)return;sendModel();preview();postMessage({type:'ready'});
@@ -17,7 +17,7 @@ self.onmessage=async({data})=>{
   if(data.type==='preview'){if(learner)preview();return;}
   if(data.type!=='train'||!learner||job)return;
   const target=Number(data.count);if(!(ALLOWED_ATTEMPTS.includes(target)||(data.internalTeam&&Number.isInteger(target)&&target>0&&target<=100000)))throw Error('지원하는 시도 횟수를 선택해 주세요.');
-  focus=STAGES[data.focus]?data.focus:focus;if(learner.focus!==focus){learner.pending=[];learner.mean=[...learner.weights];learner.setFocus(focus);}learner.setTrainingPushSettings(data.trainingPush);const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
+  focus=STAGES[data.focus]?data.focus:focus;if(learner.focus!==focus){learner.pending=[];learner.mean=[...learner.weights];learner.setFocus(focus);}learner.setTrainingPushSettings(data.trainingPush);learner.setTrainingCommand(data.trainingCommand);const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
   while(completed<target&&job===current&&!current.cancelled){
    const result=learner.trainOne();lastCandidate=result.weights;lastTrial=result;completed++;
    postMessage({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},task:focus,score:result.score,remainingMs:(Date.now()-started)/completed*(target-completed)});
