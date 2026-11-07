@@ -1,4 +1,4 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot14';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot15';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
 export const DT = 1 / 60;
 export const POLICY_SIZE = 128;
@@ -66,17 +66,17 @@ export class RobotWorld {
     const pelvis=this.part('pelvis',0,1.06,.3,.18,4,'#536d8c');
     const torso=this.part('torso',0,1.375,.32,.45,6,'#6788ac');
     const head=this.part('head',0,1.75,.13,.13,1,'#bdcbdc',true);
-    this.joint('waist',pelvis,torso,0,1.15,-.65,.65,70);this.joint('neck',torso,head,0,1.62,-1.05,1.05,8);
+    this.joint('waist',pelvis,torso,0,1.15,-1.4,.9,70);this.joint('neck',torso,head,0,1.62,-1.05,1.05,8);
     for(const [side,color] of [['left','#8fa8c5'],['right','#d6a174']]){
       const thigh=this.part(side+'Thigh',0,.805,.11,.45,1.4,color);
       const shin=this.part(side+'Shin',0,.355,.085,.45,1,color);
       const foot=this.part(side+'Foot',.07,.08,.25,.1,.5,color);
-      const toe=this.part(side+'ToePart',.255,.08,.12,.06,.15,color);
+      const toe=this.part(side+'ToePart',.235,.065,.08,.07,.15,color);
       this.joint(side+'Hip',pelvis,thigh,0,1.03,-.65,2.1,80);
       // Facing +X: knees flex backward (negative), elbows forward (positive).
       this.joint(side+'Knee',thigh,shin,0,.58,-2.6,0,80);
       this.joint(side+'Ankle',shin,foot,0,.13,-1.1,1.1,45);
-      this.joint(side+'Toe',foot,toe,.195,.08,-.7,.7,12);
+      this.joint(side+'Toe',foot,toe,.195,.07,-.35,1.05,12);
       const sx=0; // Both shoulders project onto the same side-view axis, like the hips.
       const upper=this.part(side+'UpperArm',sx,1.39,.085,.3,.7,color);
       const lower=this.part(side+'Forearm',sx,1.105,.073,.27,.5,color);
@@ -99,7 +99,7 @@ export class RobotWorld {
     const low=height<.5||Math.abs(ta)>1;
     if(low){this.downTime+=DT;if(!this.isDown&&this.downTime>.15){this.isDown=true;this.falls++;this.reward-=12;this.recoveryClock=0;}}
     else this.downTime=0;
-    let targets={waist:clamp(-pa-.1*tw,-.5,.5),neck:clamp(-.5*ta-.06*tw,-1,1)};
+    let targets={waist:clamp(-pa-.1*tw,-1.3,.8),neck:clamp(-.5*ta-.06*tw,-1,1)};
     const recovering=this.isDown && this.stableTime<.8;
     if(recovering){
       this.recoveryClock+=DT;const t=this.recoveryClock%(3.2+.6*p(15));
@@ -115,7 +115,7 @@ export class RobotWorld {
         targets[side+'Elbow']=folded?1.4:pushing?.2:.35;
         targets[side+'Wrist']=-face*.4;
       }
-      targets.waist=clamp(-pa*.4,-.6,.6);
+      targets.waist=clamp(-pa*.65,-1.3,.8);
     }else{
       const speed=this.task.speed, frequency=speed===0?0:(this.stage==='run'?2.2:1.2)+.5*p(3);
       const phase=this.time*frequency*2*Math.PI+this.phaseOffset;
@@ -143,7 +143,7 @@ export class RobotWorld {
         targets[side+'Elbow']=.25;
         targets[side+'Wrist']=0;
       }
-      targets.waist=clamp(-pa-(.2+.15*p(9))*tw,-.6,.6);
+      targets.waist=clamp(-pa-(.2+.15*p(9))*tw,-1.3,.8);
     }
     let work=0;
     const kp=10+5*p(12),kd=.6+.25*p(13),gain=1+.25*p(14);

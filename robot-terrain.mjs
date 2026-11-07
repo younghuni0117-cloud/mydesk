@@ -11,8 +11,8 @@ export function makeTerrain(name='meadow'){
  if(kind==='meadow'||kind==='ice')segments.push({x0:-64,x1:96,y0:base,y1:base});
  else if(kind==='stairs'){segments.push({x0:-64,x1:.55,y0:base,y1:base});let x=.55,y=base,steps=0,flight=0;while(x<96){const landing=steps>=12+flight%5,width=landing?range(1.5,2.7):range(.32,.45);if(!landing)y+=.17;segments.push({x0:x,x1:Math.min(96,x+width),y0:y,y1:y});x+=width;if(landing){steps=0;flight++;}else steps++;}}
  else smoothCourse(kind==='hills'?3.3:kind==='construction'?.55:kind==='desert'?1.5:kind==='stones'?.85:1.8);
- // About 38 degrees at the steepest point: slightly below half the prior 81 degrees.
- if(kind==='hills')for(const s of segments){s.y0=base+(s.y0-base)*1.25;s.y1=base+(s.y1-base)*1.25;}
+ // Raise the hill profile from the previous ~38 degree maximum to ~48 degrees.
+ if(kind==='hills')for(const s of segments){s.y0=base+(s.y0-base)*1.8;s.y1=base+(s.y1-base)*1.8;}
  // Cave relief is exactly five times the previous floor profile, keeping headroom.
  if(kind==='cave')for(const s of segments){s.y0=base+(s.y0-base)*5;s.y1=base+(s.y1-base)*5;}
  // Stone pools carve continuous shallow basins into the rolling floor. Water is not a solid obstacle.
