@@ -21,7 +21,8 @@
     const zoomed = viewport && Math.abs(viewport.scale - 1) > .05;
     const width = document.documentElement.clientWidth;
     const height = Math.floor(viewport && !zoomed ? viewport.height : window.innerHeight);
-    const enabled = compact.matches && !zoomed && width >= 280 && (height >= 540 || (width >= 540 && height >= 360));
+    const robotScroll = body.dataset.page === 'robot';
+    const enabled = !robotScroll && compact.matches && !zoomed && width >= 280 && (height >= 540 || (width >= 540 && height >= 360));
     body.classList.toggle('fit-game', enabled);
     body.classList.toggle('short-game', enabled && width < 540 && height < 640);
     body.style.setProperty('--game-height', `${height}px`);

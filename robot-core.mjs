@@ -73,7 +73,7 @@ export class RobotWorld {
       this.joint(side+'Knee',thigh,shin,0,.58,-2.5,.1,80);
       this.joint(side+'Ankle',shin,foot,0,.13,-1.1,1.1,45);
       this.joint(side+'Toe',foot,toe,.195,.08,-.7,.7,12);
-      const sx=side==='left'?-.155:.155;
+      const sx=0; // Both shoulders project onto the same side-view axis, like the hips.
       const upper=this.part(side+'UpperArm',sx,1.39,.085,.3,.7,color);
       const lower=this.part(side+'Forearm',sx,1.105,.073,.27,.5,color);
       const hand=this.part(side+'Hand',sx,.905,.09,.13,.2,color);
@@ -182,7 +182,7 @@ export function robotGeometry(sim){
 }
 export function episode(weights,stage='balance',seed=1,options={}){
   const sim=new RobotWorld(stage,{seed,...options}),trace=[];
-  while(!sim.done){sim.step(weights);if(options.record&&sim.steps%4===0)trace.push(sim.snapshot());}
+  while(!sim.done){sim.step(weights);if(options.record&&sim.steps%2===0)trace.push(sim.snapshot());}
   return {metrics:sim.metrics(),trace,...robotGeometry(sim),obstacles:sim.obstacles};
 }
 export function passedStage(metrics,stage){

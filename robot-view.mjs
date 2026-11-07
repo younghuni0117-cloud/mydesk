@@ -1,0 +1,8 @@
+export function interpolateFrame(a,b,mix){
+ const t=Math.max(0,Math.min(1,mix));return {...a,parts:a.parts.map((p,i)=>[p[0]+(b.parts[i][0]-p[0])*t,p[1]+(b.parts[i][1]-p[1])*t,p[2]+Math.atan2(Math.sin(b.parts[i][2]-p[2]),Math.cos(b.parts[i][2]-p[2]))*t])};
+}
+export function traceFrame(frames,time){
+ let low=0,high=frames.length-1;while(low<high){const mid=Math.ceil((low+high)/2);if(frames[mid].time<=time)low=mid;else high=mid-1;}
+ const a=frames[low],b=frames[Math.min(low+1,frames.length-1)];return interpolateFrame(a,b,b.time>a.time?(time-a.time)/(b.time-a.time):0);
+}
+export function chartDomain(rows){const values=rows.flatMap(r=>[r.overall,r.candidate]).filter(Number.isFinite);const low=Math.min(...values),high=Math.max(...values);if(!values.length)return[-100,100];const span=Math.max(4,high-low),mid=(low+high)/2;return [Math.max(-100,mid-span*.65),Math.min(100,mid+span*.65)];}
