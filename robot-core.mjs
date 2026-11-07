@@ -1,10 +1,10 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot20';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot21';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot20';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot21';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot20';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot20';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot20';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot21';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot21';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot21';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 8 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
@@ -64,7 +64,7 @@ export class RobotWorld {
   }
   joint(name,a,b,x,y,lower,upper,torque){
     const joint=this.world.createJoint(RevoluteJoint({enableLimit:true,lowerAngle:lower,upperAngle:upper,enableMotor:false,maxMotorTorque:torque,motorSpeed:0,collideConnected:false},a,b,this.transform(x,y)));
-    this.joints[name]=joint;this.motors.push({name,joint,lower,upper,torque});
+    this.joints[name]=joint;this.motors.push({name,joint,lower,upper,torque,bodyA:a,bodyB:b});
   }
   makeRobot(){
     const pelvis=this.part('pelvis',0,1.06,.3,.18,4,'#536d8c');
@@ -98,7 +98,7 @@ export class RobotWorld {
     else body.applyLinearImpulse(vector,point,true);
   }
   setCommand(raw){this.command=raw?normalizeCommand(raw):null;this.commandAnchor=this.parts.pelvis.getPosition().x;this.commandChanged=true;this.lastGoalError=this.goalState().error;}
-  goalState(){return commandState(this.command,this.parts.pelvis.getPosition().x,this.command?this.commandAnchor:this.initialX,this.task.speed);}
+  goalState(){return commandState(this.command,this.parts.pelvis.getPosition().x,this.command?this.commandAnchor:this.initialX,this.task.speed,true);}
   resistWaist(){const j=this.joints.waist,t=clamp(-WAIST_RESISTANCE.stiffness*j.getJointAngle()-WAIST_RESISTANCE.damping*j.getJointSpeed(),-WAIST_RESISTANCE.maxTorque,WAIST_RESISTANCE.maxTorque);j.getBodyB().applyTorque(t,true);j.getBodyA().applyTorque(-t,true);return t;}
   observations(){const torso=this.parts.torso,pelvis=this.parts.pelvis,p=pelvis.getPosition(),v=pelvis.getLinearVelocity(),a=torso.getAngle(),goal=this.goalState(),ahead=side=>{const x=this.parts[side+'Foot'].getPosition().x,ground=this.groundHeight(x);let top=Math.max(this.groundHeight(x+.2),this.groundHeight(x+.5));for(const o of this.obstacles)if(o.shape!=='stalactite'&&(o.side==='both'||o.side===side)&&o.x+o.width/2>x&&o.x-o.width/2<x+.6)top=Math.max(top,(o.bottom??this.groundHeight(o.x))+o.height);return clamp((top-ground)/.6,-1,1);};
    return [Math.sin(a),Math.cos(a),clamp(torso.getAngularVelocity()/8,-1,1),clamp((p.y-this.groundHeight(p.x))/1.2,-1,1),clamp(v.x/3,-1,1),clamp(v.y/3,-1,1),goal.target/2,((this.contacts.get('leftFoot')||0)+(this.contacts.get('leftToePart')||0))>0?1:0,((this.contacts.get('rightFoot')||0)+(this.contacts.get('rightToePart')||0))>0?1:0,ahead('left'),ahead('right'),this.terrain.ceilings.length?clamp((terrainHeight(this.terrain.ceilings,p.x)-p.y)/3,-1,1):1,...this.motors.map(m=>m.joint.getJointAngle()/Math.PI),...this.motors.map(m=>clamp(m.joint.getJointSpeed()/8,-1,1)),clamp(goal.error/5,-1,1),goal.positioned?1:0,goal.low?1:0];
@@ -107,7 +107,7 @@ export class RobotWorld {
    if(this.policyWeights!==weights){this.policyWeights=weights;this.zeroPolicy=weights.every(v=>v===0);}
    if(this.steps%3===0||this.commandChanged)this.actions=this.zeroPolicy?Array(JOINTS.length).fill(0):policyActions(weights,this.observations());this.commandChanged=false;
   }
-  applyActuation(dt){let work=0;for(const [i,m]of this.motors.entries()){m.joint.enableMotor(false);let torque=this.actions[i]*m.torque;const angle=m.joint.getJointAngle(),speed=m.joint.getJointSpeed();torque*=torque>0?clamp((m.upper-angle)/.12,0,1):clamp((angle-m.lower)/.12,0,1);torque*=clamp(1-Math.sign(torque)*speed/9,0,1);this.activeTorques[i]=torque;if(torque){m.joint.getBodyB().applyTorque(torque,true);m.joint.getBodyA().applyTorque(-torque,true);}work+=Math.abs(torque*speed)*dt;}return work;}
+  applyActuation(dt){let work=0;for(let i=0;i<this.motors.length;i++){const m=this.motors[i];m.joint.enableMotor(false);let torque=this.actions[i]*m.torque;const angle=m.joint.getJointAngle(),speed=m.joint.getJointSpeed();torque*=torque>0?clamp((m.upper-angle)/.12,0,1):clamp((angle-m.lower)/.12,0,1);torque*=clamp(1-Math.sign(torque)*speed/9,0,1);this.activeTorques[i]=torque;if(torque){m.bodyB.applyTorque(torque,true);m.bodyA.applyTorque(-torque,true);}work+=Math.abs(torque*speed)*dt;}return work;}
   step(weights=Array(POLICY_SIZE).fill(0),report=true){
     while(this.nextCommand<this.commandSchedule.length&&this.time>=this.commandSchedule[this.nextCommand].time)this.setCommand(this.commandSchedule[this.nextCommand++].command);
     this.impactCost=0;this.control(weights);let work=0;

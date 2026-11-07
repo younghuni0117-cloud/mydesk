@@ -1,12 +1,13 @@
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot20';
-import {STAGES} from './robot-core.mjs?v=robot20';
-let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null;
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot21';
+import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot21';
+import {STAGES} from './robot-core.mjs?v=robot21';
+let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null,rollouts=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
 function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:lastTrial?.scene||null});}
 async function initialize(data,token){
- environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
- if(token!==initToken)return;sendModel();preview();postMessage({type:'ready'});
+ rollouts?.close();rollouts=new ParallelRollouts(typeof data.parallel==='boolean'?{enabled:data.parallel}:{});environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
+ await rollouts.start();if(token!==initToken)return;sendModel();preview();postMessage({type:'ready',parallelism:rollouts.ready?2:1});
 }
 self.onmessage=async({data})=>{
  try{
@@ -19,15 +20,25 @@ self.onmessage=async({data})=>{
   const target=Number(data.count);if(!(ALLOWED_ATTEMPTS.includes(target)||(data.internalTeam&&Number.isInteger(target)&&target>0&&target<=100000)))throw Error('지원하는 시도 횟수를 선택해 주세요.');
   focus=STAGES[data.focus]?data.focus:focus;if(learner.focus!==focus){learner.pending=[];learner.mean=[...learner.weights];learner.setFocus(focus);}learner.setTrainingPushSettings(data.trainingPush);learner.setTrainingCommand(data.trainingCommand);const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
   while(completed<target&&job===current&&!current.cancelled){
-   const next=completed+1,record=next===1||next%interval===0||next===target;const result=learner.trainOne({record});lastCandidate=result.weights;lastTrial=result;completed++;
-   postMessage({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},task:focus,score:result.score,remainingMs:(Date.now()-started)/completed*(target-completed)});
-   if(learner.pending.length>=12){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled);if(job!==current)return;sendModel();}
-   if(completed===1||completed%interval===0||completed===target)preview();
-   await new Promise(r=>setTimeout(r,0));
+   // Never prepare beyond a CEM update boundary: both trial policies must use
+   // exactly the same distribution as their sequential counterparts.
+   if(learner.pending.length>=12){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null);if(job!==current)return;sendModel();if(current.cancelled)break;}
+   const slots=Math.min(rollouts.ready?2:1,target-completed,12-learner.pending.length),prepared=[];
+   for(let i=0;i<slots;i++){const next=completed+i+1;prepared.push(learner.prepareTrial({record:next===1||next%interval===0||next===target},i));}
+   const remote=slots===2?rollouts.run(prepared[1]):null,first=executeTrial(prepared[0]),trials=[first];if(remote)trials.push(await remote);
+   if(job!==current)return;
+   for(let i=0;i<trials.length;i++){
+    if(i>0&&current.cancelled)break;
+    const result=learner.completeTrial(prepared[i],trials[i]);lastCandidate=result.weights;lastTrial=result;completed++;
+    postMessage({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},task:focus,score:result.score,remainingMs:(Date.now()-started)/completed*(target-completed)});
+    if(learner.pending.length>=12){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null);if(job!==current)return;sendModel();}
+    if(completed===1||completed%interval===0||completed===target)preview();
+   }
+   await yieldControl();
   }
   if(job!==current)return;
   // Preserve counters even if a validation pass was interrupted.
-  if(!current.cancelled&&learner.pending.length){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled);}
+  if(!current.cancelled&&learner.pending.length){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null);}
   sendModel();preview();job=null;postMessage({type:'done',completed,target,cancelled:current.cancelled});
  }catch(error){job=null;postMessage({type:'error',message:error.message||'학습 오류가 발생했습니다.'});}
 };

@@ -1,12 +1,12 @@
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot20';
-import {rewardHelp} from './robot-rewards.mjs?v=robot20';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot20';
-import {RobotTeam} from './robot-team.mjs?v=robot20';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot20';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot20';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot20';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot20';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot20';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot21';
+import {rewardHelp} from './robot-rewards.mjs?v=robot21';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot21';
+import {RobotTeam} from './robot-team.mjs?v=robot21';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot21';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot21';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot21';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot21';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot21';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v4';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}

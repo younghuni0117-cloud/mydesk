@@ -1,6 +1,6 @@
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot20';
-import {POLICY_KIND,extendV3Weights} from './robot-policy.mjs?v=robot20';
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings} from './robot-core.mjs?v=robot20';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot21';
+import {POLICY_KIND,extendV3Weights} from './robot-policy.mjs?v=robot21';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings} from './robot-core.mjs?v=robot21';
 export const MODEL_VERSION=4;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -34,26 +34,31 @@ export class RobotLearner {
  setFocus(stage){if(STAGES[stage])this.focus=stage;}
  setTrainingPushSettings(settings){this.trainingPush=normalizePushSettings(settings);}
  setTrainingCommand(command){this.trainingCommand=command?normalizeCommand(command):null;}
- trainOne({record=false}={}){
-  const weights=this.pending.length===0?[...this.weights]:this.mean.map((m,i)=>clamp(m+this.spread[i]*gaussian(this.random),-4,4));
-  const task=this.focus,seed=100+this.attempts,batch=Math.floor(this.attempts/12),schedule=trainingCommands(task,batch);if(batch%6===5&&this.trainingCommand)schedule.splice(0,schedule.length,{time:0,command:this.trainingCommand});
-  const trial=episode(weights,task,seed,{...this.environment,...normalizePushSettings(this.trainingPush),disturbances:true,commandSchedule:schedule,record,summaryOnly:!record}),result=trial.metrics;
-  this.attempts++;this.taskAttempts[task]++;this.pending.push({weights,score:result.reward,task});
+ prepareTrial({record=false}={},offset=0){
+  const weights=this.pending.length+offset===0?[...this.weights]:this.mean.map((m,i)=>clamp(m+this.spread[i]*gaussian(this.random),-4,4));
+  const task=this.focus,index=this.attempts+offset,seed=100+index,batch=Math.floor(index/12),schedule=trainingCommands(task,batch);if(batch%6===5&&this.trainingCommand)schedule.splice(0,schedule.length,{time:0,command:this.trainingCommand});
+  return {weights,task,index,seed,record,options:{...this.environment,...normalizePushSettings(this.trainingPush),disturbances:true,commandSchedule:schedule,record,summaryOnly:!record}};
+ }
+ completeTrial(prepared,trial){
+  if(prepared.index!==this.attempts)throw Error('학습 결과의 순서가 일치하지 않습니다.');
+  const {weights,task,seed,record}=prepared,result=trial.metrics;this.attempts++;this.taskAttempts[task]++;this.pending.push({weights,score:result.reward,task});
   return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,scene:record?trial:null};
  }
+ trainOne(options={}){const prepared=this.prepareTrial(options);return this.completeTrial(prepared,episode(prepared.weights,prepared.task,prepared.seed,prepared.options));}
+
  adopt(weights,abilities,goalReward=evaluateCommands(weights,this.environment)){
   const score=modelScore({abilities,goalReward}),accepted=score>this.bestReward+1e-7&&preservesAbilities(this.abilities,abilities);
   if(accepted){this.weights=[...weights];this.abilities=abilities;this.goalReward=goalReward;this.bestReward=score;this.modelAttempt=this.attempts;this.policyVersion++;}
   this.revision++;this.record(score,accepted,abilities);return accepted;
  }
  updateDistribution(){if(this.pending.length<12)return;const elite=[...this.pending].sort((a,b)=>b.score-a.score).slice(0,4);for(let i=0;i<POLICY_SIZE;i++){const m=elite.reduce((sum,c)=>sum+c.weights[i],0)/elite.length;this.mean[i]=.45*this.weights[i]+.55*m;this.spread[i]=clamp(.65*this.spread[i]+.35*Math.sqrt(elite.reduce((sum,c)=>sum+(c.weights[i]-m)**2,0)/elite.length)*1.2,.06,.8);}this.pending=[];}
- async checkpointAsync(yieldControl=async()=>{},active=()=>true){
+ async checkpointAsync(yieldControl=async()=>{},active=()=>true,validation=null){
   if(!this.pending.length)return null;
   const winner=this.pending.reduce((a,b)=>a.score>=b.score?a:b);
   if(winner.weights.every((w,i)=>w===this.weights[i])){this.revision++;this.record(this.bestReward,false);this.updateDistribution();return false;}
   const abilities={};
-  for(const task of [this.focus,...stages.filter(s=>s!==this.focus)]){if(!active())return null;abilities[task]=evaluateAbility(winner.weights,task,this.environment);await yieldControl();if(!active())return null;if(!preservesAbility(this.abilities[task],abilities[task])){this.revision++;this.record(this.bestReward,false,abilities,false);this.updateDistribution();return false;}}
-  if(!active())return null;const accepted=this.adopt(winner.weights,abilities);this.updateDistribution();return accepted;
+  for(const task of [this.focus,...stages.filter(s=>s!==this.focus)]){if(!active())return null;abilities[task]=validation?await validation.ability(winner.weights,task,this.environment,active):evaluateAbility(winner.weights,task,this.environment);await yieldControl();if(!active())return null;if(!preservesAbility(this.abilities[task],abilities[task])){this.revision++;this.record(this.bestReward,false,abilities,false);this.updateDistribution();return false;}}
+  if(!active())return null;const goalReward=validation?await validation.commands(winner.weights,this.environment,active):undefined;if(!active())return null;const accepted=this.adopt(winner.weights,abilities,goalReward);this.updateDistribution();return accepted;
  }
  checkpoint(){if(!this.pending.length)return;const winner=this.pending.reduce((a,b)=>a.score>=b.score?a:b);this.adopt(winner.weights,evaluateAbilities(winner.weights,this.environment));this.updateDistribution();}
  snapshot(){return {version:4,goalReward:this.goalReward,physicsVersion:3,policyKind:POLICY_KIND,environment:{...this.environment},id:this.id,weights:[...this.weights],mean:[...this.mean],spread:[...this.spread],attempts:this.attempts,taskAttempts:{...this.taskAttempts},modelAttempt:this.modelAttempt,revision:this.revision,policyVersion:this.policyVersion,abilities:structuredClone(this.abilities),history:structuredClone(this.history),updatedAt:new Date().toISOString()};}
