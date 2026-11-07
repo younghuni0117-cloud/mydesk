@@ -137,3 +137,7 @@ body[data-page=robot].robot-wide-fit .robot-chart-scale{font-size:10px;line-heig
 body[data-page=robot].robot-wide-fit .robot-chart-y{font-size:12px}
 body[data-page=robot].robot-wide-fit .robot-train-row label,body[data-page=robot].robot-wide-fit .robot-train-row select{font-size:12px}
 body[data-page=robot].robot-wide-fit .robot-details summary{font-size:13px}
+
+/* Separate the performance table from its chart without a visible legend. */
+body[data-page=robot] .robot-controls>.robot-chart{margin-top:8px}
+body[data-page=robot] .robot-chart-scale{display:none}
