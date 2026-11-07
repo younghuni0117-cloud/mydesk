@@ -1,15 +1,36 @@
 // Cel shaded side-view explorer. The cached artwork follows each physical rigid body.
 const sprites=new Map();
 const ink='#263b50',cream='#f3e4c6',orange='#ec9b53',blue='#4e93af',dark='#344f68';
-function sprite(part){
- const key=[part.name,part.w,part.h].join(':');if(sprites.has(key))return sprites.get(key);
+function sprite(part,skin){
+ const key=[skin,part.name,part.w,part.h].join(':');if(sprites.has(key))return sprites.get(key);
  const canvas=document.createElement('canvas');canvas.width=192;canvas.height=256;const c=canvas.getContext('2d');
  const unit=260,w=part.w*unit,h=part.h*unit,name=part.name,rear=name.startsWith('left');c.translate(96,128);c.lineWidth=3;c.lineJoin='round';c.lineCap='round';c.strokeStyle=ink;
  function blob(points,fill){c.beginPath();for(let i=0;i<points.length;i++){const p=points[i];if(i===0)c.moveTo(...p);else if(p.length===4)c.quadraticCurveTo(...p);else c.lineTo(...p);}c.closePath();c.fillStyle=fill;c.fill();c.stroke();}
  function round(x,y,width,height,r,fill){c.beginPath();c.roundRect(x,y,width,height,r);c.fillStyle=fill;c.fill();c.stroke();}
  function line(points,color=ink,width=2){c.strokeStyle=color;c.lineWidth=width;c.beginPath();points.forEach((p,i)=>i?c.lineTo(...p):c.moveTo(...p));c.stroke();c.strokeStyle=ink;c.lineWidth=3;}
  function disk(x,y,r,fill){c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fillStyle=fill;c.fill();c.stroke();}
- if(name==='head'){
+ if(skin==='tin'||skin==='space'){
+  const gold=skin==='space',metal=gold?(rear?'#9c732e':'#ddb860'):(rear?'#6d8491':'#bdcbd1'),shade=gold?'#946828':'#6e8795',shine=gold?'#fff0ad':'#edf6f8',joint=gold?'#584d38':'#425968';
+  if(name==='head'){
+   if(gold){blob([[-w*.65,-w*.76],[-w*.1,-w*1.1,w*.57,-w*.78],[w*.83,-w*.18],[w*1.06,w*.12],[w*.74,w*.28],[w*.62,w*.79],[-w*.15,w*.91],[-w*.73,w*.42]],metal);disk(w*.4,-w*.14,w*.23,joint);disk(w*.4,-w*.14,w*.09,'#ffe2a1');line([[w*.16,w*.45],[w*.67,w*.45]],joint,3);line([[w*.2,w*.57],[w*.6,w*.57]],joint,1);disk(-w*.51,0,w*.21,shade);line([[-w*.14,-w*.75],[-w*.13,w*.36]],shine,2);}
+   else{round(-w*.75,-w*.97,w*1.56,w*1.83,8,metal);c.beginPath();c.ellipse(0,-w*.92,w*.78,w*.17,0,0,Math.PI*2);c.fillStyle=shade;c.fill();c.stroke();round(-w*.12,-w*.35,w*1.05,w*.43,5,joint);disk(w*.38,-w*.14,4,'#b4edec');line([[w*.06,w*.5],[w*.67,w*.5]],joint,4);line([[0,-w*1.08],[0,-w*1.4]],ink,3);disk(0,-w*1.46,4,'#ee945b');disk(-w*.69,-w*.08,5,shade);}
+  }else if(name==='torso'){
+   round(-w*.16,-h*.65,w*.32,h*.22,3,joint);
+   blob([[-w*.52,-h*.43],[w*.44,-h*.46],[w*.6,-h*.25],[w*.43,h*.42],[-w*.4,h*.43],[-w*.55,h*.15]],metal);
+   round(-w*.34,-h*.32,w*.72,h*.39,5,gold?'#c99b43':'#8fa8b5');
+   if(gold){disk(w*.13,-h*.14,w*.14,joint);disk(w*.13,-h*.14,w*.065,'#f7dda0');for(let i=0;i<4;i++)line([[-w*.28+i*w*.16,h*.13],[-w*.3+i*w*.17,h*.38]],['#70472a','#475d70','#a55340','#c1bb89'][i],3);}
+   else{round(-w*.18,-h*.22,w*.4,h*.18,3,joint);disk(w*.08,-h*.13,4,'#a0e0df');for(let i=0;i<3;i++)line([[-w*.22,h*(.17+i*.07)],[w*.25,h*(.17+i*.07)]],joint,2);}
+   line([[-w*.43,-h*.31],[-w*.43,h*.25]],shine,3);disk(w*.39,-h*.32,2,shade);disk(-w*.35,h*.34,2,shade);
+  }else if(name==='pelvis'){
+   round(-w*.5,-h*.45,w,h*.9,5,metal);round(-w*.52,-h*.43,w*1.04,h*.22,2,joint);disk(w*.2,0,w*.12,shade);line([[-w*.3,h*.2],[w*.24,h*.2]],shine,2);
+  }else if(name.includes('Foot')||name.includes('ToePart')){
+   blob([[-w*.53,-h*.55],[w*.24,-h*.5],[w*.58,-h*.12],[w*.6,h*.48],[-w*.53,h*.48]],metal);line([[-w*.45,h*.31],[w*.52,h*.31]],joint,4);line([[-w*.25,-h*.31],[w*.22,-h*.21]],shine,2);
+  }else if(name.includes('Hand')){
+   round(-w*.45,-h*.46,w*.9,h*.9,4,metal);for(let i=0;i<3;i++)line([[-w*.3+i*w*.25,0],[-w*.3+i*w*.25,h*.33]],joint,1.5);
+  }else{
+   round(-w*.37,-h*.46,w*.74,h*.92,Math.min(w*.3,7),metal);line([[-w*.17,-h*.26],[-w*.17,h*.28]],shine,3);line([[w*.23,-h*.2],[w*.23,h*.2]],shade,2);disk(0,-h*.44,Math.min(8,w*.38),joint);disk(0,-h*.44,Math.min(4,w*.2),metal);round(-w*.42,h*.25,w*.84,h*.14,2,shade);
+  }
+ }else if(name==='head'){
   // Rounded helmet, side face, ear assembly, expression and a short antenna.
   blob([[-w*.72,-w*.8],[-w*.2,-w*1.2,w*.62,-w*.72],[w*.92,-w*.2],[w*1.12,w*.16],[w*.82,w*.3],[w*.68,w*.75],[0,w*.95,-w*.65,w*.48],[-w*.85,0]],cream);
   blob([[-w*.72,-w*.15],[-w*.85,-w*.9,w*.05,-w*1.04],[w*.8,-w*.9,w*.87,-w*.46],[w*.34,-w*.55],[-w*.1,-w*.3]],rear?'#476c85':blue);
@@ -39,8 +60,8 @@ function sprite(part){
  }
  const result={canvas,unit};sprites.set(key,result);return result;
 }
-export function drawRobotSkin(ctx,parts,poses,X,Y,scale){
+export function drawRobotSkin(ctx,parts,poses,X,Y,scale,skin='explorer'){
  // Rear limbs sit behind the same hip/shoulder axis; front limbs overlay the outfit.
  const layer=n=>n.startsWith('left')?0:n.startsWith('right')?2:1;
- for(const {part,i}of parts.map((part,i)=>({part,i})).sort((a,b)=>layer(a.part.name)-layer(b.part.name))){const p=poses[i],art=sprite(part),s=scale/art.unit;ctx.save();ctx.translate(X(p[0])+(part.name.startsWith('left')?-scale*.012:0),Y(p[1]));ctx.rotate(-p[2]);ctx.drawImage(art.canvas,-96*s,-128*s,192*s,256*s);ctx.restore();}
+ for(const {part,i}of parts.map((part,i)=>({part,i})).sort((a,b)=>layer(a.part.name)-layer(b.part.name))){const p=poses[i],art=sprite(part,skin),s=scale/art.unit;ctx.save();ctx.translate(X(p[0])+(part.name.startsWith('left')?-scale*.012:0),Y(p[1]));ctx.rotate(-p[2]);ctx.drawImage(art.canvas,-96*s,-128*s,192*s,256*s);ctx.restore();}
 }

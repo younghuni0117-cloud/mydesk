@@ -22,6 +22,7 @@
     const width = document.documentElement.clientWidth;
     const height = Math.floor(viewport && !zoomed ? viewport.height : window.innerHeight);
     const robotScroll = body.dataset.page === 'robot';
+    body.classList.toggle('robot-wide-fit', robotScroll && !zoomed && width >= 600 && width > height && height >= 480);
     const enabled = !robotScroll && compact.matches && !zoomed && width >= 280 && (height >= 540 || (width >= 540 && height >= 360));
     body.classList.toggle('fit-game', enabled);
     body.classList.toggle('short-game', enabled && width < 540 && height < 640);

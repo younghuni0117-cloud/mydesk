@@ -19,3 +19,63 @@ body[data-page=robot] .robot-chart svg{height:160px;margin-top:8px;overflow:visi
 .robot-chart-scale{display:flex;justify-content:space-between;gap:6px;font-size:9px;color:#8798ac;margin-top:5px}
 @media(max-width:599px){body[data-page=robot] main{padding:12px}body[data-page=robot] .section-top{margin-bottom:10px}body[data-page=robot] .section-top h1{font-size:18px}body[data-page=robot] .robot-lab{grid-template-columns:minmax(0,1fr)}body[data-page=robot] .robot-arena{position:static;padding:10px 10px 0}body[data-page=robot] .robot-stage{height:clamp(320px,49dvh,460px);min-height:320px}body[data-page=robot] .robot-controls{border-left:0;border-top:1px solid #dce2ea;padding:12px;gap:9px}body[data-page=robot] .robot-chart svg{height:130px}body[data-page=robot] .robot-abilities td,body[data-page=robot] .robot-abilities th{padding:2px;line-height:15px}body[data-page=robot] .robot-camera select{flex:1}body[data-page=robot] .robot-view-label{font-size:9px}body[data-page=robot] .robot-metrics strong{font-size:16px}body[data-page=robot] .game-tools{gap:4px}body[data-page=robot] .game-tools button{font-size:10px}}
 @media(min-width:600px) and (max-width:1100px){body[data-page=robot] .robot-lab{grid-template-columns:minmax(0,1fr) minmax(270px,42%)}body[data-page=robot] .robot-controls{padding:11px}body[data-page=robot] .robot-stage{height:clamp(360px,62dvh,640px)}body[data-page=robot] .robot-chart svg{height:180px}}
+/* Progress, appearance picker and a properly labelled chart axis. */
+.robot-progress{flex:none;text-align:left;padding:8px 0 4px;color:#607b97}.robot-progress>div{display:flex;justify-content:space-between;gap:8px;font-size:10px;line-height:18px}.robot-progress strong{font-weight:500}.robot-progress span{font-variant-numeric:tabular-nums}.robot-progress progress{display:block;appearance:none;width:100%;height:9px;border:0;border-radius:99px;overflow:hidden;background:#dce5ed;margin-top:4px}.robot-progress progress::-webkit-progress-bar{background:#dce5ed;border-radius:99px}.robot-progress progress::-webkit-progress-value{background:#5989a8;border-radius:99px;transition:width .2s ease}.robot-progress progress::-moz-progress-bar{background:#5989a8;border-radius:99px}
+.robot-skin-picker{display:flex;align-items:center;gap:4px;min-width:0;font-size:10px;color:#71849a}.robot-skin-picker>span{white-space:nowrap;margin-right:2px}.robot-skin-picker button{flex:1;min-width:0;white-space:nowrap;min-height:32px;border:1px solid #d5deea;background:#fff;color:#607b97;border-radius:5px;padding:4px;font-size:10px;cursor:pointer}.robot-skin-picker button[aria-pressed=true]{color:#365a78;background:#e7f0f6;border-color:#7499b5}
+.robot-chart-plot{display:grid;grid-template-columns:43px minmax(0,1fr);height:160px;margin-top:8px;gap:5px}.robot-chart-y{position:relative;font:10px monospace;color:#71849a;text-align:right}.robot-chart-y span{position:absolute;right:0;transform:translateY(-50%);white-space:nowrap}.robot-chart-y span:nth-child(1){top:5%}.robot-chart-y span:nth-child(2){top:50%}.robot-chart-y span:nth-child(3){top:95%}body[data-page=robot] .robot-chart svg{height:100%;min-height:0;width:100%;margin:0;overflow:visible}.robot-train-row label{white-space:nowrap;flex-wrap:nowrap;flex-shrink:0}.robot-train-row select{flex:1;min-width:0}.robot-push-force{display:flex;align-items:center;gap:8px}.robot-push-force .robot-force-label{flex:none;gap:6px;white-space:nowrap}.robot-push-force input{flex:1;min-width:0}.robot-push-options{grid-template-columns:1fr 1fr 1fr}.robot-observe-settings{flex-wrap:wrap}.robot-observe-settings #rb-preview{border-radius:4px;padding:4px 5px;font-size:9px;min-height:28px;white-space:nowrap}.robot-model-transfer button,.robot-model-transfer>label{padding:9px 12px;font-size:11px;border-radius:5px;cursor:pointer}
+@media(max-width:599px){
+ body[data-page=robot] main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+ body[data-page=robot] .robot-actions{position:fixed;left:0;right:0;bottom:0;z-index:18;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:9px max(12px,env(safe-area-inset-right,0px)) calc(9px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));border-top:1px solid #cddae7;background:#f8fafdf7;box-shadow:0 -4px 18px #29456212}
+ body[data-page=robot] .robot-actions button{min-height:44px;font-size:12px;padding:7px 4px}
+ body[data-page=robot] .robot-chart-plot{height:130px}
+ body[data-page=robot] .robot-train-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+ body[data-page=robot] .robot-train-row label{font-size:10px;gap:4px}
+ body[data-page=robot] .robot-train-row select{font-size:10px;padding:3px 1px;min-height:32px}
+ body[data-page=robot] .robot-controls .robot-skin-picker{order:-2}
+ body[data-page=robot] .robot-controls .robot-train-row{order:-1}
+ body[data-page=robot] .robot-stage{height:clamp(270px,43dvh,390px);min-height:270px}
+}
+@media(min-width:600px) and (max-width:1100px){body[data-page=robot] .robot-chart-plot{height:180px}}
+/* Inner landscape viewport: keep the scene and all tools inside the available height. */
+body[data-page=robot].robot-wide-fit{height:var(--game-height,100dvh)!important;min-height:0;overflow:hidden}
+body[data-page=robot].robot-wide-fit .workspace{height:var(--game-height,100dvh)!important;min-height:0;overflow:hidden}
+body[data-page=robot].robot-wide-fit .topbar{flex:0 0 44px;height:44px}
+body[data-page=robot].robot-wide-fit main{display:flex;flex:1;min-height:0;max-width:none;padding:8px 12px;overflow:hidden}
+body[data-page=robot].robot-wide-fit .robot-experiment{display:grid;grid-template-rows:34px minmax(0,1fr);gap:6px;width:100%;height:100%;min-height:0}
+body[data-page=robot].robot-wide-fit .section-top{margin:0;min-height:0}
+body[data-page=robot].robot-wide-fit .section-top h1{font-size:18px}
+body[data-page=robot].robot-wide-fit .game-tools button{min-height:30px;font-size:10px}
+body[data-page=robot].robot-wide-fit .robot-lab{grid-template-columns:minmax(0,1fr) 320px;height:100%;min-height:0;grid-template-rows:minmax(0,1fr);overflow:hidden}
+body[data-page=robot].robot-wide-fit .robot-arena{position:static;align-self:stretch;height:100%;min-height:0;padding:8px 10px 0}
+body[data-page=robot].robot-wide-fit .robot-camera{flex:none;gap:3px;flex-wrap:nowrap}
+body[data-page=robot].robot-wide-fit .robot-camera button,body[data-page=robot].robot-wide-fit .robot-camera select{min-height:28px;font-size:10px}
+body[data-page=robot].robot-wide-fit .robot-stage{flex:1;height:auto;min-height:0;margin-top:5px}
+body[data-page=robot].robot-wide-fit .robot-metrics{flex:none;margin-top:4px}
+body[data-page=robot].robot-wide-fit .robot-metrics strong{font-size:15px;line-height:21px}
+body[data-page=robot].robot-wide-fit .robot-progress{padding:4px 0}
+body[data-page=robot].robot-wide-fit .robot-progress>div{font-size:9px;line-height:14px}
+body[data-page=robot].robot-wide-fit .robot-progress progress{height:7px;margin-top:3px}
+body[data-page=robot].robot-wide-fit #rb-status{flex:none;min-height:32px;height:32px;padding:3px 0;margin-top:2px;font-size:9px;line-height:13px;display:flex;align-items:center;justify-content:center}
+body[data-page=robot].robot-wide-fit .robot-controls{height:100%;min-height:0;padding:6px;gap:3px;overflow:hidden}
+body[data-page=robot].robot-wide-fit .robot-skin-picker{flex:none}
+body[data-page=robot].robot-wide-fit .robot-skin-picker button{min-height:26px;font-size:9px;padding:3px}
+body[data-page=robot].robot-wide-fit .robot-abilities{flex:none}
+body[data-page=robot].robot-wide-fit .robot-abilities td,body[data-page=robot].robot-wide-fit .robot-abilities th{padding:0 2px;line-height:12px;font-size:9px}
+body[data-page=robot].robot-wide-fit .robot-chart{flex:1;min-height:106px;max-height:260px;display:flex;flex-direction:column}
+body[data-page=robot].robot-wide-fit .robot-chart-plot{flex:1;height:auto;min-height:80px;margin-top:3px}
+body[data-page=robot].robot-wide-fit .robot-chart-heading{flex:none;font-size:8px;line-height:11px}
+body[data-page=robot].robot-wide-fit .robot-chart-scale{flex:none;font-size:7px;line-height:9px;margin-top:3px}
+body[data-page=robot].robot-wide-fit .robot-chart-y{font-size:9px}
+body[data-page=robot].robot-wide-fit .robot-train-row{flex:none}
+body[data-page=robot].robot-wide-fit .robot-train-row label{font-size:9px;gap:3px}
+body[data-page=robot].robot-wide-fit .robot-train-row select{font-size:9px;min-height:28px;padding:2px}
+body[data-page=robot].robot-wide-fit .robot-actions{position:static;flex:none;gap:5px}
+body[data-page=robot].robot-wide-fit .robot-actions button{min-height:32px;font-size:10px;padding:4px}
+body[data-page=robot].robot-wide-fit .robot-observe-settings{flex:none;flex-wrap:nowrap;gap:3px;font-size:9px}
+body[data-page=robot].robot-wide-fit .robot-observe-settings select{min-height:26px;padding:2px;font-size:9px}
+body[data-page=robot].robot-wide-fit .robot-observe-settings #rb-preview{min-height:26px;font-size:8px;padding:3px}
+body[data-page=robot].robot-wide-fit .robot-push-force{flex:none;min-height:20px;font-size:9px}
+body[data-page=robot].robot-wide-fit .robot-force-label{font-size:9px}
+body[data-page=robot].robot-wide-fit .robot-push-options{flex:none;gap:4px}
+body[data-page=robot].robot-wide-fit .robot-push-options select{min-height:26px;font-size:9px;padding:2px}
+body[data-page=robot].robot-wide-fit footer{display:none}
