@@ -1,4 +1,4 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot8';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot9';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
 export const DT = 1 / 60;
 export const POLICY_SIZE = 128;
@@ -22,9 +22,10 @@ export class RobotWorld {
     this.terrain=makeTerrain(options.terrain);this.terrainSegments=this.terrain.segments;this.groundHeight=x=>terrainHeight(this.terrainSegments,x);
     const floor=this.world.createBody({userData:'ground'});floor.createFixture(Box(500,.15,Vec2(0,-.15)),{friction:options.friction??this.terrain.friction});
     for(const s of this.terrainSegments)if(s.y0>0||s.y1>0){const body=this.world.createBody({userData:'ground'});body.createFixture(Polygon([Vec2(s.x0,-.2),Vec2(s.x1,-.2),Vec2(s.x1,s.y1),Vec2(s.x0,s.y0)]),{friction:this.terrain.friction});}
+    for(const s of this.terrain.ceilings||[]){const body=this.world.createBody({userData:'obstacle'});body.createFixture(Polygon([Vec2(s.x0,s.y0),Vec2(s.x1,s.y1),Vec2(s.x1,12),Vec2(s.x0,12)]),{friction:.85});}
     this.obstacles=[...this.terrain.obstacles];
     if(this.stage==='obstacles'&&this.terrain.kind==='meadow')for(const [i,x]of [2,4.2,6.4,8.6].entries())this.obstacles.push({x,width:.32,height:(options.obstacleHeight??.14)+(i%2)*.04,side:'both'});
-    for(const o of this.obstacles){const body=this.world.createBody({position:Vec2(o.x,this.groundHeight(o.x)+o.height/2),userData:'obstacle'});body.createFixture(o.shape==='rock'?Polygon(rockVertices(o).map(p=>Vec2(...p))):Box(o.width/2,o.height/2),{friction:.8,filterMaskBits:o.side==='left'?3:o.side==='right'?5:0xffff});}
+    for(const o of this.obstacles){const body=this.world.createBody({position:Vec2(o.x,(o.bottom??this.groundHeight(o.x))+o.height/2),userData:'obstacle'});body.createFixture(['rock','stalactite'].includes(o.shape)?Polygon(rockVertices(o).map(p=>Vec2(...p))):Box(o.width/2,o.height/2),{friction:.8,filterMaskBits:o.side==='left'?3:o.side==='right'?5:0xffff});}
     const lying=this.stage==='recover' && options.startStanding!==true;
     this.spawnAngle=lying?(this.random()<.5?Math.PI/2:-Math.PI/2):(this.random()-.5)*.025;
     this.spawnY=(lying?.34:1.03)+this.groundHeight(0);
@@ -124,7 +125,7 @@ export class RobotWorld {
         const phaseLeg=phase+index*Math.PI,swing=Math.max(0,Math.sin(phaseLeg));
         let lift=speed===0?0:((this.stage==='run'?.16:.065)+.04*p(1))*ramp;
         const footX=this.parts[side+'Foot'].getPosition().x;
-        const ahead=this.obstacles.find(o=>(o.side==='both'||o.side===side)&&o.x>footX-.12);
+        const ahead=this.obstacles.find(o=>o.shape!=='stalactite'&&(o.side==='both'||o.side===side)&&o.x>footX-.12);
         if(ahead&&ahead.x-pelvis.getPosition().x<.9)lift=Math.max(lift,ahead.height+.12+.05*p(2));
         const ankleY=.12+lift*swing+this.groundHeight(footX+.25)-this.groundHeight(pelvis.getPosition().x);
         const down=clamp(height-ankleY,.45,.89);
@@ -147,7 +148,7 @@ export class RobotWorld {
     for(const [i,name] of JOINTS.entries()){
       const motor=this.motors.find(m=>m.name===name),joint=motor.joint;
       const side=name.startsWith('left')?'left':name.startsWith('right')?'right':null,foot=side?this.parts[side+'Foot']:this.parts.pelvis;
-      const inputs=[Math.sin(this.time*7),Math.cos(this.time*7),clamp(ta,-2,2),clamp(joint.getJointSpeed()/8,-1,1),side&&this.contacts.get(side+'Foot')>0?1:0,clamp(this.groundHeight(foot.getPosition().x+.3)-this.groundHeight(foot.getPosition().x),-.5,.5)];
+      const inputs=[Math.sin(this.time*7),Math.cos(this.time*7),clamp(ta,-2,2),clamp(joint.getJointSpeed()/8,-1,1),side&&this.contacts.get(side+'Foot')>0?1:0,clamp(this.groundHeight(foot.getPosition().x+.3)-this.groundHeight(foot.getPosition().x)-(this.terrain.kind==='cave'?clamp(2.3-(terrainHeight(this.terrain.ceilings,foot.getPosition().x+.35)-this.groundHeight(foot.getPosition().x)),0,1):0),-1,.5)];
       const independent=inputs.reduce((sum,input,j)=>sum+input*p(32+i*6+j),0)*.65;
       const target=clamp((targets[name]||0)+(recovering?.45:.13)*p(16+i)+independent,motor.lower+.01,motor.upper-.01);
       joint.setMotorSpeed(clamp(kp*(target-joint.getJointAngle())-kd*joint.getJointSpeed(),-9,9));joint.setMaxMotorTorque(motor.torque*gain);
@@ -175,7 +176,7 @@ export class RobotWorld {
     if(this.time-this.lastPushAt<1.5)r+=DT*(upright?1.5:-.5); // Reward resisting and recovering after an actual perturbation.
     r-=this.impactCost*.5;
     r-=.003*work;
-    for(const [i,o]of this.obstacles.entries())if(!this.passed.has(i)&&pos.x>o.x+o.width/2+.2&&upright){this.passed.add(i);r+=10;}
+    for(const [i,o]of this.obstacles.entries())if(o.x>this.initialX+.3&&!this.passed.has(i)&&pos.x>o.x+o.width/2+.2&&upright){this.passed.add(i);r+=10;}
     this.reward+=r;this.lastX=pos.x;this.lastHeight=pos.y;
     this.done=this.steps>=Math.round(this.task.duration/DT)||Math.abs(pos.x)>40||pos.y<-.8||!Number.isFinite(this.reward);
     return this.metrics();

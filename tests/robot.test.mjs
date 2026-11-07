@@ -10,7 +10,7 @@ test('17 rigid bodies and 16 physical joints; no external support even from old 
  const changed=[...zero];changed[16+JOINTS.indexOf('leftKnee')]=2;const c=new RobotWorld('walk',{seed:31});for(let i=0;i<180;i++)c.step(changed);assert.notEqual(a.joints.leftKnee.getJointAngle(),c.joints.leftKnee.getJointAngle());
 });
 test('both shoulders share the side-view hip axis and elbow/wrist join limb ends',()=>{
- const w=new RobotWorld();for(const side of ['left','right']){const j=w.joints[side+'Shoulder'],anchor=j.getAnchorA();assert.ok(Math.abs(anchor.x)<.03);assert.ok(Math.abs(anchor.y-1.54)<.03);assert.ok(w.joints[side+'Elbow'].getAnchorA().sub(w.joints[side+'Elbow'].getAnchorB()).length()<1e-8);}
+ const w=new RobotWorld();for(const side of ['left','right']){const j=w.joints[side+'Shoulder'],anchor=j.getAnchorA();assert.ok(Math.abs(anchor.x)<.03);assert.ok(Math.abs(anchor.y-w.groundHeight(0)-1.54)<.03);assert.ok(w.joints[side+'Elbow'].getAnchorA().sub(w.joints[side+'Elbow'].getAnchorB()).length()<1e-8);}
 });
 test('push strength, direction and off-centre location change actual velocities',()=>{const a=new RobotWorld(),b=new RobotWorld();a.push(2,0,'torso');b.push(8,180,'shoulder');assert.ok(a.parts.torso.getLinearVelocity().x>0);assert.ok(b.parts.torso.getLinearVelocity().x<0);assert.notEqual(b.parts.torso.getAngularVelocity(),0);});
 test('varied training perturbations and actual replay frames',()=>{
