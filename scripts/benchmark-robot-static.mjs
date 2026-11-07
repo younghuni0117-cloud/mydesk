@@ -1,0 +1,5 @@
+// Same-machine median of three warmed 10-second episodes; isolates static grouping.
+import {writeFileSync} from 'node:fs';
+const {episode,POLICY_SIZE}=await import('../robot-core.mjs');
+const weights=Array.from({length:POLICY_SIZE},(_,i)=>Math.sin(i*13+31)*.3),rows=[];
+for(const terrain of ['meadow','hills','cave']){const runs={reference:[],grouped:[]};for(let repeat=0;repeat<4;repeat++)for(const key of ['reference','grouped']){const start=performance.now();const result=episode(weights,'walk',31,{terrain,record:true,autoPush:false,groupStatic:key==='grouped'});if(repeat)runs[key].push(performance.now()-start);if(key==='reference')runs.metrics=result.metrics;else if(JSON.stringify(runs.metrics)!==JSON.stringify(result.metrics))throw Error('changed physics');}const median=a=>a.sort((a,b)=>a-b)[1];rows.push({terrain,referenceMs:median(runs.reference),groupedMs:median(runs.grouped)});}writeFileSync(process.argv[2]||'/tmp/robot23-benchmark.json',JSON.stringify(rows,null,2));console.log(rows);

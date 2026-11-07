@@ -1,0 +1,17 @@
+[
+  {
+    "terrain": "meadow",
+    "referenceMs": 215.77530000000002,
+    "groupedMs": 212.349291
+  },
+  {
+    "terrain": "hills",
+    "referenceMs": 535.2765869999998,
+    "groupedMs": 360.98173100000076
+  },
+  {
+    "terrain": "cave",
+    "referenceMs": 1161.844255,
+    "groupedMs": 672.3819070000009
+  }
+]

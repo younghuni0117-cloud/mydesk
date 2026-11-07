@@ -1,10 +1,11 @@
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot22';
-import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot22';
-import {STAGES} from './robot-core.mjs?v=robot22';
+import {observationScene} from './robot-transfer.mjs?v=robot23';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot23';
+import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot23';
+import {STAGES} from './robot-core.mjs?v=robot23';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null,rollouts=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
-function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:lastTrial?.scene||null,spawnRange:lastTrial?.spawnRange});}
+function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:observationScene(lastTrial?.scene),spawnRange:lastTrial?.spawnRange});}
 async function initialize(data,token){
  rollouts?.close();rollouts=new ParallelRollouts(typeof data.parallel==='boolean'?{enabled:data.parallel}:{});environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
  await rollouts.start();if(token!==initToken)return;sendModel();preview();postMessage({type:'ready',parallelism:rollouts.ready?2:1});
@@ -38,7 +39,7 @@ self.onmessage=async({data})=>{
   }
   if(job!==current)return;
   // Preserve counters even if a validation pass was interrupted.
-  if(!current.cancelled&&learner.pending.length){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);}
+  if(!current.cancelled&&(learner.pending.length||learner.validationBank)){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);}
   sendModel();preview();job=null;postMessage({type:'done',completed,target,cancelled:current.cancelled});
  }catch(error){job=null;postMessage({type:'error',message:error.message||'학습 오류가 발생했습니다.'});}
 };

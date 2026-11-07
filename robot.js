@@ -1,21 +1,21 @@
-import {RobotStorage} from './robot-storage.mjs?v=robot22';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot22';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot22';
-import {rewardHelp} from './robot-rewards.mjs?v=robot22';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot22';
-import {RobotTeam} from './robot-team.mjs?v=robot22';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot22';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot22';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot22';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot22';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot22';
+import {RobotStorage} from './robot-storage.mjs?v=robot23';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot23';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot23';
+import {rewardHelp} from './robot-rewards.mjs?v=robot23';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot23';
+import {RobotTeam} from './robot-team.mjs?v=robot23';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot23';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot23';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot23';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot23';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot23';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotStorage(migrateModel),loaded=await storage.load();let model=loaded.model,originalArchive=loaded.archive,recoveryBlocked=loaded.blocked,legacyArchive=null;
 try{const old=JSON.parse(localStorage.getItem('mydesk.robot.v2')||'null')?.model;if(old?.version===2&&Array.isArray(old.weights)&&[32,128].includes(old.weights.length))legacyArchive=old;}catch{}
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
 let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,interval:20,...normalizePushSettings()};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:o.terrain==='rockyhills'?'desert':TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1,observationSeconds:Number.isInteger(o.observationSeconds)&&o.observationSeconds>=1&&o.observationSeconds<=3600?o.observationSeconds:30,interval:[10,20,50,100].includes(o.interval)?o.interval:20,...normalizePushSettings(o)};}catch{}
 let command=normalizeCommand();try{command=normalizeCommand(JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}').command);}catch{}
-try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options.algorithm=['cem','ppo'].includes(o.algorithm)?o.algorithm:model?.algorithm||'cem';options.curriculum=o.curriculum!==false;options.graphRange=['all','500','1000','2000','5000','10000','custom'].includes(o.graphRange)?o.graphRange:'all';options.graphCustom=Number.isSafeInteger(o.graphCustom)&&o.graphCustom>=1?o.graphCustom:5000;options.graphVersion=o.graphVersion==='previous'?'previous':'current';options.focus=STAGES[o.focus]?o.focus:model?.focus||'balance';}catch{Object.assign(options,{algorithm:model?.algorithm||'cem',curriculum:true,graphRange:'all',graphCustom:5000,graphVersion:'current',focus:model?.focus||'balance'});}
+try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options.algorithm=['cem','ppo'].includes(o.algorithm)?o.algorithm:model?.algorithm||'ppo';options.curriculum=o.curriculum!==false;options.graphRange=['all','500','1000','2000','5000','10000','custom'].includes(o.graphRange)?o.graphRange:'all';options.graphCustom=Number.isSafeInteger(o.graphCustom)&&o.graphCustom>=1?o.graphCustom:5000;options.graphVersion=o.graphVersion==='previous'?'previous':'current';options.focus=STAGES[o.focus]?o.focus:model?.focus||'balance';}catch{Object.assign(options,{algorithm:model?.algorithm||'ppo',curriculum:true,graphRange:'all',graphCustom:5000,graphVersion:'current',focus:model?.focus||'balance'});}
 let pickingTarget=false;
 let liveRobots=[],previousFrames=[],currentFrames=[];
 let stage=options.focus,training=false,initializing=true;
@@ -37,8 +37,8 @@ const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.cr
 function renderModel(){if(!model)return;for(const [key,a]of Object.entries(model.abilities)){cells[key][0].textContent=model.taskAttempts[key].toLocaleString();cells[key][1].textContent=signed(a.meanReward);cells[key][2].textContent=Math.round(a.passRate*100)+'%';cells[key][2].title=a.cases.map(c=>c.label+': '+(c.passed?'통과':'미통과')).join('\n');}
  renderChart();
 }
-function previousChart(){if(originalArchive?.id===model?.id&&originalArchive?.history&&originalArchive?.taskAttempts)return originalArchive;const rows=model?.history.filter(r=>(r.rewardVersion??1)===1)||[],last=rows.at(-1);if(!last?.taskAttempts||!last.rewards)return null;return {...model,history:rows,taskAttempts:last.taskAttempts,abilities:Object.fromEntries(Object.keys(STAGES).map(k=>[k,{meanReward:last.rewards[k]}]))};}
-function renderChart(){if(!model)return;const old=options.graphVersion==='previous'?previousChart():null,source=old||model,version=old?1:REWARD_VERSION,end=source.taskAttempts[stage],window=options.graphRange==='all'?end:options.graphRange==='custom'?options.graphCustom:Number(options.graphRange),start=Math.max(0,end-window),rows=taskChartRows(source,stage,version,old?null:JSON.stringify(source.environment)).filter(r=>r.attempts>=start);
+function previousChart(){if(originalArchive?.id===model?.id&&originalArchive?.history&&originalArchive?.taskAttempts)return originalArchive;const rows=model?.history.filter(r=>(r.rewardVersion??1)===Math.max(...model.history.map(r=>r.rewardVersion??1).filter(v=>v<REWARD_VERSION),1))||[],last=rows.at(-1);if(!last?.taskAttempts||!last.rewards)return null;return {...model,history:rows,taskAttempts:last.taskAttempts,abilities:Object.fromEntries(Object.keys(STAGES).map(k=>[k,{meanReward:last.rewards[k]}]))};}
+function renderChart(){if(!model)return;const old=options.graphVersion==='previous'?previousChart():null,source=old||model,version=old?(old.rewardVersion??Math.max(...old.history.map(r=>r.rewardVersion??1))):REWARD_VERSION,end=source.taskAttempts[stage],window=options.graphRange==='all'?end:options.graphRange==='custom'?options.graphCustom:Number(options.graphRange),start=Math.max(0,end-window),rows=taskChartRows(source,stage,version,old?null:JSON.stringify(source.environment)).filter(r=>r.attempts>=start);
  const current=source.abilities[stage].meanReward,values=[...rows,{overall:current,candidate:current}],[min,max]=chartDomain(values),Y=v=>95-(v-min)/(max-min)*90,X=n=>end>start?(n-start)/(end-start)*300:0;
  for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']]){let connected=false;get(id).setAttribute('d',rows.map(r=>{if(!Number.isFinite(r[k])){connected=false;return '';}const point=`${connected?'L':'M'}${X(r.attempts)} ${Y(r[k])}`;connected=true;return point;}).join(' '));}
  get('chart-dot').setAttribute('cx',X(end));get('chart-dot').setAttribute('cy',Y(current));get('chart-title').textContent=STAGES[stage].label+' · 평균 보상'+(old?' · 이전 기준':' · 새 기준');get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('chart-range').textContent=`${start.toLocaleString()}~${end.toLocaleString()}회`;get('x-min').textContent=start.toLocaleString();get('x-mid').textContent=Math.round((start+end)/2).toLocaleString();get('x-max').textContent=end.toLocaleString()+'회';get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} ${old?'이전':'현재'} 보상 ${current.toFixed(1)}점. 학습 ${start}~${end}회. 보상 기준이 다른 기록은 구분합니다.`);
@@ -46,7 +46,7 @@ function renderChart(){if(!model)return;const old=options.graphVersion==='previo
 get('graph-range').onchange=()=>{options.graphRange=get('graph-range').value;get('graph-custom-row').hidden=options.graphRange!=='custom';saveOptions();renderChart();};
 get('graph-custom').onchange=()=>{const input=get('graph-custom'),value=Number(input.value);if(!Number.isSafeInteger(value)||value<1||value>1e9){input.setCustomValidity('1~1,000,000,000 사이의 정수를 입력하세요.');input.reportValidity();return;}input.setCustomValidity('');options.graphCustom=value;saveOptions();renderChart();};
 get('graph-version').onchange=()=>{options.graphVersion=get('graph-version').value;saveOptions();renderChart();};
-get('algorithm').onchange=()=>{options.algorithm=get('algorithm').value;saveOptions();status('다음 학습 방식 · '+(options.algorithm==='ppo'?'PPO 비교 실험':'개선 CEM'));};
+get('algorithm').onchange=()=>{options.algorithm=get('algorithm').value;saveOptions();status('다음 학습 방식 · '+(options.algorithm==='ppo'?'PPO':'개선 CEM'));};
 get('curriculum').onchange=()=>{options.curriculum=get('curriculum').checked;saveOptions();};
 
 get('reward-commands').textContent=rewardHelp(STAGES).commands;
