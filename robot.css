@@ -85,7 +85,7 @@ body[data-page=robot].robot-wide-fit footer{display:none}
 .robot-details{flex:none;border:1px solid #d5deea;border-radius:5px;color:#607b97;font-size:11px;min-width:0}.robot-details summary{cursor:pointer;padding:8px 10px;list-style-position:inside;user-select:none}.robot-details[open] summary{border-bottom:1px solid #e0e7ef}.robot-details-content{display:grid;gap:9px;padding:10px}.robot-details-content>label{display:flex;align-items:center;justify-content:space-between;gap:8px;white-space:nowrap;font-size:10px}.robot-details-content>label select{min-width:120px}.robot-details-content p{font-size:9px;line-height:1.6;margin:0;color:#8798ac}.robot-mouse-guide{font-size:9px;color:#8798ac;align-self:center;white-space:nowrap}body[data-page=robot] .robot-stage canvas{touch-action:none}body[data-page=robot] .robot-chart-plot{height:80px}body[data-page=robot] .robot-wide-fit .robot-chart-plot{height:80px}
 @media(max-width:599px){body[data-page=robot] .robot-chart-plot{height:65px}.robot-mouse-guide{display:none}}
 @media(min-width:600px) and (max-width:1100px){body[data-page=robot] .robot-chart-plot{height:90px}}
-body[data-page=robot].robot-wide-fit .robot-chart{flex:none;min-height:0;max-height:none}body[data-page=robot].robot-wide-fit .robot-chart-plot{flex:none;min-height:0;height:clamp(40px,14dvh,100px)}body[data-page=robot].robot-wide-fit .robot-controls{overflow-y:auto}body[data-page=robot].robot-wide-fit .robot-details-content{max-height:160px;overflow-y:auto}body[data-page=robot].robot-wide-fit .robot-details summary{padding:6px 8px;font-size:10px}
+body[data-page=robot].robot-wide-fit .robot-chart{flex:none;min-height:0;max-height:none}body[data-page=robot].robot-wide-fit .robot-chart-plot{flex:none;min-height:0;height:clamp(40px,14dvh,100px)}body[data-page=robot].robot-wide-fit .robot-controls{overflow:visible}body[data-page=robot].robot-wide-fit .robot-details-content{max-height:none;overflow:visible}body[data-page=robot].robot-wide-fit .robot-details summary{padding:6px 8px;font-size:10px}
 .robot-details-content .robot-skin-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.robot-details-content .robot-skin-picker>span{grid-column:1/-1}.robot-details-content .robot-skin-picker button{min-height:30px}
 .robot-chart-x{display:flex;justify-content:space-between;margin:3px 0 0 48px;color:#8798ac;font:9px monospace}.robot-chart-scale>span:first-child,.robot-chart-scale>span:last-child{display:none}.robot-chart-scale{justify-content:center}
 
@@ -114,7 +114,7 @@ body[data-page=robot].robot-wide-fit .robot-chart{flex:none;min-height:0;max-hei
 /* Goal controls remain folded by default; quick stop is always beside the scene. */
 .robot-goal-stop{position:absolute;right:48px;top:7px;min-width:44px;height:30px;border:1px solid #c8d6e3;border-radius:4px;background:#fff;color:#536d89;font-size:10px;cursor:pointer}.robot-goal-stop:disabled{opacity:.5}.robot-command-details [hidden]{display:none!important}.robot-command-details input[type=range]{max-width:120px;flex:1}.robot-command-details output{font-size:10px;font-variant-numeric:tabular-nums}.robot-command-details button{min-height:32px;border-radius:5px;font:inherit}.robot-command-details #rb-command-summary{color:#466989;font-weight:600}.robot-details-content .robot-auto-push{justify-content:flex-start;gap:6px}.robot-details-content .robot-auto-push span{margin-left:auto}
 @media(max-width:599px){body[data-page=robot] .robot-train-row{bottom:calc(62px + env(safe-area-inset-bottom,0px))}body[data-page=robot] main{padding-bottom:calc(126px + env(safe-area-inset-bottom,0px))}}
-body[data-page=robot].robot-wide-fit .robot-command-details .robot-details-content{max-height:150px}
+body[data-page=robot].robot-wide-fit .robot-command-details .robot-details-content{max-height:none}
 
 .robot-view-label{max-width:calc(100% - 108px);line-height:14px}
 
@@ -141,3 +141,17 @@ body[data-page=robot].robot-wide-fit .robot-details summary{font-size:13px}
 /* Separate the performance table from its chart without a visible legend. */
 body[data-page=robot] .robot-controls>.robot-chart{margin-top:8px}
 body[data-page=robot] .robot-chart-scale{display:none}
+
+/* Camera controls belong to details; expanded options use the document scrollbar. */
+body[data-page=robot] .robot-details .robot-camera{display:flex;flex-wrap:wrap;gap:6px;font-size:13px}
+body[data-page=robot] .robot-details .robot-camera button,body[data-page=robot] .robot-details .robot-camera select{font-size:13px!important;min-height:34px}
+body[data-page=robot] .robot-details .robot-camera label{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-basis:100%}
+body[data-page=robot] .robot-details .robot-camera label select{min-width:120px}
+body[data-page=robot].robot-wide-fit{height:auto!important;min-height:var(--game-height,100dvh);overflow-x:hidden;overflow-y:auto}
+body[data-page=robot].robot-wide-fit .workspace{height:auto!important;min-height:var(--game-height,100dvh);overflow:visible}
+body[data-page=robot].robot-wide-fit main{display:block;overflow:visible}
+body[data-page=robot].robot-wide-fit .robot-experiment{display:block;height:auto}
+body[data-page=robot].robot-wide-fit .section-top{margin-bottom:6px}
+body[data-page=robot].robot-wide-fit .robot-lab{height:auto;min-height:calc(var(--game-height,100dvh) - 100px);grid-template-rows:auto;align-items:start;overflow:visible}
+body[data-page=robot].robot-wide-fit .robot-arena{position:sticky;top:12px;height:calc(var(--game-height,100dvh) - 100px);align-self:start}
+body[data-page=robot].robot-wide-fit .robot-controls{height:auto;overflow:visible}
