@@ -120,20 +120,20 @@ body[data-page=robot].robot-wide-fit .robot-command-details .robot-details-conte
 
 .robot-details [hidden]{display:none!important}.robot-chart svg{overflow:hidden!important}.robot-storage-blocked{color:#99524a!important}
 
-/* Slightly larger text throughout the right panel, including compact layouts. */
-body[data-page=robot] .robot-controls{font-size:12px}
-body[data-page=robot] .robot-abilities th,body[data-page=robot] .robot-abilities td{font-size:11px;line-height:18px}
-body[data-page=robot] .robot-chart-heading,body[data-page=robot] .robot-chart-scale,body[data-page=robot] .robot-chart-x{font-size:10px}
-body[data-page=robot] .robot-chart-y{font-size:11px}
-body[data-page=robot] .robot-train-row label,body[data-page=robot] .robot-train-row select{font-size:11px}
-body[data-page=robot] .robot-actions button{font-size:11px}
-body[data-page=robot] .robot-details{font-size:12px}
-body[data-page=robot] .robot-details-content>label,body[data-page=robot] .robot-command-details output{font-size:11px}
-body[data-page=robot] .robot-details-content p,body[data-page=robot] .robot-auto-push span{font-size:10px}
-@media(max-width:599px){body[data-page=robot] .robot-actions button{font-size:12px}}
-body[data-page=robot].robot-wide-fit .robot-abilities th,body[data-page=robot].robot-wide-fit .robot-abilities td{font-size:10px;line-height:14px}
-body[data-page=robot].robot-wide-fit .robot-chart-heading{font-size:9px;line-height:12px}
-body[data-page=robot].robot-wide-fit .robot-chart-scale{font-size:8px;line-height:10px}
-body[data-page=robot].robot-wide-fit .robot-chart-y{font-size:10px}
-body[data-page=robot].robot-wide-fit .robot-train-row label,body[data-page=robot].robot-wide-fit .robot-train-row select{font-size:10px}
-body[data-page=robot].robot-wide-fit .robot-details summary{font-size:11px}
+/* Readable right-panel text across desktop and compact layouts. */
+body[data-page=robot] .robot-controls{font-size:14px}
+body[data-page=robot] .robot-abilities th,body[data-page=robot] .robot-abilities td{font-size:13px;line-height:20px}
+body[data-page=robot] .robot-chart-heading,body[data-page=robot] .robot-chart-scale,body[data-page=robot] .robot-chart-x{font-size:12px}
+body[data-page=robot] .robot-chart-y{font-size:13px}
+body[data-page=robot] .robot-train-row label,body[data-page=robot] .robot-train-row select{font-size:13px}
+body[data-page=robot] .robot-actions button{font-size:13px}
+body[data-page=robot] .robot-details{font-size:14px}
+body[data-page=robot] .robot-details-content>label,body[data-page=robot] .robot-command-details output{font-size:13px}
+body[data-page=robot] .robot-details-content p,body[data-page=robot] .robot-auto-push span{font-size:12px}
+@media(max-width:599px){body[data-page=robot] .robot-actions button{font-size:14px}}
+body[data-page=robot].robot-wide-fit .robot-abilities th,body[data-page=robot].robot-wide-fit .robot-abilities td{font-size:12px;line-height:16px}
+body[data-page=robot].robot-wide-fit .robot-chart-heading{font-size:11px;line-height:14px}
+body[data-page=robot].robot-wide-fit .robot-chart-scale{font-size:10px;line-height:12px}
+body[data-page=robot].robot-wide-fit .robot-chart-y{font-size:12px}
+body[data-page=robot].robot-wide-fit .robot-train-row label,body[data-page=robot].robot-wide-fit .robot-train-row select{font-size:12px}
+body[data-page=robot].robot-wide-fit .robot-details summary{font-size:13px}
