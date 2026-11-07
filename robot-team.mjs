@@ -1,7 +1,7 @@
-import {STAGES} from './robot-core.mjs?v=robot15';
-import {overallScore,preservesAbilities,compactHistory} from './robot-learning.mjs?v=robot15';
+import {STAGES} from './robot-core.mjs?v=robot16';
+import {overallScore,preservesAbilities,compactHistory} from './robot-learning.mjs?v=robot16';
 export class RobotTeam {
- constructor(factory=()=>new Worker(new URL('./robot-worker.mjs?v=robot15',import.meta.url),{type:'module'})){this.factory=factory;this.lanes=[];this.generation=0;this.model=null;this.settings={};this.running=false;}
+ constructor(factory=()=>new Worker(new URL('./robot-worker.mjs?v=robot16',import.meta.url),{type:'module'})){this.factory=factory;this.lanes=[];this.generation=0;this.model=null;this.settings={};this.running=false;}
  emit(data){this.onmessage?.({data});}
  terminate(){this.generation++;for(const l of this.lanes)l.worker.terminate();this.lanes=[];}
  counts(){const completed=this.lanes.reduce((n,l)=>n+l.completed,0),taskAttempts={...this.base.taskAttempts};if(this.running||this.job)taskAttempts[this.focus]+=completed;this.model.attempts=this.base.attempts+completed;this.model.taskAttempts=taskAttempts;return completed;}
@@ -16,7 +16,7 @@ export class RobotTeam {
    if(overallScore(next.abilities)>overallScore(this.model.abilities)+1e-7&&preservesAbilities(this.model.abilities,next.abilities)){const current=this.model;this.model={...structuredClone(next),id:this.base.id,policyVersion:current.policyVersion+1,history:current.history,modelAttempt:this.base.attempts+this.lanes.reduce((n,l)=>n+l.completed,0)};}
    const completed=this.counts();if(completed){const score=overallScore(this.model.abilities);const row={attempts:this.model.attempts,task:this.focus,overall:score,candidate:overallScore(next.abilities),accepted:false,rewards:Object.fromEntries(Object.keys(STAGES).map(s=>[s,this.model.abilities[s].meanReward])),candidateRewards:Object.fromEntries(Object.keys(STAGES).map(s=>[s,next.abilities[s].meanReward]))};if(this.model.history.at(-1)?.attempts===row.attempts)this.model.history[this.model.history.length-1]=row;else this.model.history.push(row);this.model.history=compactHistory(this.model.history);this.model.revision++;this.emit({type:'model',model:structuredClone(this.model)});}return;
   }
-  if(data.type==='ready'){lane.ready=true;if(training){if(this.cancelled||!lane.target)this.finish(lane);else lane.worker.postMessage({type:'train',count:lane.target,focus:this.focus,internalTeam:true});}else if(this.lanes.every(l=>l.ready))this.emit({type:'ready'});return;}
+  if(data.type==='ready'){lane.ready=true;if(training){if(this.cancelled||!lane.target)this.finish(lane);else lane.worker.postMessage({type:'train',count:lane.target,focus:this.focus,trainingPush:this.initData.trainingPush,internalTeam:true});}else if(this.lanes.every(l=>l.ready))this.emit({type:'ready'});return;}
   if(data.type==='preview'){lane.preview=data;this.emit({...data,attempts:this.model?.attempts||data.attempts,scenes:this.lanes.map(l=>l.preview?.scene||null),team:this.lanes.length});return;}
   if(data.type==='progress'){lane.completed=data.completed;const completed=this.counts();this.emit({...data,completed,target:this.target,attempts:this.model.attempts,taskAttempts:{...this.model.taskAttempts},remainingMs:(Date.now()-this.started)/Math.max(1,completed)*(this.target-completed)});return;}
   if(data.type==='done'){this.finish(lane);}
@@ -25,7 +25,7 @@ export class RobotTeam {
  postMessage(data){
   if(data.type==='settings'){this.settings=data;for(const l of this.lanes)l.worker.postMessage(data);return;}
   if(data.type==='init'){this.launch(data);return;}
-  if(data.type==='train'){if(this.running||!this.model)return;this.launch({...this.initData,saved:structuredClone(this.model),focus:data.focus,target:data.count},true);this.emit({type:'training',active:true});return;}
+  if(data.type==='train'){if(this.running||!this.model)return;this.launch({...this.initData,saved:structuredClone(this.model),focus:data.focus,target:data.count,trainingPush:data.trainingPush},true);this.emit({type:'training',active:true});return;}
   if(data.type==='stop'){this.cancelled=true;for(const l of this.lanes)l.worker.postMessage(data);return;}
   if(data.type==='goal'){this.launch({...this.initData,saved:structuredClone(this.model),stage:data.stage,focus:data.stage});return;}
   for(const l of this.lanes)l.worker.postMessage(data);

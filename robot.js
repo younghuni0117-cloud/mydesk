@@ -1,20 +1,20 @@
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot15';
-import {RobotTeam} from './robot-team.mjs?v=robot15';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot15';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot15';
-import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot15';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot15';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot15';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot16';
+import {RobotTeam} from './robot-team.mjs?v=robot16';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot16';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot16';
+import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot16';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot16';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot16';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v2';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
 let model=RobotLearner.valid(cache.model)?cache.model:null;
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
-let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,interval:20};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:o.terrain==='rockyhills'?'desert':TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1,observationSeconds:Number.isInteger(o.observationSeconds)&&o.observationSeconds>=1&&o.observationSeconds<=3600?o.observationSeconds:30,interval:[10,20,50,100].includes(o.interval)?o.interval:20};}catch{}
+let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,interval:20,...normalizePushSettings()};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:o.terrain==='rockyhills'?'desert':TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1,observationSeconds:Number.isInteger(o.observationSeconds)&&o.observationSeconds>=1&&o.observationSeconds<=3600?o.observationSeconds:30,interval:[10,20,50,100].includes(o.interval)?o.interval:20,...normalizePushSettings(o)};}catch{}
 let liveRobots=[],previousFrames=[],currentFrames=[];
 let stage='balance',training=false,initializing=true;
 let mode='trace',scene=null,pendingScene=null,traceTime=0,viewPaused=false,live=null,liveWeights=Array(POLICY_SIZE).fill(0),geometry=null;
-let viewSource='best',liveSource='best',liveAttempt=0,liveVersion=0,latestPreview=null;
+let viewSource='best',liveSource='best',liveAttempt=0,liveVersion=0,latestPreview=null,liveTrial=null;
 let previousLive=null,currentLive=null,lastPersist=0,lastProgressHud=0;
 let lastTime=0,accumulator=0,frame=null,lastHud=0,lastDraw=0,pushArrow=null,drag=null;
 let zoom=1,panX=.4,panY=0,follow=options.view==='robot',drawScale=100,cameraX=0;const pointers=new Map();let pinch=null;
@@ -23,7 +23,7 @@ function persist(){try{localStorage.setItem(storageKey,JSON.stringify({model}));
 function backup(){if(model)try{localStorage.setItem('mydesk.robot.backup',JSON.stringify({model}));}catch{}}
 let lastRequest={completed:0,target:0};
 function progress(completed,target,label,total=model?.attempts||0){lastRequest={completed,target};const ratio=target?Math.min(100,completed/target*100):0;get('progress').value=ratio;get('progress').textContent=Math.round(ratio)+'%';get('progress-label').textContent=`학습 ${completed.toLocaleString()}/${target.toLocaleString()}회 (총 ${total.toLocaleString()}회)`;}
-function controls(){get('train').disabled=initializing;get('run').disabled=initializing;for(const id of ['terrain'])get(id).disabled=initializing||training;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
+function controls(){get('train').disabled=initializing;get('run').disabled=initializing;for(const id of ['terrain'])get(id).disabled=initializing||training;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('auto-push').disabled=training||initializing;for(const id of ['push-min','push-max'])get(id).disabled=training||initializing||!options.autoPush;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
 for(const id of ['focus'])for(const [value,s]of Object.entries(STAGES)){const o=document.createElement('option');o.value=value;o.textContent=s.label;get(id).append(o);}
 for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}
 const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('넘어졌다 ','').replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
@@ -40,7 +40,7 @@ function renderChart(){if(!model)return;
 }
 
 const worker=new RobotTeam();
-function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:8},robotCount:options.robots});}
+function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:9},robotCount:options.robots});}
 function settings(){worker.postMessage({type:'settings',interval:options.interval});}
 worker.onmessage=({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();progress(lastRequest.completed,lastRequest.target,'학습');return;}
@@ -53,15 +53,18 @@ worker.onmessage=({data})=>{
 };
 worker.onerror=()=>{training=false;initializing=true;controls();status('학습 스레드 오류입니다. 저장된 모델을 유지합니다. 새로고침해 주세요.');};
 get('focus').onchange=()=>{stage=get('focus').value;renderChart();viewSource='best';mode='trace';viewPaused=false;scene=null;live=null;latestPreview=null;worker.postMessage({type:'goal',stage});controls();status(`${STAGES[stage].label} · 같은 로봇으로 관찰합니다.`);pendingScene=null;traceTime=0;get('view-label').textContent=STAGES[stage].label+' 준비 중';};
-get('train').onclick=()=>{if(training){worker.postMessage({type:'stop'});status('현재 시도를 마치고 저장합니다.');return;}const count=Number(get('count').value);if(!ALLOWED_ATTEMPTS.includes(count))return;progress(0,count,'시작');training=true;viewSource='candidate';viewPaused=false;latestPreview=null;controls();worker.postMessage({type:'train',count,focus:get('focus').value});};
+get('train').onclick=()=>{if(training){worker.postMessage({type:'stop'});status('현재 시도를 마치고 저장합니다.');return;}const count=Number(get('count').value);if(!ALLOWED_ATTEMPTS.includes(count)||!updatePushOptions(true))return;progress(0,count,'시작');training=true;viewSource='candidate';viewPaused=false;latestPreview=null;controls();worker.postMessage({type:'train',count,focus:get('focus').value,trainingPush:normalizePushSettings(options)});};
+function updatePushOptions(report=false){const low=Number(get('push-min').value),high=Number(get('push-max').value),valid=Number.isFinite(low)&&Number.isFinite(high)&&low>=.1&&high<=30&&low<=high;get('push-min').setCustomValidity('');get('push-max').setCustomValidity('');if(options.autoPush&&!valid){get('push-max').setCustomValidity('세기는 0.1~30 N·s, 최대는 최소 이상으로 입력하세요.');if(report){get('details').open=true;get('push-max').reportValidity();}return false;}if(valid){options.pushMin=low;options.pushMax=high;}saveOptions();return true;}
+get('auto-push').onchange=()=>{if(training||initializing)return;options.autoPush=get('auto-push').checked;updatePushOptions();controls();};
+for(const id of ['push-min','push-max'])get(id).onchange=()=>updatePushOptions();
 get('interval').onchange=()=>{options.interval=Number(get('interval').value);saveOptions();settings();};
-get('observation-seconds').onchange=()=>{const input=get('observation-seconds'),seconds=Number(input.value);if(!Number.isInteger(seconds)||seconds<1||seconds>3600){input.setCustomValidity('1~3600초 사이의 정수를 입력하세요.');input.reportValidity();return;}input.setCustomValidity('');options.observationSeconds=seconds;saveOptions();if(live)startLive(liveWeights,liveSource,liveAttempt,liveVersion);};
-function startLive(weights=model?.weights||Array(POLICY_SIZE).fill(0),source='best',attempt=model?.attempts||0,version=model?.policyVersion||0){liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,seed:31+i*101,disturbances:false}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=[...weights];liveSource=source;liveAttempt=attempt;liveVersion=version;geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;if(!training)status(`${source==='candidate'?'최근 모델':'통합 모델'} v${version} · ${STAGES[stage].label} · ${options.observationSeconds}초 관찰`);controls();}
-function showRecent(){if(latestPreview)startLive(latestPreview.weights,latestPreview.source,latestPreview.attempts,latestPreview.policyVersion);else worker.postMessage({type:'preview'});}
+get('observation-seconds').onchange=()=>{const input=get('observation-seconds'),seconds=Number(input.value);if(!Number.isInteger(seconds)||seconds<1||seconds>3600){input.setCustomValidity('1~3600초 사이의 정수를 입력하세요.');input.reportValidity();return;}input.setCustomValidity('');options.observationSeconds=seconds;saveOptions();if(live)startLive(liveWeights,liveSource,liveAttempt,liveVersion,liveTrial);};
+function startLive(weights=model?.weights||Array(POLICY_SIZE).fill(0),source='best',attempt=model?.attempts||0,version=model?.policyVersion||0,trial=null){liveTrial=trial;liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,seed:trial?.seed??31+i*101,disturbances:false,pushes:trial?.pushPlan||[]}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=[...weights];liveSource=source;liveAttempt=attempt;liveVersion=version;geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;if(!training)status(`${source==='candidate'?'최근 모델':'통합 모델'} v${version} · ${STAGES[stage].label} · ${options.observationSeconds}초 관찰`);controls();}
+function showRecent(){if(latestPreview)startLive(latestPreview.weights,latestPreview.source,latestPreview.attempts,latestPreview.policyVersion,latestPreview);else worker.postMessage({type:'preview'});}
 get('run').onclick=()=>{viewSource='best';startLive();};
 get('preview').onclick=()=>{viewSource='candidate';viewPaused=false;showRecent();controls();};
 get('pause-view').onclick=()=>{viewPaused=!viewPaused;controls();};
-function pushAt(direction,factor=1,point=null){if(initializing)return;if(mode!=='live'||!live)startLive();else if(liveRobots.every(w=>w.done))startLive(liveWeights,liveSource,liveAttempt,liveVersion);let index=0;if(point){let best=Infinity;for(let i=0;i<liveRobots.length;i++){const p=liveRobots[i].parts.torso.getPosition(),distance=Math.hypot(p.x+i*3.8-point.x,p.y-point.y);if(distance<best){best=distance;index=i;}}}const robot=liveRobots[index],strength=clamp(factor*8,.5,30);robot.push(strength,direction,'torso');viewPaused=false;const p=robot.parts.torso.getPosition();pushArrow={x:p.x+index*3.8,y:p.y,angle:direction*Math.PI/180,strength,remaining:1.1};status(`로봇 ${index+1} · ${strength.toFixed(1)} N·s 밀기`);controls();}
+function pushAt(direction,factor=1,point=null){if(initializing)return;if(mode!=='live'||!live)startLive();else if(liveRobots.every(w=>w.done))startLive(liveWeights,liveSource,liveAttempt,liveVersion,liveTrial);let index=0;if(point){let best=Infinity;for(let i=0;i<liveRobots.length;i++){const p=liveRobots[i].parts.torso.getPosition(),distance=Math.hypot(p.x+i*3.8-point.x,p.y-point.y);if(distance<best){best=distance;index=i;}}}const robot=liveRobots[index],strength=clamp(factor*8,.5,30);robot.push(strength,direction,'torso');viewPaused=false;const p=robot.parts.torso.getPosition();pushArrow={x:p.x+index*3.8,y:p.y,angle:direction*Math.PI/180,strength,remaining:1.1};status(`로봇 ${index+1} · ${strength.toFixed(1)} N·s 밀기`);controls();}
 function setZoom(value){zoom=clamp(value,.04,2.5);get('zoom-value').textContent=Math.round(zoom*100)+'%';}
 get('zoom-in').onclick=()=>setZoom(zoom*1.2);get('zoom-out').onclick=()=>setZoom(zoom/1.2);get('fit').onclick=()=>{setZoom(1);panX=.4;panY=0;follow=options.view==='robot';};
 canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));},{passive:false});
@@ -117,11 +120,11 @@ if(!model)try{const old=JSON.parse(localStorage.getItem('mydesk.robot.v1')||'{}'
 function selectSkin(value){skin=value;get('character').value=skin;try{localStorage.setItem('mydesk.robot.skin',skin);}catch{}}
 get('character').onchange=()=>selectSkin(get('character').value);
 selectSkin(skin);progress(0,0,'대기');
-get('terrain').value=options.terrain;get('view').value=options.view;get('observation-seconds').value=String(options.observationSeconds);get('interval').value=String(options.interval);
-function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view,observationSeconds:options.observationSeconds,interval:options.interval}));}catch{}}
+get('terrain').value=options.terrain;get('view').value=options.view;get('observation-seconds').value=String(options.observationSeconds);get('interval').value=String(options.interval);get('auto-push').checked=options.autoPush;get('push-min').value=String(options.pushMin);get('push-max').value=String(options.pushMax);
+function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view,observationSeconds:options.observationSeconds,interval:options.interval,...normalizePushSettings(options)}));}catch{}}
 get('terrain').onchange=()=>{options.terrain=get('terrain').value;saveOptions();setZoom(1);panX=.4;panY=0;follow=options.view==='robot';configure(model);};
 get('view').onchange=()=>{const next=get('view').value;if(next==='terrain'&&follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale-terrainDatum;}else if(next==='robot')panY=0;options.view=next;follow=next==='robot';saveOptions();};
-if(model&&model.environment?.courseVersion!==8)backup();
+if(model&&model.environment?.courseVersion!==9)backup();
 settings();configure(model,legacy,legacyCounts);
 // Retire the former website login locally; no server requests are made.
 try{localStorage.removeItem('mydesk.robot.auth');}catch{}

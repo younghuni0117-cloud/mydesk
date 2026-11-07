@@ -1,4 +1,4 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot15';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot16';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
 export const DT = 1 / 60;
 export const POLICY_SIZE = 128;
@@ -11,6 +11,8 @@ export const STAGES = {
 };
 export const JOINTS = ['waist','neck','leftHip','leftKnee','leftAnkle','leftToe','rightHip','rightKnee','rightAnkle','rightToe','leftShoulder','leftElbow','leftWrist','rightShoulder','rightElbow','rightWrist'];
 export const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+export function normalizePushSettings(raw={}){const low=Number(raw?.pushMin),high=Number(raw?.pushMax),valid=Number.isFinite(low)&&Number.isFinite(high)&&low>=.1&&high<=30&&low<=high;return {autoPush:raw?.autoPush!==false,pushMin:valid?low:1,pushMax:valid?high:6};}
+export const WAIST_RESISTANCE=Object.freeze({stiffness:55,damping:9,maxTorque:110,targetRate:1.2,speedLimit:2.3});
 export function seeded(seed) { return () => {seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}; }
 const wrap = a => Math.atan2(Math.sin(a),Math.cos(a));
 export class RobotWorld {
@@ -33,13 +35,11 @@ export class RobotWorld {
     this.makeRobot();this.initialX=this.parts.pelvis.getPosition().x;this.lastX=this.initialX;this.lastHeight=this.parts.pelvis.getPosition().y;
     this.phaseOffset=Math.PI/2;
     this.pushes = options.pushes ? options.pushes.map(p=>({...p})) : [];
-    if(options.disturbances!==false&&!options.pushes){
-      const maximum=options.pushMax??6;
-      for(const time of this.stage==='balance'?[2,4.5,6.2]:[3,6.5]){
-        this.pushes.push({time,strength:Math.min(maximum,1+this.random()*maximum),direction:(this.random()<.5?0:180)+(this.random()-.5)*35,location:['torso','shoulder','pelvis'][Math.floor(this.random()*3)],duration:this.random()<.2?.3:0});
-      }
+    const pushSettings=normalizePushSettings(options);
+    if(options.disturbances!==false&&pushSettings.autoPush&&!options.pushes){
+      this.pushes.push({time:.9+this.random()*Math.max(.1,this.duration-2.4),strength:pushSettings.pushMin+this.random()*(pushSettings.pushMax-pushSettings.pushMin),direction:this.random()*360,location:['torso','shoulder','pelvis'][Math.floor(this.random()*3)],duration:0});
     }
-    this.nextPushIndex=0;this.pushesApplied=0;this.pushRecoveryTime=0;this.lastPushAt=-Infinity;this.obstacleHeight=options.obstacleHeight??.14;
+    this.waistTarget=0;this.nextPushIndex=0;this.pushesApplied=0;this.pushRecoveryTime=0;this.lastPushAt=-Infinity;this.obstacleHeight=options.obstacleHeight??.14;
     const contact=(contact,amount)=>{
       const a=contact.getFixtureA().getBody().getUserData(),b=contact.getFixtureB().getBody().getUserData();
       const name=a==='ground'||a==='obstacle'?b:b==='ground'||b==='obstacle'?a:null;
@@ -66,7 +66,7 @@ export class RobotWorld {
     const pelvis=this.part('pelvis',0,1.06,.3,.18,4,'#536d8c');
     const torso=this.part('torso',0,1.375,.32,.45,6,'#6788ac');
     const head=this.part('head',0,1.75,.13,.13,1,'#bdcbdc',true);
-    this.joint('waist',pelvis,torso,0,1.15,-1.4,.9,70);this.joint('neck',torso,head,0,1.62,-1.05,1.05,8);
+    this.joint('waist',pelvis,torso,0,1.15,-1.4,.9,95);this.joint('neck',torso,head,0,1.62,-1.05,1.05,8);
     for(const [side,color] of [['left','#8fa8c5'],['right','#d6a174']]){
       const thigh=this.part(side+'Thigh',0,.805,.11,.45,1.4,color);
       const shin=this.part(side+'Shin',0,.355,.085,.45,1,color);
@@ -93,6 +93,7 @@ export class RobotWorld {
     if(duration>0)this.sustainedPush={body,vector,localPoint:body.getLocalPoint(point),remaining:duration};
     else body.applyLinearImpulse(vector,point,true);
   }
+  resistWaist(){const j=this.joints.waist,t=clamp(-WAIST_RESISTANCE.stiffness*j.getJointAngle()-WAIST_RESISTANCE.damping*j.getJointSpeed(),-WAIST_RESISTANCE.maxTorque,WAIST_RESISTANCE.maxTorque);j.getBodyB().applyTorque(t,true);j.getBodyA().applyTorque(-t,true);return t;}
   control(weights){
     const p=i=>Math.tanh(weights[i]||0),pelvis=this.parts.pelvis,torso=this.parts.torso;
     const pa=wrap(pelvis.getAngle()),ta=wrap(torso.getAngle()),tw=torso.getAngularVelocity(),height=pelvis.getPosition().y-this.groundHeight(pelvis.getPosition().x);
@@ -145,15 +146,16 @@ export class RobotWorld {
       }
       targets.waist=clamp(-pa-(.2+.15*p(9))*tw,-1.3,.8);
     }
-    let work=0;
+    this.resistWaist();let work=0;
     const kp=10+5*p(12),kd=.6+.25*p(13),gain=1+.25*p(14);
     for(const [i,name] of JOINTS.entries()){
       const motor=this.motors.find(m=>m.name===name),joint=motor.joint;
       const side=name.startsWith('left')?'left':name.startsWith('right')?'right':null,foot=side?this.parts[side+'Foot']:this.parts.pelvis;
       const inputs=[Math.sin(this.time*7),Math.cos(this.time*7),clamp(ta,-2,2),clamp(joint.getJointSpeed()/8,-1,1),side&&this.contacts.get(side+'Foot')>0?1:0,clamp(this.groundHeight(foot.getPosition().x+.3)-this.groundHeight(foot.getPosition().x)-(this.terrain.kind==='cave'?clamp(2.3-(terrainHeight(this.terrain.ceilings,foot.getPosition().x+.35)-this.groundHeight(foot.getPosition().x)),0,1):0),-1,.5)];
       const independent=inputs.reduce((sum,input,j)=>sum+input*p(32+i*6+j),0)*.65;
-      const target=clamp((targets[name]||0)+(recovering?.45:.13)*p(16+i)+independent,motor.lower+.01,motor.upper-.01);
-      joint.setMotorSpeed(clamp(kp*(target-joint.getJointAngle())-kd*joint.getJointSpeed(),-9,9));joint.setMaxMotorTorque(motor.torque*gain);
+      let target=clamp((targets[name]||0)+(recovering?.45:.13)*p(16+i)+independent,motor.lower+.01,motor.upper-.01);
+      const speedLimit=name==='waist'?WAIST_RESISTANCE.speedLimit:9;if(name==='waist'){this.waistTarget+=clamp(target-this.waistTarget,-WAIST_RESISTANCE.targetRate*DT,WAIST_RESISTANCE.targetRate*DT);target=this.waistTarget;}
+      joint.setMotorSpeed(clamp(kp*(target-joint.getJointAngle())-kd*joint.getJointSpeed(),-speedLimit,speedLimit));joint.setMaxMotorTorque(motor.torque*gain);
 
       work+=Math.abs(joint.getMotorTorque(2/DT)*joint.getJointSpeed())*DT;
     }
@@ -193,7 +195,7 @@ export function robotGeometry(sim){
 export function episode(weights,stage='balance',seed=1,options={}){
   const sim=new RobotWorld(stage,{seed,...options}),trace=[];
   while(!sim.done){sim.step(weights);if(options.record&&sim.steps%2===0)trace.push(sim.snapshot());}
-  return {metrics:sim.metrics(),trace,...robotGeometry(sim),obstacles:sim.obstacles,terrain:sim.terrain};
+  return {metrics:sim.metrics(),pushPlan:sim.pushes.map(p=>({...p})),trace,...robotGeometry(sim),obstacles:sim.obstacles,terrain:sim.terrain};
 }
 export function passedStage(metrics,stage){
   if(stage==='balance')return metrics.upright>.95&&metrics.falls===0&&Math.abs(metrics.distance)<1&&metrics.height>.75;

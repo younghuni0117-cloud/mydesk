@@ -1,4 +1,4 @@
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,clamp,seeded} from './robot-core.mjs?v=robot15';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,clamp,seeded,normalizePushSettings} from './robot-core.mjs?v=robot16';
 export const MODEL_VERSION=2;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -29,13 +29,13 @@ export class RobotLearner {
  }
  record(candidate,accepted,candidateAbilities=this.abilities){const row={attempts:this.attempts,task:this.focus,overall:this.bestReward,candidate,accepted,rewards:Object.fromEntries(stages.map(s=>[s,this.abilities[s].meanReward])),candidateRewards:Object.fromEntries(stages.map(s=>[s,candidateAbilities[s].meanReward]))};if(this.history.at(-1)?.attempts===this.attempts)this.history[this.history.length-1]=row;else this.history.push(row);this.history=compactHistory(this.history);}
  setFocus(stage){if(STAGES[stage])this.focus=stage;}
+ setTrainingPushSettings(settings){this.trainingPush=normalizePushSettings(settings);}
  trainOne(){
   const weights=this.pending.length===0?[...this.weights]:this.mean.map((m,i)=>clamp(m+this.spread[i]*gaussian(this.random),-4,4));
-  const task=this.focus,pushMax=this.attempts<100?2:this.attempts<500?4:6;
-  const seed=100+Math.floor((this.attempts-this.pending.length)/12);
-  const result=episode(weights,task,seed,{...this.environment,pushMax,disturbances:true}).metrics;
+  const task=this.focus,seed=100+this.attempts;
+  const trial=episode(weights,task,seed,{...this.environment,...normalizePushSettings(this.trainingPush),disturbances:true}),result=trial.metrics;
   this.attempts++;this.taskAttempts[task]++;this.pending.push({weights,score:result.reward,task});
-  return {attempts:this.attempts,task,score:result.reward,weights};
+  return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,pushes:result.pushes};
  }
  adopt(weights,abilities){
   const score=overallScore(abilities),accepted=score>this.bestReward+1e-7&&preservesAbilities(this.abilities,abilities);
