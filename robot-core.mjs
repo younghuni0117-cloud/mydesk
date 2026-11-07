@@ -1,10 +1,10 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot19';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot20';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot19';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot20';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot19';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot19';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot19';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot20';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot20';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot20';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 8 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
@@ -108,7 +108,7 @@ export class RobotWorld {
    if(this.steps%3===0||this.commandChanged)this.actions=this.zeroPolicy?Array(JOINTS.length).fill(0):policyActions(weights,this.observations());this.commandChanged=false;
   }
   applyActuation(dt){let work=0;for(const [i,m]of this.motors.entries()){m.joint.enableMotor(false);let torque=this.actions[i]*m.torque;const angle=m.joint.getJointAngle(),speed=m.joint.getJointSpeed();torque*=torque>0?clamp((m.upper-angle)/.12,0,1):clamp((angle-m.lower)/.12,0,1);torque*=clamp(1-Math.sign(torque)*speed/9,0,1);this.activeTorques[i]=torque;if(torque){m.joint.getBodyB().applyTorque(torque,true);m.joint.getBodyA().applyTorque(-torque,true);}work+=Math.abs(torque*speed)*dt;}return work;}
-  step(weights=Array(POLICY_SIZE).fill(0)){
+  step(weights=Array(POLICY_SIZE).fill(0),report=true){
     while(this.nextCommand<this.commandSchedule.length&&this.time>=this.commandSchedule[this.nextCommand].time)this.setCommand(this.commandSchedule[this.nextCommand++].command);
     this.impactCost=0;this.control(weights);let work=0;
     while(this.nextPushIndex<this.pushes.length&&this.time>=this.pushes[this.nextPushIndex].time){const p=this.pushes[this.nextPushIndex++];this.push(p.strength,p.direction,p.location,p.duration||0);this.pushesApplied++;this.lastPushAt=this.time;}
@@ -125,12 +125,12 @@ export class RobotWorld {
     if(this.isDown&&this.stableTime>.8){this.isDown=false;this.recoveries++;recovered=true;}
     let passed=0;for(const [i,o]of this.obstacles.entries())if(o.x>this.initialX+.3&&!this.passed.has(i)&&pos.x>o.x+o.width/2+REWARDS.obstacleClearance&&upright){this.passed.add(i);passed++;}
     const terms=rewardBreakdown(this.stage,{dt:DT,upright,speed:velocity.x,target:goal.target,angle,height:relativeHeight,distance:goal.distance,dx:pos.x-this.lastX,commanded:!!this.command,goalProgress:goal.positioned?Math.abs(this.lastGoalError??goal.error)-Math.abs(goal.error):0,goalError:goal.error,positioned:goal.positioned,lowPosture:goal.low,dy:pos.y-this.lastHeight,newFall,recovered,afterPush:this.time-this.lastPushAt<REWARDS.pushWindow,impactCost:this.impactCost,work,passed});
-    for(const [key,value]of Object.entries(terms)){this.reward+=value;this.rewardTerms[key]=(this.rewardTerms[key]||0)+value;}
+    for(const key in terms){const value=terms[key];this.reward+=value;this.rewardTerms[key]=(this.rewardTerms[key]||0)+value;}
     this.lastX=pos.x;this.lastHeight=pos.y;this.lastGoalError=goal.error;
     this.done=this.steps>=Math.round(this.duration/DT)||Math.abs(pos.x)>40||pos.y<-.8||!Number.isFinite(this.reward);
-    return this.metrics();
+    return report?this.metrics():undefined;
   }
-  metrics(){const p=this.parts.pelvis.getPosition();return {time:this.time,reward:this.reward,rewardTerms:{...this.rewardTerms},distance:p.x-this.initialX,speed:(p.x-this.initialX)/Math.max(this.time,DT),height:p.y-this.groundHeight(p.x),falls:this.falls,recoveries:this.recoveries,passed:this.passed.size,upright:this.uprightTime/Math.max(this.time,DT),energy:this.energy,pushes:this.pushesApplied,pushResistance:this.pushRecoveryTime,done:!!this.done,recovering:this.isDown,targetSpeed:this.goalState().target,goalDistance:this.goalState().error,command:this.command?{...this.command}:null};}
+  metrics(){const p=this.parts.pelvis.getPosition(),goal=this.goalState();return {time:this.time,reward:this.reward,rewardTerms:{...this.rewardTerms},distance:p.x-this.initialX,speed:(p.x-this.initialX)/Math.max(this.time,DT),height:p.y-this.groundHeight(p.x),falls:this.falls,recoveries:this.recoveries,passed:this.passed.size,upright:this.uprightTime/Math.max(this.time,DT),energy:this.energy,pushes:this.pushesApplied,pushResistance:this.pushRecoveryTime,done:!!this.done,recovering:this.isDown,targetSpeed:goal.target,goalDistance:goal.error,command:this.command?{...this.command}:null};}
   snapshot(){return {time:this.time,parts:this.bodies.map(p=>{const v=p.body.getPosition();return [v.x,v.y,p.body.getAngle()]}),metrics:this.metrics()};}
 }
 export function robotGeometry(sim){
@@ -138,8 +138,8 @@ export function robotGeometry(sim){
 }
 export function episode(weights,stage='balance',seed=1,options={}){
   const sim=new RobotWorld(stage,{seed,...options}),trace=[];
-  while(!sim.done){sim.step(weights);if(options.record&&sim.steps%2===0)trace.push(sim.snapshot());}
-  return {metrics:sim.metrics(),pushPlan:sim.pushes.map(p=>({...p})),commandSchedule:sim.commandSchedule.map(p=>structuredClone(p)),trace,...robotGeometry(sim),obstacles:sim.obstacles,terrain:sim.terrain};
+  while(!sim.done){sim.step(weights,false);if(options.record&&sim.steps%2===0)trace.push(sim.snapshot());}
+  return {metrics:sim.metrics(),pushPlan:sim.pushes.map(p=>({...p})),commandSchedule:sim.commandSchedule.map(p=>structuredClone(p)),trace,...(options.summaryOnly?{}:robotGeometry(sim)),obstacles:sim.obstacles,terrain:sim.terrain};
 }
 export function passedStage(metrics,stage){
   if(stage==='balance')return metrics.upright>.95&&metrics.falls===0&&Math.abs(metrics.distance)<1&&metrics.height>.75;
@@ -156,9 +156,9 @@ export const VALIDATION_CASES = [
  {id:'strong',label:'앞뒤 6 N·s',seed:4093,pushes:[{time:1.8,strength:6,direction:0,location:'shoulder'},{time:4.8,strength:6,direction:180,location:'torso'}]},
 ];
 export function evaluateAbility(weights,stage,environment={}){
- const cases=VALIDATION_CASES.map(c=>{const metrics=episode(weights,stage,c.seed,{...environment,pushes:c.pushes,disturbances:false}).metrics;return {id:c.id,label:c.label,passed:passedStage(metrics,stage),reward:metrics.reward,metrics};});
+ const cases=VALIDATION_CASES.map(c=>{const metrics=episode(weights,stage,c.seed,{...environment,pushes:c.pushes,disturbances:false,summaryOnly:true}).metrics;return {id:c.id,label:c.label,passed:passedStage(metrics,stage),reward:metrics.reward,metrics};});
  return {meanReward:cases.reduce((s,c)=>s+c.reward,0)/cases.length,passRate:cases.filter(c=>c.passed).length/cases.length,cases};
 }
 export function evaluateAbilities(weights,environment={}){return Object.fromEntries(Object.keys(STAGES).map(stage=>[stage,evaluateAbility(weights,stage,environment)]));}
 
-export function evaluateCommands(weights,environment={}){return COMMAND_CASES.reduce((total,c)=>total+episode(weights,'walk',71,{...environment,observationSeconds:8,disturbances:false,pushes:[],command:null,commandSchedule:c.schedule}).metrics.reward,0)/COMMAND_CASES.length;}
+export function evaluateCommands(weights,environment={}){return COMMAND_CASES.reduce((total,c)=>total+episode(weights,'walk',71,{...environment,observationSeconds:8,disturbances:false,pushes:[],command:null,commandSchedule:c.schedule,summaryOnly:true}).metrics.reward,0)/COMMAND_CASES.length;}

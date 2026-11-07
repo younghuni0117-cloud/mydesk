@@ -1,6 +1,6 @@
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot19';
-import {POLICY_KIND,extendV3Weights} from './robot-policy.mjs?v=robot19';
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings} from './robot-core.mjs?v=robot19';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot20';
+import {POLICY_KIND,extendV3Weights} from './robot-policy.mjs?v=robot20';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings} from './robot-core.mjs?v=robot20';
 export const MODEL_VERSION=4;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -8,9 +8,8 @@ const vector=a=>Array.isArray(a)&&a.length===POLICY_SIZE&&a.every(v=>Number.isFi
 export const overallScore=abilities=>stages.reduce((sum,s)=>sum+Math.tanh(abilities[s].meanReward/40),0)*20;
 export const modelScore=model=>overallScore(model.abilities)+20*Math.tanh((model.goalReward||0)/40);
 export function migrateModel(raw){if(RobotLearner.valid(raw))return raw;if(raw?.version!==3||raw.physicsVersion!==3||raw.policyKind!=='direct-torque-mlp-v1')return null;const migrated={...raw,version:4,policyKind:POLICY_KIND,goalReward:0};for(const k of ['weights','mean','spread'])migrated[k]=extendV3Weights(raw[k],k==='spread');return RobotLearner.valid(migrated)?migrated:null;}
-export function preservesAbilities(previous,next){
- return stages.every(s=>next[s].meanReward>=previous[s].meanReward-Math.max(1,Math.abs(previous[s].meanReward)*.02)&&previous[s].cases.every((c,i)=>!c.passed||next[s].cases[i].passed));
-}
+export const preservesAbility=(previous,next)=>next.meanReward>=previous.meanReward-Math.max(1,Math.abs(previous.meanReward)*.02)&&previous.cases.every((c,i)=>!c.passed||next.cases[i].passed);
+export function preservesAbilities(previous,next){return stages.every(s=>preservesAbility(previous[s],next[s]));}
 export function compactHistory(rows){if(rows.length<=160)return rows;const keep=new Set([0,...rows.map((_,i)=>i).slice(-40)]);for(const task of stages){const indices=rows.flatMap((r,i)=>r.task===task?[i]:[]);if(indices.length)keep.add(indices[0]);for(const i of indices.slice(-12))keep.add(i);}const rest=rows.map((_,i)=>i).filter(i=>!keep.has(i)),budget=Math.max(0,120-keep.size);for(let i=0;i<Math.min(budget,rest.length);i++)keep.add(rest[Math.floor(i*rest.length/Math.min(budget,rest.length))]);return [...keep].sort((a,b)=>a-b).map(i=>rows[i]);}
 export class RobotLearner {
  constructor(saved=null,seed=Date.now(),environment={}){
@@ -29,18 +28,18 @@ export class RobotLearner {
    &&Number.isSafeInteger(s.attempts)&&s.attempts>=0&&s.attempts<1e12&&Number.isSafeInteger(s.modelAttempt)&&s.modelAttempt>=0&&s.modelAttempt<=s.attempts
    &&['revision','policyVersion'].every(k=>Number.isSafeInteger(s[k])&&s[k]>=0)&&s.taskAttempts&&stages.every(k=>Number.isSafeInteger(s.taskAttempts[k])&&s.taskAttempts[k]>=0)&&stages.reduce((sum,k)=>sum+s.taskAttempts[k],0)===s.attempts
    &&s.abilities&&stages.every(k=>s.abilities[k]&&Number.isFinite(s.abilities[k].meanReward)&&Math.abs(s.abilities[k].meanReward)<1e6&&Number.isFinite(s.abilities[k].passRate)&&s.abilities[k].passRate>=0&&s.abilities[k].passRate<=1&&Array.isArray(s.abilities[k].cases)&&s.abilities[k].cases.length===4&&s.abilities[k].cases.every((c,i)=>c.id===VALIDATION_CASES[i].id&&typeof c.passed==='boolean'))
-   &&Array.isArray(s.history)&&s.history.length<=200&&s.history.every(r=>r&&Number.isSafeInteger(r.attempts)&&r.attempts>=0&&r.attempts<=s.attempts&&(!r.taskAttempts||(stages.every(k=>Number.isSafeInteger(r.taskAttempts[k])&&r.taskAttempts[k]>=0&&r.taskAttempts[k]<=s.taskAttempts[k])&&stages.reduce((sum,k)=>sum+r.taskAttempts[k],0)===r.attempts))&&Number.isFinite(r.overall)&&Math.abs(r.overall)<=121&&Number.isFinite(r.candidate)&&Math.abs(r.candidate)<=121&&(!r.rewards||stages.every(s=>Number.isFinite(r.rewards[s])&&Math.abs(r.rewards[s])<1e6))&&(!r.candidateRewards||stages.every(s=>Number.isFinite(r.candidateRewards[s])&&Math.abs(r.candidateRewards[s])<1e6)));
+   &&Array.isArray(s.history)&&s.history.length<=200&&s.history.every(r=>r&&Number.isSafeInteger(r.attempts)&&r.attempts>=0&&r.attempts<=s.attempts&&(!r.taskAttempts||(stages.every(k=>Number.isSafeInteger(r.taskAttempts[k])&&r.taskAttempts[k]>=0&&r.taskAttempts[k]<=s.taskAttempts[k])&&stages.reduce((sum,k)=>sum+r.taskAttempts[k],0)===r.attempts))&&Number.isFinite(r.overall)&&Math.abs(r.overall)<=121&&Number.isFinite(r.candidate)&&Math.abs(r.candidate)<=121&&(!r.rewards||stages.every(s=>Number.isFinite(r.rewards[s])&&Math.abs(r.rewards[s])<1e6))&&(!r.candidateRewards||stages.every(s=>Number.isFinite(r.candidateRewards[s])&&Math.abs(r.candidateRewards[s])<1e6))&&(!r.partialCandidateRewards||(r.validationComplete===false&&Object.keys(r.partialCandidateRewards).every(s=>stages.includes(s)&&Number.isFinite(r.partialCandidateRewards[s])&&Math.abs(r.partialCandidateRewards[s])<1e6))));
  }
- record(candidate,accepted,candidateAbilities=this.abilities){const row={attempts:this.attempts,taskAttempts:{...this.taskAttempts},task:this.focus,overall:this.bestReward,candidate,accepted,rewards:Object.fromEntries(stages.map(s=>[s,this.abilities[s].meanReward])),candidateRewards:Object.fromEntries(stages.map(s=>[s,candidateAbilities[s].meanReward]))};if(this.history.at(-1)?.attempts===this.attempts)this.history[this.history.length-1]=row;else this.history.push(row);this.history=compactHistory(this.history);}
+ record(candidate,accepted,candidateAbilities=this.abilities,validationComplete=true){const row={attempts:this.attempts,taskAttempts:{...this.taskAttempts},task:this.focus,overall:this.bestReward,candidate,accepted,validationComplete,rewards:Object.fromEntries(stages.map(s=>[s,this.abilities[s].meanReward])),candidateRewards:validationComplete?Object.fromEntries(Object.entries(candidateAbilities).map(([s,a])=>[s,a.meanReward])):undefined,partialCandidateRewards:validationComplete?undefined:Object.fromEntries(Object.entries(candidateAbilities).map(([s,a])=>[s,a.meanReward]))};if(this.history.at(-1)?.attempts===this.attempts)this.history[this.history.length-1]=row;else this.history.push(row);this.history=compactHistory(this.history);}
  setFocus(stage){if(STAGES[stage])this.focus=stage;}
  setTrainingPushSettings(settings){this.trainingPush=normalizePushSettings(settings);}
  setTrainingCommand(command){this.trainingCommand=command?normalizeCommand(command):null;}
- trainOne(){
+ trainOne({record=false}={}){
   const weights=this.pending.length===0?[...this.weights]:this.mean.map((m,i)=>clamp(m+this.spread[i]*gaussian(this.random),-4,4));
   const task=this.focus,seed=100+this.attempts,batch=Math.floor(this.attempts/12),schedule=trainingCommands(task,batch);if(batch%6===5&&this.trainingCommand)schedule.splice(0,schedule.length,{time:0,command:this.trainingCommand});
-  const trial=episode(weights,task,seed,{...this.environment,...normalizePushSettings(this.trainingPush),disturbances:true,commandSchedule:schedule}),result=trial.metrics;
+  const trial=episode(weights,task,seed,{...this.environment,...normalizePushSettings(this.trainingPush),disturbances:true,commandSchedule:schedule,record,summaryOnly:!record}),result=trial.metrics;
   this.attempts++;this.taskAttempts[task]++;this.pending.push({weights,score:result.reward,task});
-  return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes};
+  return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,scene:record?trial:null};
  }
  adopt(weights,abilities,goalReward=evaluateCommands(weights,this.environment)){
   const score=modelScore({abilities,goalReward}),accepted=score>this.bestReward+1e-7&&preservesAbilities(this.abilities,abilities);
@@ -53,7 +52,7 @@ export class RobotLearner {
   const winner=this.pending.reduce((a,b)=>a.score>=b.score?a:b);
   if(winner.weights.every((w,i)=>w===this.weights[i])){this.revision++;this.record(this.bestReward,false);this.updateDistribution();return false;}
   const abilities={};
-  for(const task of stages){if(!active())return null;abilities[task]=evaluateAbility(winner.weights,task,this.environment);await yieldControl();}
+  for(const task of [this.focus,...stages.filter(s=>s!==this.focus)]){if(!active())return null;abilities[task]=evaluateAbility(winner.weights,task,this.environment);await yieldControl();if(!active())return null;if(!preservesAbility(this.abilities[task],abilities[task])){this.revision++;this.record(this.bestReward,false,abilities,false);this.updateDistribution();return false;}}
   if(!active())return null;const accepted=this.adopt(winner.weights,abilities);this.updateDistribution();return accepted;
  }
  checkpoint(){if(!this.pending.length)return;const winner=this.pending.reduce((a,b)=>a.score>=b.score?a:b);this.adopt(winner.weights,evaluateAbilities(winner.weights,this.environment));this.updateDistribution();}

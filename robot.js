@@ -1,12 +1,12 @@
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot19';
-import {rewardHelp} from './robot-rewards.mjs?v=robot19';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot19';
-import {RobotTeam} from './robot-team.mjs?v=robot19';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot19';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot19';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot19';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot19';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot19';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot20';
+import {rewardHelp} from './robot-rewards.mjs?v=robot20';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot20';
+import {RobotTeam} from './robot-team.mjs?v=robot20';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot20';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot20';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot20';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot20';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot20';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v4';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
@@ -37,7 +37,7 @@ function renderModel(){if(!model)return;for(const [key,a]of Object.entries(model
 function renderChart(){if(!model)return;
  const rows=taskChartRows(model,stage);
  const current=model.abilities[stage].meanReward,end=model.taskAttempts[stage],values=[...rows,{overall:current,candidate:current}],[min,max]=chartDomain(values),Y=v=>95-(v-min)/(max-min)*90,X=n=>end?n/end*300:0;
- for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']])get(id).setAttribute('d',rows.map((r,i)=>`${i?'L':'M'}${X(r.attempts)} ${Y(r[k])}`).join(' '));
+ for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']]){let connected=false;get(id).setAttribute('d',rows.map(r=>{if(!Number.isFinite(r[k])){connected=false;return '';}const point=`${connected?'L':'M'}${X(r.attempts)} ${Y(r[k])}`;connected=true;return point;}).join(' '));}
  get('chart-dot').setAttribute('cx',X(end));get('chart-dot').setAttribute('cy',Y(current));
  get('chart-title').textContent=STAGES[stage].label+' · 평균 보상';get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('chart-range').textContent=`0~${end.toLocaleString()}회`;get('x-mid').textContent=Math.round(end/2).toLocaleString();get('x-max').textContent=end.toLocaleString()+'회';
  get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} 평균 보상 ${current.toFixed(1)}점. 가로축 ${STAGES[stage].label} 학습 0~${end}회. 기록이 있는 평가 시점만 표시합니다.`);
@@ -52,9 +52,11 @@ worker.onmessage=({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();progress(lastRequest.completed,lastRequest.target,'학습');return;}
  if(data.type==='ready'){initializing=false;if(!live)startLive();controls();status(migrationPending?'직접 제어 학습 0회 시작 · 이전 기록은 안내·저장에 보관했습니다.':`${resetPending?'모든 로봇 학습 데이터 초기화 완료 · ':''}${TERRAINS[options.terrain]} · 준비 완료`);resetPending=false;migrationPending=false;return;}
  if(data.type==='training'){training=data.active;controls();return;}
- if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();renderChart();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 (총 ${data.attempts.toLocaleString()}회) · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
+ if(data.type==='goal'){if(!training){if(!live)startLive();controls();status(`${TERRAINS[options.terrain]} · 준비 완료`);}return;}
+ if(data.type==='phase'){if(training)status(`학습 ${lastRequest.completed.toLocaleString()}/${lastRequest.target.toLocaleString()}회 · 통합 모델 확인 중`);return;}
+ if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();renderChart();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}const seconds=Math.max(0,Math.ceil(data.remainingMs/1000)),remaining=seconds<60?seconds+'초':Math.floor(seconds/60)+'분 '+seconds%60+'초';status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 (총 ${data.attempts.toLocaleString()}회) · 보상 ${signed(data.score)} · 예상 남은 시간 ${remaining}`);return;}
  if(data.type==='preview'){if(data.stage!==stage)return;latestPreview=data;if(viewSource==='candidate'&&(!viewPaused||live?.done))showRecent();return;}
- if(data.type==='done'){progress(data.completed,data.target,data.cancelled?'중지':'완료');training=false;controls();status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 같은 로봇으로 다른 운동도 시험해 보세요.`);return;}
+ if(data.type==='done'){progress(data.completed,data.target,data.cancelled?'중지':'완료');training=false;if(viewSource==='candidate'&&mode==='trace'&&latestPreview)showRecent();controls();status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 같은 로봇으로 다른 운동도 시험해 보세요.`);return;}
  if(data.type==='error'){training=false;initializing=false;controls();status(data.message);}
 };
 worker.onerror=()=>{training=false;initializing=true;controls();status('학습 스레드 오류입니다. 저장된 모델을 유지합니다. 새로고침해 주세요.');};
@@ -77,11 +79,11 @@ get('command-speed').oninput=()=>applyCommand({...command,speed:Number(get('comm
 get('command-position').onchange=()=>{const input=get('command-position'),value=Number(input.value);if(!input.value.trim()||!Number.isFinite(value)||value< -30||value>30){input.setCustomValidity('출발점 기준 −30~30m 사이로 입력하세요.');input.reportValidity();return;}input.setCustomValidity('');applyCommand({...command,position:value});};
 get('pick-target').onclick=()=>{setPicking(!pickingTarget);if(pickingTarget)status('지형에서 목표 위치를 누르세요.');};
 get('stop').onclick=()=>{if(initializing)return;setPicking(false);if(mode==='live'&&live&&!live.done){viewSource='best';liveSource='best';liveWeights=[...model.weights];liveVersion=model.policyVersion;liveAttempt=model.attempts;liveTrial=null;for(const w of liveRobots){w.commandSchedule=[];w.nextCommand=0;}}else{viewSource='best';startLive();}applyCommand({...command,mode:'hold'});viewPaused=false;controls();};
-function showRecent(){if(latestPreview)startLive(latestPreview.weights,latestPreview.source,latestPreview.attempts,latestPreview.policyVersion,latestPreview);else worker.postMessage({type:'preview'});}
+function showRecent(){if(training&&latestPreview?.scene?.trace?.length){scene=latestPreview.scene;live=null;liveRobots=[];liveSource='candidate';liveAttempt=latestPreview.attempts;liveVersion=latestPreview.policyVersion;liveTrial=latestPreview;mode='trace';traceTime=0;viewPaused=false;controls();return;}if(latestPreview)startLive(latestPreview.weights,latestPreview.source,latestPreview.attempts,latestPreview.policyVersion,latestPreview);else worker.postMessage({type:'preview'});}
 get('run').onclick=()=>{viewSource='best';startLive();};
 get('preview').onclick=()=>{viewSource='candidate';viewPaused=false;showRecent();controls();};
 get('pause-view').onclick=()=>{viewPaused=!viewPaused;controls();};
-function pushAt(direction,factor=1,point=null){if(initializing)return;if(mode!=='live'||!live)startLive();else if(liveRobots.every(w=>w.done))startLive(liveWeights,liveSource,liveAttempt,liveVersion,liveTrial);let index=0;if(point){let best=Infinity;for(let i=0;i<liveRobots.length;i++){const p=liveRobots[i].parts.torso.getPosition(),distance=Math.hypot(p.x+i*3.8-point.x,p.y-point.y);if(distance<best){best=distance;index=i;}}}const robot=liveRobots[index],strength=clamp(factor*8,.5,30);robot.push(strength,direction,'torso');viewPaused=false;const p=robot.parts.torso.getPosition();pushArrow={x:p.x+index*3.8,y:p.y,angle:direction*Math.PI/180,strength,remaining:1.1};status(`로봇 ${index+1} · ${strength.toFixed(1)} N·s 밀기`);controls();}
+function pushAt(direction,factor=1,point=null){if(initializing)return;if(mode!=='live'||!live){if(viewSource==='candidate'&&latestPreview)startLive(latestPreview.weights,'candidate',latestPreview.attempts,latestPreview.policyVersion,latestPreview);else startLive();}else if(liveRobots.every(w=>w.done))startLive(liveWeights,liveSource,liveAttempt,liveVersion,liveTrial);let index=0;if(point){let best=Infinity;for(let i=0;i<liveRobots.length;i++){const p=liveRobots[i].parts.torso.getPosition(),distance=Math.hypot(p.x+i*3.8-point.x,p.y-point.y);if(distance<best){best=distance;index=i;}}}const robot=liveRobots[index],strength=clamp(factor*8,.5,30);robot.push(strength,direction,'torso');viewPaused=false;const p=robot.parts.torso.getPosition();pushArrow={x:p.x+index*3.8,y:p.y,angle:direction*Math.PI/180,strength,remaining:1.1};status(`로봇 ${index+1} · ${strength.toFixed(1)} N·s 밀기`);controls();}
 function setZoom(value){zoom=clamp(value,.04,2.5);get('zoom-value').textContent=Math.round(zoom*100)+'%';}
 get('zoom-in').onclick=()=>setZoom(zoom*1.2);get('zoom-out').onclick=()=>setZoom(zoom/1.2);get('fit').onclick=()=>{setZoom(1);panX=.4;panY=0;follow=options.view==='robot';};
 canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));},{passive:false});
@@ -116,13 +118,13 @@ function draw(data){
  if(drag&&drag.mode==='push'){ctx.strokeStyle='#b38d68';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(drag.x-rect.left,drag.y-rect.top);ctx.lineTo(drag.endX-rect.left,drag.endY-rect.top);ctx.stroke();}
 }
 function hud(data){if(!data)return;const m=data.frame.metrics;get('time').innerHTML=`${m.time.toFixed(1)}<small>초</small>`;get('distance').innerHTML=`${signed(m.distance)}<small>m</small>`;get('speed').innerHTML=`${m.speed.toFixed(1)}<small>m/s</small>`;get('events').textContent=`${m.recoveries} / ${m.passed}`;
- const source=liveSource==='candidate'?'최근 모델':'통합 모델';get('view-label').textContent=`${STAGES[stage].label} · ${source} v${liveVersion} · ${liveAttempt.toLocaleString()}회 시점 · 실시간${liveSource==='best'?' · '+commandLabel(command):data.frame.metrics.command?' · '+commandLabel(data.frame.metrics.command):''}`;
+ const source=liveSource==='candidate'?'최근 모델':'통합 모델';get('view-label').textContent=`${STAGES[stage].label} · ${source} v${liveVersion} · ${liveAttempt.toLocaleString()}회 시점 · ${mode==='trace'?'학습 재생':'실시간'}${liveSource==='best'?' · '+commandLabel(command):data.frame.metrics.command?' · '+commandLabel(data.frame.metrics.command):''}`;
 }
 
 function animate(time){
  lastDraw=time;
  const dt=lastTime?Math.min(.05,(time-lastTime)/1000):0;lastTime=time;
- if(!viewPaused){if(mode==='live'&&live&&!liveRobots.every(w=>w.done)){accumulator+=dt;while(accumulator>=DT){previousFrames=currentFrames;for(const w of liveRobots)if(!w.done)w.step(liveWeights);currentFrames=liveRobots.map(w=>w.snapshot());accumulator-=DT;}if(liveRobots.every(w=>w.done)){viewPaused=true;controls();if(!training)status('관찰 종료 · 중간 관찰 또는 통합 모델 실행으로 다시 시작하세요.');}}else if(mode==='trace')traceTime+=dt;if(pushArrow){pushArrow.remaining-=dt;if(pushArrow.remaining<=0)pushArrow=null;}}
+ if(!viewPaused){if(mode==='live'&&live&&!liveRobots.every(w=>w.done)){accumulator+=dt;while(accumulator>=DT){previousFrames=currentFrames;for(const w of liveRobots)if(!w.done)w.step(liveWeights,false);currentFrames=liveRobots.map(w=>w.snapshot());accumulator-=DT;}if(liveRobots.every(w=>w.done)){viewPaused=true;controls();if(!training)status('관찰 종료 · 중간 관찰 또는 통합 모델 실행으로 다시 시작하세요.');}}else if(mode==='trace')traceTime+=dt;if(pushArrow){pushArrow.remaining-=dt;if(pushArrow.remaining<=0)pushArrow=null;}}
  const data=sourceFrame();draw(data);if(time-lastHud>140){hud(data);lastHud=time;}
  frame=requestAnimationFrame(animate);
 }
