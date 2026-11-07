@@ -1,0 +1,85 @@
+{
+  "count": 12,
+  "seeds": [
+    42,
+    73,
+    101
+  ],
+  "note": "Short test on balance/meadow; no convergence or algorithm superiority claim.",
+  "results": [
+    {
+      "seed": 42,
+      "algorithm": "cem",
+      "attempts": 12,
+      "elapsedMs": 13734.471913,
+      "trainingMeanReward": -49.62247297561103,
+      "heldOutMeanReward": -41.14230119772279,
+      "heldOutPassRate": 0,
+      "integratedVersion": 0,
+      "ppoUpdates": 0,
+      "valid": true
+    },
+    {
+      "seed": 42,
+      "algorithm": "ppo",
+      "attempts": 12,
+      "elapsedMs": 10420.005098,
+      "trainingMeanReward": -39.50055745478964,
+      "heldOutMeanReward": -41.14230119772279,
+      "heldOutPassRate": 0,
+      "integratedVersion": 0,
+      "ppoUpdates": 3,
+      "valid": true
+    },
+    {
+      "seed": 73,
+      "algorithm": "cem",
+      "attempts": 12,
+      "elapsedMs": 11895.993872000003,
+      "trainingMeanReward": -39.30202223120503,
+      "heldOutMeanReward": -22.370576039163264,
+      "heldOutPassRate": 0,
+      "integratedVersion": 1,
+      "ppoUpdates": 0,
+      "valid": true
+    },
+    {
+      "seed": 73,
+      "algorithm": "ppo",
+      "attempts": 12,
+      "elapsedMs": 9529.541412999999,
+      "trainingMeanReward": -43.131296846941325,
+      "heldOutMeanReward": -39.38491683831662,
+      "heldOutPassRate": 0,
+      "integratedVersion": 1,
+      "ppoUpdates": 3,
+      "valid": true
+    },
+    {
+      "seed": 101,
+      "algorithm": "cem",
+      "attempts": 12,
+      "elapsedMs": 11583.364218000002,
+      "trainingMeanReward": -46.06766904234676,
+      "heldOutMeanReward": -30.52615169006369,
+      "heldOutPassRate": 0,
+      "integratedVersion": 1,
+      "ppoUpdates": 0,
+      "valid": true
+    },
+    {
+      "seed": 101,
+      "algorithm": "ppo",
+      "attempts": 12,
+      "elapsedMs": 8717.219287,
+      "trainingMeanReward": -40.86981687609086,
+      "heldOutMeanReward": -35.536893105598836,
+      "heldOutPassRate": 0,
+      "integratedVersion": 1,
+      "ppoUpdates": 3,
+      "valid": true
+    }
+  ],
+  "date": "2026-11-07",
+  "executionNote": "Short sample-efficiency diagnostic on a shared executor. elapsedMs is recorded for diagnosis, not a controlled speed benchmark. No claim of convergence or PPO superiority."
+}

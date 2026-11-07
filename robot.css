@@ -117,3 +117,5 @@ body[data-page=robot].robot-wide-fit .robot-chart{flex:none;min-height:0;max-hei
 body[data-page=robot].robot-wide-fit .robot-command-details .robot-details-content{max-height:150px}
 
 .robot-view-label{max-width:calc(100% - 108px);line-height:14px}
+
+.robot-details [hidden]{display:none!important}.robot-chart svg{overflow:hidden!important}.robot-storage-blocked{color:#99524a!important}
