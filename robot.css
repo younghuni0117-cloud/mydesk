@@ -142,16 +142,11 @@ body[data-page=robot].robot-wide-fit .robot-details summary{font-size:13px}
 body[data-page=robot] .robot-controls>.robot-chart{margin-top:8px}
 body[data-page=robot] .robot-chart-scale{display:none}
 
-/* Camera controls belong to details; expanded options use the document scrollbar. */
+/* Camera controls belong to details; each section expands inside the sidebar. */
 body[data-page=robot] .robot-details .robot-camera{display:flex;flex-wrap:wrap;gap:6px;font-size:13px}
 body[data-page=robot] .robot-details .robot-camera button,body[data-page=robot] .robot-details .robot-camera select{font-size:13px!important;min-height:34px}
 body[data-page=robot] .robot-details .robot-camera label{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-basis:100%}
 body[data-page=robot] .robot-details .robot-camera label select{min-width:120px}
-body[data-page=robot].robot-wide-fit{height:auto!important;min-height:var(--game-height,100dvh);overflow-x:hidden;overflow-y:auto}
-body[data-page=robot].robot-wide-fit .workspace{height:auto!important;min-height:var(--game-height,100dvh);overflow:visible}
-body[data-page=robot].robot-wide-fit main{display:block;overflow:visible}
-body[data-page=robot].robot-wide-fit .robot-experiment{display:block;height:auto}
-body[data-page=robot].robot-wide-fit .section-top{margin-bottom:6px}
-body[data-page=robot].robot-wide-fit .robot-lab{height:auto;min-height:calc(var(--game-height,100dvh) - 100px);grid-template-rows:auto;align-items:start;overflow:visible}
-body[data-page=robot].robot-wide-fit .robot-arena{position:sticky;top:12px;height:calc(var(--game-height,100dvh) - 100px);align-self:start}
-body[data-page=robot].robot-wide-fit .robot-controls{height:auto;overflow:visible}
+/* Keep the robot viewport stationary while the whole right panel scrolls. */
+body[data-page=robot].robot-wide-fit .robot-controls{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-gutter:stable}
+body[data-page=robot].robot-wide-fit .robot-details-content{max-height:none;overflow:visible}
