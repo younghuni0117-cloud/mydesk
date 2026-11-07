@@ -9,34 +9,7 @@ function sprite(part,skin){
  function round(x,y,width,height,r,fill){c.beginPath();c.roundRect(x,y,width,height,r);c.fillStyle=fill;c.fill();c.stroke();}
  function line(points,color=ink,width=2){c.strokeStyle=color;c.lineWidth=width;c.beginPath();points.forEach((p,i)=>i?c.lineTo(...p):c.moveTo(...p));c.stroke();c.strokeStyle=ink;c.lineWidth=3;}
  function disk(x,y,r,fill){c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fillStyle=fill;c.fill();c.stroke();}
- if(skin==='knight'||skin==='gunner'){
-  const knight=skin==='knight',accent=knight?'#b83c44':'#3e79b6',shadow=knight?'#592c43':'#263f64',metal=knight?'#d7c5a3':'#c4d6df',trim=knight?'#edba6c':'#80d6e7',cloth=rear?shadow:accent;
-  if(name==='head'){
-   blob([[-w*.7,-w*.6],[-w*.1,-w*1.05,w*.62,-w*.61],[w*.83,-w*.13],[w*1.07,w*.16],[w*.74,w*.3],[w*.56,w*.81],[-w*.16,w*.91],[-w*.7,w*.4]],metal);
-   if(knight){blob([[-w*.75,-w*.18],[-w*.9,-w*.94],[-w*.35,-w*1.3],[0,-w*.9],[w*.23,-w*1.18],[w*.76,-w*.7],[w*.62,-w*.36],[-w*.18,-w*.33]],cloth);line([[-w*.28,-w*.9],[w*.49,-w*.55]],trim,3);round(-w*.02,-w*.3,w*.82,w*.36,3,shadow);line([[w*.16,-w*.13],[w*.58,-w*.1]],'#ffe5a5',3);}
-   else{blob([[-w*.9,-w*.5],[-w*.51,-w*1.16],[w*.48,-w*1.05],[w*.78,-w*.46],[w*1.22,-w*.31],[w*1.12,-w*.15],[-w*1.03,-w*.15]],shadow);line([[-w*.55,-w*.5],[w*.67,-w*.43]],trim,3);round(w*.01,-w*.03,w*.73,w*.24,3,'#274863');line([[w*.14,w*.06],[w*.52,w*.06]],'#a2edf0',2);}
-   line([[w*.2,w*.49],[w*.61,w*.47]],shadow,2);disk(-w*.48,w*.08,w*.19,trim);
-  }else if(name==='torso'){
-   // Coat, back-mounted weapon silhouette, shoulder mantle and rune chest plate.
-   blob([[-w*.46,-h*.4],[-w*.92,-h*.61],[-w*.77,h*.73],[-w*.35,h*.63],[w*.1,h*.83],[w*.48,h*.52],[w*.38,-h*.3]],cloth);
-   line([[-w*.8,-h*.37],[-w*.68,h*.56]],trim,3);
-   round(-w*.14,-h*.62,w*.3,h*.22,3,shadow);
-   blob([[-w*.42,-h*.4],[w*.42,-h*.43],[w*.6,-h*.12],[w*.34,h*.41],[-w*.39,h*.41],[-w*.54,-h*.06]],metal);
-   blob([[-w*.45,-h*.42],[w*.45,-h*.45],[w*.62,-h*.2],[w*.21,-h*.14],[-w*.2,-h*.25],[-w*.57,-h*.18]],cloth);
-   line([[w*.05,-h*.1],[w*.05,h*.34]],trim,3);round(w*.13,h*.03,w*.28,h*.2,3,shadow);disk(w*.27,h*.12,3,trim);
-   line([[-w*.31,-h*.03],[-w*.12,h*.21],[w*.03,h*.02]],accent,3);line([[-w*.27,h*.29],[w*.28,h*.29]],shadow,4);
-  }else if(name==='pelvis'){
-   blob([[-w*.55,-h*.48],[w*.45,-h*.45],[w*.61,h*.45],[w*.22,h*.64],[0,h*.23],[-w*.38,h*.63],[-w*.55,h*.18]],cloth);round(-w*.55,-h*.4,w*1.09,h*.25,2,shadow);round(w*.02,-h*.41,w*.28,h*.29,2,trim);round(-w*.42,h*.02,w*.27,h*.35,3,metal);
-  }else if(name.includes('Foot')||name.includes('ToePart')){
-   blob([[-w*.57,-h*.66],[w*.12,-h*.58],[w*.7,-h*.02],[w*.67,h*.51],[-w*.57,h*.51]],shadow);line([[-w*.47,h*.34],[w*.58,h*.34]],trim,4);blob([[-w*.3,-h*.47],[w*.05,-h*.49],[w*.3,h*.03],[-w*.2,h*.07]],metal);
-  }else if(name.includes('Hand')){
-   round(-w*.5,-h*.47,w,h*.94,4,shadow);blob([[-w*.42,-h*.45],[w*.36,-h*.45],[w*.46,h*.1],[-w*.28,h*.3]],metal);line([[-w*.25,-h*.25],[w*.24,-h*.21]],trim,3);
-  }else{
-   const leg=name.includes('Thigh')||name.includes('Shin'),upper=name.includes('UpperArm');round(-w*.42,-h*.46,w*.84,h*.92,5,shadow);
-   blob([[-w*.45,-h*.39],[w*.37,-h*.42],[w*.6,-h*.19],[w*.24,h*.41],[-w*.35,h*.35]],rear?shadow:metal);line([[-w*.17,-h*.28],[w*.07,h*.25]],trim,2);
-   if(upper){blob([[-w*.85,-h*.38],[-w*.45,-h*.64],[w*.45,-h*.62],[w*.9,-h*.24],[0,-h*.17]],cloth);line([[-w*.64,-h*.38],[w*.55,-h*.39]],trim,3);}else if(leg){disk(0,-h*.4,Math.min(w*.42,8),accent);line([[-w*.2,h*.22],[w*.22,h*.18]],accent,3);}
-  }
- }else if(skin==='tin'||skin==='space'){
+ if(skin==='tin'||skin==='space'){
   const gold=skin==='space',metal=gold?(rear?'#9c732e':'#ddb860'):(rear?'#6d8491':'#bdcbd1'),shade=gold?'#946828':'#6e8795',shine=gold?'#fff0ad':'#edf6f8',joint=gold?'#584d38':'#425968';
   if(name==='head'){
    if(gold){blob([[-w*.65,-w*.76],[-w*.1,-w*1.1,w*.57,-w*.78],[w*.83,-w*.18],[w*1.06,w*.12],[w*.74,w*.28],[w*.62,w*.79],[-w*.15,w*.91],[-w*.73,w*.42]],metal);disk(w*.4,-w*.14,w*.23,joint);disk(w*.4,-w*.14,w*.09,'#ffe2a1');line([[w*.16,w*.45],[w*.67,w*.45]],joint,3);line([[w*.2,w*.57],[w*.6,w*.57]],joint,1);disk(-w*.51,0,w*.21,shade);line([[-w*.14,-w*.75],[-w*.13,w*.36]],shine,2);}

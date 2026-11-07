@@ -1,15 +1,15 @@
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot10';
-import {RobotTeam} from './robot-team.mjs?v=robot10';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot10';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot10';
-import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot10';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot10';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot10';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot11';
+import {RobotTeam} from './robot-team.mjs?v=robot11';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot11';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot11';
+import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot11';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot11';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot11';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v2';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
 let model=RobotLearner.valid(cache.model)?cache.model:null;
-let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','knight','gunner'].includes(saved))skin=saved;}catch{}
+let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space'].includes(saved))skin=saved;}catch{}
 let options={terrain:'meadow',view:'terrain',robots:1};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1};}catch{}
 let liveRobots=[],previousFrames=[],currentFrames=[];
 let stage='balance',training=false,initializing=true;
@@ -39,7 +39,7 @@ function renderChart(){if(!model)return;
 }
 
 const worker=new RobotTeam();
-function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:4},robotCount:options.robots});}
+function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:5},robotCount:options.robots});}
 function settings(){worker.postMessage({type:'settings',interval:Number(get('interval').value),source:get('source').value});}
 worker.onmessage=({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();progress(lastRequest.completed,lastRequest.target,'학습');return;}
@@ -114,7 +114,7 @@ get('terrain').value=options.terrain;get('view').value=options.view;
 function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view}));}catch{}}
 get('terrain').onchange=()=>{options.terrain=get('terrain').value;saveOptions();setZoom(1);panX=.4;panY=0;follow=options.view==='robot';configure(model);};
 get('view').onchange=()=>{const next=get('view').value;if(next==='terrain'&&follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale;}else if(next==='robot')panY=0;options.view=next;follow=next==='robot';saveOptions();};
-if(model&&model.environment?.courseVersion!==4)backup();
+if(model&&model.environment?.courseVersion!==5)backup();
 settings();configure(model,legacy,legacyCounts);
 // Retire the former website login locally; no server requests are made.
 try{localStorage.removeItem('mydesk.robot.auth');}catch{}
