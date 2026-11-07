@@ -1,16 +1,16 @@
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot13';
-import {RobotTeam} from './robot-team.mjs?v=robot13';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot13';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot13';
-import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot13';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot13';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot13';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot14';
+import {RobotTeam} from './robot-team.mjs?v=robot14';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot14';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot14';
+import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot14';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot14';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot14';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v2';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
 let model=RobotLearner.valid(cache.model)?cache.model:null;
-let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space'].includes(saved))skin=saved;}catch{}
-let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,interval:20};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1,observationSeconds:Number.isInteger(o.observationSeconds)&&o.observationSeconds>=1&&o.observationSeconds<=3600?o.observationSeconds:30,interval:[10,20,50,100].includes(o.interval)?o.interval:20};}catch{}
+let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker'].includes(saved))skin=saved;}catch{}
+let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,interval:20};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:o.terrain==='rockyhills'?'desert':TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1,observationSeconds:Number.isInteger(o.observationSeconds)&&o.observationSeconds>=1&&o.observationSeconds<=3600?o.observationSeconds:30,interval:[10,20,50,100].includes(o.interval)?o.interval:20};}catch{}
 let liveRobots=[],previousFrames=[],currentFrames=[];
 let stage='balance',training=false,initializing=true;
 let mode='trace',scene=null,pendingScene=null,traceTime=0,viewPaused=false,live=null,liveWeights=Array(POLICY_SIZE).fill(0),geometry=null;
@@ -40,7 +40,7 @@ function renderChart(){if(!model)return;
 }
 
 const worker=new RobotTeam();
-function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:6},robotCount:options.robots});}
+function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:7},robotCount:options.robots});}
 function settings(){worker.postMessage({type:'settings',interval:options.interval});}
 worker.onmessage=({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();progress(lastRequest.completed,lastRequest.target,'학습');return;}
@@ -114,14 +114,14 @@ document.addEventListener('game:help-open',()=>{viewPaused=true;controls();});
 window.addEventListener('pagehide',()=>{worker.postMessage({type:'stop'});viewPaused=true;persist();});
 let legacy=null,legacyCounts=null;
 if(!model)try{const old=JSON.parse(localStorage.getItem('mydesk.robot.v1')||'{}'),valid=Object.entries(old).filter(([k,m])=>/^(balance|recover|walk|run|obstacles)-(0|30|60)$/.test(k)&&Array.isArray(m?.weights)&&m.weights.length===32&&m.weights.every(v=>Number.isFinite(v)&&Math.abs(v)<20));legacy=valid.sort((a,b)=>(b[1].bestReward||0)-(a[1].bestReward||0)).slice(0,3).map(([,v])=>v);legacyCounts=Object.fromEntries(Object.keys(STAGES).map(k=>[k,valid.filter(([name])=>name.startsWith(k+'-')).reduce((s,[,m])=>s+(Number.isSafeInteger(m.attempts)&&m.attempts>0&&m.attempts<1e10?m.attempts:0),0)]));}catch{}
-function selectSkin(value){skin=value;for(const button of document.querySelectorAll('[data-rb-skin]'))button.setAttribute('aria-pressed',String(button.dataset.rbSkin===skin));try{localStorage.setItem('mydesk.robot.skin',skin);}catch{}}
-for(const button of document.querySelectorAll('[data-rb-skin]'))button.onclick=()=>selectSkin(button.dataset.rbSkin);
+function selectSkin(value){skin=value;get('character').value=skin;try{localStorage.setItem('mydesk.robot.skin',skin);}catch{}}
+get('character').onchange=()=>selectSkin(get('character').value);
 selectSkin(skin);progress(0,0,'대기');
 get('terrain').value=options.terrain;get('view').value=options.view;get('observation-seconds').value=String(options.observationSeconds);get('interval').value=String(options.interval);
 function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view,observationSeconds:options.observationSeconds,interval:options.interval}));}catch{}}
 get('terrain').onchange=()=>{options.terrain=get('terrain').value;saveOptions();setZoom(1);panX=.4;panY=0;follow=options.view==='robot';configure(model);};
 get('view').onchange=()=>{const next=get('view').value;if(next==='terrain'&&follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale-terrainDatum;}else if(next==='robot')panY=0;options.view=next;follow=next==='robot';saveOptions();};
-if(model&&model.environment?.courseVersion!==6)backup();
+if(model&&model.environment?.courseVersion!==7)backup();
 settings();configure(model,legacy,legacyCounts);
 // Retire the former website login locally; no server requests are made.
 try{localStorage.removeItem('mydesk.robot.auth');}catch{}

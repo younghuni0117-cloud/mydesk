@@ -1,4 +1,4 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot13';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot14';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
 export const DT = 1 / 60;
 export const POLICY_SIZE = 128;
@@ -22,7 +22,7 @@ export class RobotWorld {
     this.world=new World(Vec2(0,-9.81));this.world.setAutoClearForces(false);this.bodies=[];this.parts={};this.joints={};this.motors=[];
     this.terrain=makeTerrain(options.terrain);this.terrainSegments=this.terrain.segments;this.groundHeight=x=>terrainHeight(this.terrainSegments,x);
     const floor=this.world.createBody({userData:'ground'});floor.createFixture(Box(500,.15,Vec2(0,-.15)),{friction:options.friction??this.terrain.friction});
-    for(const s of this.terrainSegments)if(s.y0>0||s.y1>0){const body=this.world.createBody({userData:'ground'});body.createFixture(Polygon([Vec2(s.x0,-.2),Vec2(s.x1,-.2),Vec2(s.x1,s.y1),Vec2(s.x0,s.y0)]),{friction:this.terrain.friction});}
+    for(const s of this.terrainSegments)if(s.y0>0||s.y1>0){const body=this.world.createBody({userData:'ground'});body.createFixture(Polygon([Vec2(s.x0,-.2),Vec2(s.x1,-.2),Vec2(s.x1,s.y1),Vec2(s.x0,s.y0)]),{friction:s.friction??this.terrain.friction});}
     for(const s of this.terrain.ceilings||[]){const body=this.world.createBody({userData:'obstacle'});body.createFixture(Polygon([Vec2(s.x0,s.y0),Vec2(s.x1,s.y1),Vec2(s.x1,Math.max(s.y0,s.y1)+6),Vec2(s.x0,Math.max(s.y0,s.y1)+6)]),{friction:.85});}
     this.obstacles=[...this.terrain.obstacles];
 

@@ -9,7 +9,32 @@ function sprite(part,skin){
  function round(x,y,width,height,r,fill){c.beginPath();c.roundRect(x,y,width,height,r);c.fillStyle=fill;c.fill();c.stroke();}
  function line(points,color=ink,width=2){c.strokeStyle=color;c.lineWidth=width;c.beginPath();points.forEach((p,i)=>i?c.lineTo(...p):c.moveTo(...p));c.stroke();c.strokeStyle=ink;c.lineWidth=3;}
  function disk(x,y,r,fill){c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fillStyle=fill;c.fill();c.stroke();}
- if(skin==='tin'||skin==='space'){
+ if(skin==='hiker'){
+  const flesh=rear?'#c68d69':'#edbc96',jacket=rear?'#a8513c':'#dc754b',pants=rear?'#405b51':'#647965',seam='#61493b';
+  if(name==='head'){
+   // A human face, knit cap, hair and stubble; no visor or mechanical joints.
+   blob([[-w*.59,-w*.67],[w*.46,-w*.71],[w*.66,-w*.27],[w*.98,w*.06],[w*.72,w*.25],[w*.61,w*.67],[w*.08,w*.89],[-w*.52,w*.55],[-w*.68,w*.1]],flesh);
+   blob([[-w*.7,-w*.47],[-w*.63,-w*.87],[w*.4,-w*.85],[w*.57,-w*.4],[w*.21,-w*.33],[-w*.24,-w*.2],[-w*.32,w*.31],[-w*.61,w*.31]],'#6c4b39');
+   blob([[-w*.76,-w*.49],[-w*.76,-w*.99,-w*.09,-w*1.12],[w*.55,-w*1.08,w*.68,-w*.56],[w*.87,-w*.43],[w*.68,-w*.31],[-w*.8,-w*.31]],'#6e8666');
+   line([[-w*.61,-w*.57],[w*.56,-w*.57]],'#a3b58d',3);for(let i=0;i<4;i++)line([[-w*.48+i*w*.24,-w*.9],[-w*.42+i*w*.24,-w*.62]],'#526b51',1);
+   disk(-w*.38,w*.13,w*.17,flesh);disk(w*.43,-w*.03,w*.055,'#302d2a');line([[w*.24,-w*.19],[w*.55,-w*.2]],'#5f4435',2);line([[w*.35,w*.47],[w*.65,w*.45]],'#8d5440',2);line([[w*.14,w*.61],[w*.36,w*.7],[w*.53,w*.56]],'#a27355',2);
+  }else if(name==='torso'){
+   round(-w*.13,-h*.61,w*.27,h*.22,3,flesh);round(-w*.76,-h*.35,w*.43,h*.77,7,'#4a6d6b');line([[-w*.62,-h*.25],[-w*.62,h*.29]],'#a8b7a0',3);
+   blob([[-w*.44,-h*.45],[-w*.2,-h*.55],[w*.31,-h*.45],[w*.52,-h*.28],[w*.47,h*.43],[-w*.44,h*.43],[-w*.55,h*.06]],jacket);
+   blob([[-w*.31,-h*.45],[-w*.03,-h*.35],[w*.2,-h*.46],[w*.14,-h*.23],[-w*.08,-h*.18]],'#ead5a8');line([[w*.03,-h*.24],[w*.07,h*.4]],'#f4d7a2',3);round(w*.18,h*.04,w*.25,h*.2,2,'#c65e40');line([[w*.21,h*.09],[w*.41,h*.08]],'#edb482',2);line([[-w*.31,-h*.32],[-w*.29,h*.2]],'#3f5a54',4);line([[-w*.43,h*.33],[w*.44,h*.33]],'#9c4937',2);
+  }else if(name==='pelvis'){
+   blob([[-w*.47,-h*.46],[w*.43,-h*.46],[w*.54,h*.44],[-w*.43,h*.47]],pants);round(-w*.5,-h*.42,w,h*.24,2,'#73583c');round(w*.04,-h*.43,w*.22,h*.25,2,'#c6b28b');line([[w*.01,-h*.05],[w*.05,h*.39]],'#3e5549',2);
+  }else if(name.includes('Foot')||name.includes('ToePart')){
+   blob([[-w*.52,-h*.61],[w*.1,-h*.55],[w*.63,-h*.03],[w*.63,h*.5],[-w*.55,h*.5]],rear?'#614a38':'#8d6946');line([[-w*.47,h*.35],[w*.55,h*.35]],'#d5bb83',4);line([[-w*.1,-h*.25],[w*.18,-h*.1]],'#eee0bb',2);line([[-w*.24,-h*.04],[w*.04,h*.11]],'#eee0bb',2);
+  }else if(name.includes('Hand')){
+   blob([[-w*.4,-h*.5],[w*.32,-h*.46],[w*.56,-h*.09],[w*.43,h*.4],[-w*.02,h*.49],[-w*.42,h*.19]],flesh);line([[w*.17,-h*.03],[w*.12,h*.26]],'#bb8867',1.5);
+  }else{
+   const leg=name.includes('Thigh')||name.includes('Shin');blob([[-w*.38,-h*.51],[w*.37,-h*.51],[w*.49,-h*.23],[w*.32,h*.5],[-w*.31,h*.5],[-w*.48,h*.08]],leg?pants:jacket);
+   line([[-w*.2,-h*.35],[-w*.24,h*.25]],leg?'#9aa489':'#efab73',2);line([[w*.25,-h*.26],[w*.18,h*.33]],leg?'#3e5549':'#a94f39',2);
+   if(name.includes('Thigh')){round(-w*.24,-h*.02,w*.58,h*.25,2,rear?'#354f46':'#526951');line([[-w*.19,h*.01],[w*.3,h*.01]],'#a2a88b',1);}
+   if(name.includes('Forearm'))round(-w*.36,h*.34,w*.72,h*.12,2,'#aa4e37');
+  }
+ }else if(skin==='tin'||skin==='space'){
   const gold=skin==='space',metal=gold?(rear?'#9c732e':'#ddb860'):(rear?'#6d8491':'#bdcbd1'),shade=gold?'#946828':'#6e8795',shine=gold?'#fff0ad':'#edf6f8',joint=gold?'#584d38':'#425968';
   if(name==='head'){
    if(gold){blob([[-w*.65,-w*.76],[-w*.1,-w*1.1,w*.57,-w*.78],[w*.83,-w*.18],[w*1.06,w*.12],[w*.74,w*.28],[w*.62,w*.79],[-w*.15,w*.91],[-w*.73,w*.42]],metal);disk(w*.4,-w*.14,w*.23,joint);disk(w*.4,-w*.14,w*.09,'#ffe2a1');line([[w*.16,w*.45],[w*.67,w*.45]],joint,3);line([[w*.2,w*.57],[w*.6,w*.57]],joint,1);disk(-w*.51,0,w*.21,shade);line([[-w*.14,-w*.75],[-w*.13,w*.36]],shine,2);}
