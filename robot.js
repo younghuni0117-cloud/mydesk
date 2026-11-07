@@ -1,10 +1,10 @@
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot12';
-import {RobotTeam} from './robot-team.mjs?v=robot12';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot12';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot12';
-import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot12';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot12';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot12';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot13';
+import {RobotTeam} from './robot-team.mjs?v=robot13';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot13';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot13';
+import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot13';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot13';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot13';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v2';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
@@ -40,7 +40,7 @@ function renderChart(){if(!model)return;
 }
 
 const worker=new RobotTeam();
-function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:5},robotCount:options.robots});}
+function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:6},robotCount:options.robots});}
 function settings(){worker.postMessage({type:'settings',interval:options.interval});}
 worker.onmessage=({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();progress(lastRequest.completed,lastRequest.target,'학습');return;}
@@ -66,9 +66,9 @@ function setZoom(value){zoom=clamp(value,.04,2.5);get('zoom-value').textContent=
 get('zoom-in').onclick=()=>setZoom(zoom*1.2);get('zoom-out').onclick=()=>setZoom(zoom/1.2);get('fit').onclick=()=>{setZoom(1);panX=.4;panY=0;follow=options.view==='robot';};
 canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));},{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-let groundPixel=0;
+let groundPixel=0,terrainDatum=0;
 canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')e.preventDefault();canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const[a,b]=[...pointers.values()];pinch={distance:Math.hypot(a.x-b.x,a.y-b.y),zoom,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2};drag=null;}else if(pointers.size===1){const rect=canvas.getBoundingClientRect();drag={id:e.pointerId,x:e.clientX,y:e.clientY,endX:e.clientX,endY:e.clientY,mode:e.button===2?'pan':'push',point:{x:cameraX+(e.clientX-rect.left-rect.width/2)/drawScale,y:(groundPixel-(e.clientY-rect.top))/drawScale}};}});
-function pan(dx,dy){if(follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale;follow=false;options.view='terrain';get('view').value='terrain';saveOptions();}panX-=dx/drawScale;panY+=dy/drawScale;}
+function pan(dx,dy){if(follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale-terrainDatum;follow=false;options.view='terrain';get('view').value='terrain';saveOptions();}panX-=dx/drawScale;panY+=dy/drawScale;}
 canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;const prev=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinch){const[a,b]=[...pointers.values()],cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;setZoom(pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/Math.max(1,pinch.distance));pan(cx-pinch.cx,cy-pinch.cy);pinch.cx=cx;pinch.cy=cy;return;}if(drag){drag.endX=e.clientX;drag.endY=e.clientY;if(drag.mode==='pan')pan(e.clientX-prev.x,e.clientY-prev.y);}});
 function release(e){if(drag&&drag.id===e.pointerId&&drag.mode==='push'&&e.type==='pointerup'){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>8)pushAt(Math.atan2(-dy,dx)*180/Math.PI,Math.hypot(dx,dy)/90,drag.point);}pointers.delete(e.pointerId);drag=null;pinch=null;}
 canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
@@ -82,7 +82,12 @@ function sourceFrame(){
 function draw(data){
  const rect=canvas.getBoundingClientRect(),ratio=Math.min(window.matchMedia('(pointer: coarse)').matches?1.5:2,window.devicePixelRatio||1),w=Math.max(1,Math.round(rect.width*ratio)),h=Math.max(1,Math.round(rect.height*ratio));
  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}ctx.setTransform(ratio,0,0,ratio,0,0);const W=w/ratio,H=h/ratio;ctx.clearRect(0,0,W,H);if(!data)return;
- const {frame,meta}=data,actors=data.actors||[{frame,meta,offset:0}],maxY=Math.max(1,...frame.parts.map((p,i)=>p[1]+(meta.parts[i].circle?meta.parts[i].w:Math.hypot(meta.parts[i].w,meta.parts[i].h)/2))),scale=Math.min(H/(2.6+Math.max(0,...(meta.terrain?.segments||[]).filter(s=>s.x1>(follow?frame.parts[0][0]:panX)-2/zoom&&s.x0<(follow?frame.parts[0][0]:panX)+2/zoom).flatMap(s=>[s.y0,s.y1]))*1.2),W/3.3)*zoom,root=frame.parts[0],ground=(follow?H*.5+(root[1]-.1)*scale:H*.88)+panY*scale,camera=follow?root[0]:panX;drawScale=scale;cameraX=camera;groundPixel=ground;
+ const {frame,meta}=data,actors=data.actors||[{frame,meta,offset:0}],root=frame.parts[0],camera=follow?root[0]:panX;
+ // Anchor high hills to their starting floor so a tenfold slope does not hide the robot.
+ terrainDatum=meta.terrain?.kind==='hills'?terrainHeight(meta.terrain.segments,0):0;
+ const datum=follow&&meta.terrain?.kind==='hills'?terrainHeight(meta.terrain.segments,root[0]):terrainDatum;
+ const relief=Math.max(0,...(meta.terrain?.segments||[]).filter(s=>s.x1>camera-2/zoom&&s.x0<camera+2/zoom).flatMap(s=>[s.y0-datum,s.y1-datum]));
+ const scale=Math.min(H/(2.6+relief*1.2),W/3.3)*zoom,ground=(follow?H*.5+(root[1]-.1)*scale:H*.88+terrainDatum*scale)+panY*scale;drawScale=scale;cameraX=camera;groundPixel=ground;
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
  drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:meta.terrain,obstacles:meta.obstacles||[],X,Y});
  for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);}
@@ -115,8 +120,8 @@ selectSkin(skin);progress(0,0,'대기');
 get('terrain').value=options.terrain;get('view').value=options.view;get('observation-seconds').value=String(options.observationSeconds);get('interval').value=String(options.interval);
 function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view,observationSeconds:options.observationSeconds,interval:options.interval}));}catch{}}
 get('terrain').onchange=()=>{options.terrain=get('terrain').value;saveOptions();setZoom(1);panX=.4;panY=0;follow=options.view==='robot';configure(model);};
-get('view').onchange=()=>{const next=get('view').value;if(next==='terrain'&&follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale;}else if(next==='robot')panY=0;options.view=next;follow=next==='robot';saveOptions();};
-if(model&&model.environment?.courseVersion!==5)backup();
+get('view').onchange=()=>{const next=get('view').value;if(next==='terrain'&&follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale-terrainDatum;}else if(next==='robot')panY=0;options.view=next;follow=next==='robot';saveOptions();};
+if(model&&model.environment?.courseVersion!==6)backup();
 settings();configure(model,legacy,legacyCounts);
 // Retire the former website login locally; no server requests are made.
 try{localStorage.removeItem('mydesk.robot.auth');}catch{}

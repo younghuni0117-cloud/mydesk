@@ -9,15 +9,17 @@ export function makeTerrain(name='meadow'){
  if(kind==='meadow'||kind==='ice'||kind==='stones')segments.push({x0:-64,x1:96,y0:base,y1:base});
  else if(kind==='stairs'){segments.push({x0:-64,x1:.55,y0:base,y1:base});let x=.55,y=base,steps=0,flight=0;while(x<96){const landing=steps>=12+flight%5,width=landing?range(1.5,2.7):range(.32,.45);if(!landing)y+=.17;segments.push({x0:x,x1:Math.min(96,x+width),y0:y,y1:y});x+=width;if(landing){steps=0;flight++;}else steps++;}}
  else smoothCourse(kind==='hills'?3.3:kind==='construction'?.55:kind==='rockyhills'?3.5:1.8);
+ // Multiply rise/run by ten; angle is atan(10 * tan(previous angle)).
+ if(kind==='hills')for(const s of segments){s.y0=base+(s.y0-base)*10;s.y1=base+(s.y1-base)*10;}
  // Cave relief is exactly five times the previous floor profile, keeping headroom.
  if(kind==='cave')for(const s of segments){s.y0=base+(s.y0-base)*5;s.y1=base+(s.y1-base)*5;}
  // Keep a level start without introducing discontinuities in the surrounding course.
  if(kind==='stairs'){const spawn=terrainHeight(segments,0);for(const s of segments){s.y0=Math.max(base,s.y0-spawn+base);s.y1=Math.max(base,s.y1-spawn+base);}}
- const populate=['hills','stones','construction','cave'].includes(kind);
+ const populate=['hills','stones','construction'].includes(kind);
  if(populate){let x=-61;while(x<93){x+=kind==='hills'?range(4,9):kind==='construction'?range(.55,1.3):range(.35,1.6);if(Math.abs(x)<1.2)continue;const cluster=kind==='stones'&&random()<.4?Math.floor(range(2,4)):1;for(let j=0;j<cluster;j++){const at=x+j*range(.12,.35);if(Math.abs(at)<1.2)continue;let width,height,shape='rock';if(kind==='hills'){width=range(.06,.14);height=range(.025,.055);}else if(kind==='stones'){width=range(.16,.46);height=range(.035,.13);}else if(kind==='construction'){const item=random();if(item<.22){width=range(.12,.36);height=range(.04,.12);}else if(item<.42){shape='crate';width=range(.25,.42);height=range(.18,.3);}else if(item<.62){shape='pallet';width=range(.4,.7);height=range(.07,.12);}else if(item<.8){shape='pipe';width=height=range(.14,.24);}else{shape='barrier';width=range(.32,.55);height=range(.18,.27);}}else{width=range(.1,.5);height=range(.04,.23);}const side=random()<.4?'both':random()<.5?'left':'right';obstacles.push({x:at,width,height,side,shape,variant:random(),material:kind==='cave'&&random()<.2?'crystal':['crate','pallet'].includes(shape)?'wood':shape==='pipe'||shape==='barrier'?'metal':'stone',rounded:kind==='stones'});}}}
- const types=kind==='construction'?['pebbles']:kind==='cave'?['pebbles','crystal']:kind==='ice'?['frost']:kind==='stones'?['pebbles']:kind==='stairs'?[]:kind==='rockyhills'?['lichen','gravel']:['grass','flowers'];
+ const types=kind==='construction'?['pebbles']:kind==='cave'?[]:kind==='ice'?['frost']:kind==='stones'?['pebbles']:kind==='stairs'?[]:kind==='rockyhills'?['lichen','gravel']:['grass','flowers'];
  for(let i=0;i<(kind==='construction'?180:kind==='cave'?240:420)&&types.length;i++)decorations.push({x:range(-63,95),type:types[Math.floor(random()*types.length)],size:range(.025,kind==='cave'?.13:.08),variant:random()});decorations.sort((a,b)=>a.x-b.x);
- if(kind==='cave'){let clearance=3.5;for(const s of segments){const next=Math.max(3.3,Math.min(4.8,clearance+range(-.08,.08)));ceilings.push({x0:s.x0,x1:s.x1,y0:s.y0+clearance,y1:s.y1+next});clearance=next;}for(let i=0;i<60;i++){const x=range(-60,92);if(Math.abs(x)<1.4)continue;const ceiling=terrainHeight(ceilings,x),height=range(.12,.4);obstacles.push({x,width:range(.1,.35),height,bottom:ceiling-height+.04,side:'both',shape:'stalactite',material:'stone',variant:random()});}}
+ if(kind==='cave'){let clearance=3.5;for(const s of segments){const next=Math.max(3.3,Math.min(4.8,clearance+range(-.08,.08)));ceilings.push({x0:s.x0,x1:s.x1,y0:s.y0+clearance,y1:s.y1+next});clearance=next;}}
  obstacles.sort((a,b)=>a.x-b.x);
  const result={kind,segments,obstacles,decorations,ceilings,friction:kind==='ice'?0:kind==='meadow'?1.15:.95,relief:Math.max(...segments.map(s=>Math.max(s.y0,s.y1)))};cache.set(kind,result);return result;
 }
