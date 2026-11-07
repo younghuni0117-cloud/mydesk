@@ -1,9 +1,9 @@
-import {RobotLearner,ALLOWED_ATTEMPTS,overallScore} from './robot-learning.mjs?v=robot11';
-import {STAGES,episode,evaluateAbilities} from './robot-core.mjs?v=robot11';
-let learner=null,stage='balance',focus='balance',initToken=0,job=null,source='best',environment={},interval=20,lastCandidate=null;
+import {RobotLearner,ALLOWED_ATTEMPTS,overallScore} from './robot-learning.mjs?v=robot12';
+import {STAGES,evaluateAbilities} from './robot-core.mjs?v=robot12';
+let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
-function preview(){const candidate=source==='candidate'&&lastCandidate;const result=episode(candidate?lastCandidate:learner.weights,stage,31,{...environment,record:true,disturbances:false});postMessage({type:'preview',stage,source,policyVersion:learner.policyVersion,attempts:learner.attempts,scene:result});}
+function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts});}
 async function initialize(data,token){
  environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
  if(Array.isArray(data.legacy)&&!data.saved){
@@ -17,7 +17,7 @@ async function initialize(data,token){
 self.onmessage=async({data})=>{
  try{
   if(data.type==='stop'){if(job)job.cancelled=true;return;}
-  if(data.type==='settings'){source=data.source||source;interval=[10,20,50,100].includes(data.interval)?data.interval:interval;return;}
+  if(data.type==='settings'){interval=[10,20,50,100].includes(data.interval)?data.interval:interval;return;}
   if(data.type==='init'){if(job)job.cancelled=true;job=null;await initialize(data,++initToken);return;}
   if(data.type==='goal'){stage=STAGES[data.stage]?data.stage:stage;preview();postMessage({type:'goal',stage});return;}
   if(data.type==='preview'){if(learner)preview();return;}
@@ -28,7 +28,7 @@ self.onmessage=async({data})=>{
    const result=learner.trainOne();lastCandidate=result.weights;completed++;
    postMessage({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},task:focus,score:result.score,remainingMs:(Date.now()-started)/completed*(target-completed)});
    if(learner.pending.length>=12){await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled);if(job!==current)return;sendModel();}
-   if(completed%interval===0||completed===target)preview();
+   if(completed===1||completed%interval===0||completed===target)preview();
    await new Promise(r=>setTimeout(r,0));
   }
   if(job!==current)return;

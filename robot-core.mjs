@@ -1,4 +1,4 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot11';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot12';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
 export const DT = 1 / 60;
 export const POLICY_SIZE = 128;
@@ -16,6 +16,7 @@ const wrap = a => Math.atan2(Math.sin(a),Math.cos(a));
 export class RobotWorld {
   constructor(stage='balance', options={}) {
     this.stage = STAGES[stage] ? stage : 'balance'; this.task=STAGES[this.stage];
+    this.duration=Number.isInteger(options.observationSeconds)&&options.observationSeconds>=1&&options.observationSeconds<=3600?options.observationSeconds:this.task.duration;
     this.seed=options.seed??1;this.random=seeded(this.seed);this.time=0;this.reward=0;this.energy=0;this.steps=0;
     this.falls=0;this.recoveries=0;this.uprightTime=0;this.stableTime=0;this.isDown=false;this.downTime=0;this.recoveryClock=0;this.impactCost=0;this.passed=new Set();this.contacts=new Map();
     this.world=new World(Vec2(0,-9.81));this.world.setAutoClearForces(false);this.bodies=[];this.parts={};this.joints={};this.motors=[];
@@ -180,7 +181,7 @@ export class RobotWorld {
     r-=.003*work;
     for(const [i,o]of this.obstacles.entries())if(o.x>this.initialX+.3&&!this.passed.has(i)&&pos.x>o.x+o.width/2+.2&&upright){this.passed.add(i);r+=10;}
     this.reward+=r;this.lastX=pos.x;this.lastHeight=pos.y;
-    this.done=this.steps>=Math.round(this.task.duration/DT)||Math.abs(pos.x)>40||pos.y<-.8||!Number.isFinite(this.reward);
+    this.done=this.steps>=Math.round(this.duration/DT)||Math.abs(pos.x)>40||pos.y<-.8||!Number.isFinite(this.reward);
     return this.metrics();
   }
   metrics(){const p=this.parts.pelvis.getPosition();return {time:this.time,reward:this.reward,distance:p.x-this.initialX,speed:(p.x-this.initialX)/Math.max(this.time,DT),height:p.y-this.groundHeight(p.x),falls:this.falls,recoveries:this.recoveries,passed:this.passed.size,upright:this.uprightTime/Math.max(this.time,DT),energy:this.energy,pushes:this.pushesApplied,pushResistance:this.pushRecoveryTime,done:!!this.done,recovering:this.isDown};}
