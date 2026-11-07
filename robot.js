@@ -1,22 +1,20 @@
-import {drawRobotSkin} from './robot-skin.mjs?v=robot4';
-import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot4';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot4';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot4';
-import {RobotSync} from './robot-sync.mjs?v=robot4';
-import {SYNC_CONFIG} from './robot-sync-config.mjs?v=robot4';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot5';
+import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot5';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot5';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot5';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
-const storageKey='mydesk.robot.v2';let owner='guest',dirty=false,cache={};
+const storageKey='mydesk.robot.v2';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
-let model=RobotLearner.valid(cache.model)?cache.model:null;owner=cache.owner||'guest';dirty=Boolean(cache.dirty);
-let stage='balance',training=false,initializing=true,restoring=false;
+let model=RobotLearner.valid(cache.model)?cache.model:null;
+let stage='balance',training=false,initializing=true;
 let mode='trace',scene=null,pendingScene=null,traceTime=0,viewPaused=false,live=null,liveWeights=Array(POLICY_SIZE).fill(0),geometry=null;
 let previousLive=null,currentLive=null,lastPersist=0,lastProgressHud=0;
 let lastTime=0,accumulator=0,frame=null,lastHud=0,lastDraw=0,pushArrow=null,drag=null;
 let zoom=1,panX=0,panY=0,follow=true,drawScale=100,cameraX=0;const pointers=new Map();let pinch=null;
 const status=text=>{get('status').textContent=text},signed=n=>(n>0?'+':'')+n.toFixed(1);
-function persist(){try{localStorage.setItem(storageKey,JSON.stringify({model,owner,dirty,cloudRevision:sync.baseRevision}));}catch{get('storage-note').textContent='브라우저 저장 공간이 부족합니다. 모델 파일을 저장하세요.';}}
-function backup(){if(model)try{localStorage.setItem('mydesk.robot.backup.'+owner,JSON.stringify({model,owner,dirty}));}catch{}}
-function controls(){get('train').disabled=initializing;get('run').disabled=initializing;get('push').disabled=initializing;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('use-local').disabled=training||initializing;get('use-remote').disabled=training||initializing;}
+function persist(){try{localStorage.setItem(storageKey,JSON.stringify({model}));}catch{get('storage-note').textContent='브라우저 저장 공간이 부족합니다. 모델 파일을 저장하세요.';}}
+function backup(){if(model)try{localStorage.setItem('mydesk.robot.backup',JSON.stringify({model}));}catch{}}
+function controls(){get('train').disabled=initializing;get('run').disabled=initializing;get('push').disabled=initializing;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';}
 for(const id of ['focus'])for(const [value,s]of Object.entries(STAGES)){const o=document.createElement('option');o.value=value;o.textContent=s.label;get(id).append(o);}
 for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}
 const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('넘어졌다 ','').replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
@@ -25,21 +23,16 @@ function renderModel(){if(!model)return;for(const [key,a]of Object.entries(model
  for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']])get(id).setAttribute('d',rows.map((r,i)=>`${i?'L':'M'}${end===start?0:(r.attempts-start)/(end-start)*300} ${95-(r[k]-min)/Math.max(.01,max-min)*90}`).join(' '));
  get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('chart-range').textContent=`${start}~${end}회`;get('chart-svg').setAttribute('aria-label',`공통 모델 ${model.policyVersion}, 전체 보상 지수 ${rows.at(-1)?.overall.toFixed(1)}. 파란선 보존 모델, 점선 후보.`);
 }
-const sync=new RobotSync(SYNC_CONFIG,{validate:RobotLearner.valid,onAuth:user=>{get('account').textContent=user?.email||'기기 간 공유 · 로그인 필요';get('login-form').hidden=Boolean(user)||!sync.enabled;get('logout').hidden=!user;get('login-note').textContent=user?'같은 이메일로 로그인한 PC·모바일에 자동 저장합니다.':'PC·모바일에서 Supabase 가입 이메일로 로그인하세요.';},onSaved:()=>{dirty=Boolean(sync.pending);persist();},onState:text=>{get('sync-open').textContent=text;get('sync-detail').textContent=text;},onIdentity:uid=>{
- if(owner!==uid){const previousOwner=owner,previousDirty=dirty;backup();let saved=null;try{saved=JSON.parse(localStorage.getItem('mydesk.robot.backup.'+uid)||'null');}catch{}owner=uid;dirty=Boolean(previousOwner==='guest'&&previousDirty&&model?.attempts>0);sync.pending=null;sync.baseRevision=0;if(RobotLearner.valid(saved?.model)){model=saved.model;dirty=Boolean(saved.dirty);configure(model,true);}else if(previousOwner!=='guest'){model=null;configure(null,true);}}
- else sync.baseRevision=cache.cloudRevision||0;
- if(dirty&&model)sync.pending=structuredClone(model);persist();
-},onEmpty:()=>{if(model){dirty=true;sync.queue(model);persist();}},onRemote:remote=>{backup();dirty=false;model=remote;configure(remote,true);persist();},onConflict:()=>{worker.postMessage({type:'stop'});get('conflict').hidden=false;status('다른 기기 모델과 충돌했습니다. 도움말·저장에서 사용할 모델을 선택하세요.');}});
-const worker=new Worker(new URL('./robot-worker.mjs?v=robot4',import.meta.url),{type:'module'});
-function configure(saved=model,remote=false,legacy=null,legacyCounts=null){initializing=true;restoring=remote;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts});}
+const worker=new Worker(new URL('./robot-worker.mjs?v=robot5',import.meta.url),{type:'module'});
+function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts});}
 function settings(){worker.postMessage({type:'settings',interval:Number(get('interval').value),source:get('source').value,light:get('light').checked});}
 worker.onmessage=({data})=>{
- if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();if(!restoring){dirty=true;sync.queue(model);}persist();return;}
- if(data.type==='ready'){initializing=false;restoring=false;controls();status('공통 모델 준비 완료 · 실행 과제를 바꿔도 학습된 운동 능력을 함께 사용합니다.');return;}
+ if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();return;}
+ if(data.type==='ready'){initializing=false;controls();status('공통 모델 준비 완료 · 실행 과제를 바꿔도 학습된 운동 능력을 함께 사용합니다.');return;}
  if(data.type==='training'){training=data.active;controls();return;}
- if(data.type==='progress'){if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;dirty=true;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();}if(Date.now()-lastPersist>1000){persist();sync.queue(model);lastPersist=Date.now();}}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
+ if(data.type==='progress'){if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
  if(data.type==='preview'){if(data.stage!==stage)return;pendingScene=data;if(mode==='trace'&&!viewPaused)applyPreview();return;}
- if(data.type==='done'){training=false;controls();status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 같은 로봇으로 다른 운동도 시험해 보세요.`);sync.flush().catch(()=>{});return;}
+ if(data.type==='done'){training=false;controls();status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 같은 로봇으로 다른 운동도 시험해 보세요.`);return;}
  if(data.type==='error'){training=false;initializing=false;controls();status(data.message);}
 };
 worker.onerror=()=>{training=false;initializing=true;controls();status('학습 스레드 오류입니다. 저장된 모델을 유지합니다. 새로고침해 주세요.');};
@@ -97,17 +90,12 @@ frame=requestAnimationFrame(animate);
 
 get('export').onclick=()=>{const blob=new Blob([JSON.stringify({format:'mydesk-robot-v2',model},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='mydesk-robot-model.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 get('import').onchange=async event=>{const file=event.target.files?.[0];if(!file)return;try{if(file.size>2*1024*1024)throw Error('모델 파일은 2MB 이하여야 합니다.');const data=JSON.parse(await file.text());if(data.format!=='mydesk-robot-v2'||!RobotLearner.valid(data.model))throw Error('올바른 v2 공통 모델 파일이 아닙니다.');backup();model=data.model;configure(model);status('모델을 불러와 무보조 성능을 다시 확인합니다.');}catch(e){status(e.message);}finally{event.target.value='';}};
-get('sync-open').onclick=()=>{if(!sync.session?.user)get('email').focus();else document.getElementById('game-help-open').click();};
-get('login-form').hidden=!sync.enabled;
-get('login-form').onsubmit=async e=>{e.preventDefault();get('login-submit').disabled=true;try{await sync.login(get('email').value,location.origin+location.pathname);}catch(error){const text=sync.errorMessage(error);get('sync-detail').textContent=text;get('sync-open').textContent=text;}finally{get('login-submit').disabled=false;}};
-get('sync-now').onclick=async()=>{get('sync-now').disabled=true;try{await sync.syncNow();if(!sync.session?.user)get('email').focus();}finally{get('sync-now').disabled=false;}};
-get('logout').onclick=async()=>{worker.postMessage({type:'stop'});backup();await sync.logout();dirty=false;persist();};
-for(const [id,choice]of [['use-local',true],['use-remote',false]])get(id).onclick=async()=>{try{backup();await sync.resolve(choice);get('conflict').hidden=true;dirty=Boolean(sync.pending);persist();}catch(e){get('sync-detail').textContent=e.message;}};
-document.addEventListener('visibilitychange',()=>{if(document.hidden){worker.postMessage({type:'stop'});viewPaused=true;controls();sync.flush().catch(()=>{});}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){worker.postMessage({type:'stop'});viewPaused=true;controls();}});
 document.addEventListener('game:help-open',()=>{viewPaused=true;controls();});
 window.addEventListener('pagehide',()=>{worker.postMessage({type:'stop'});viewPaused=true;persist();});
 let legacy=null,legacyCounts=null;
 if(!model)try{const old=JSON.parse(localStorage.getItem('mydesk.robot.v1')||'{}'),valid=Object.entries(old).filter(([k,m])=>/^(balance|recover|walk|run|obstacles)-(0|30|60)$/.test(k)&&Array.isArray(m?.weights)&&m.weights.length===32&&m.weights.every(v=>Number.isFinite(v)&&Math.abs(v)<20));legacy=valid.sort((a,b)=>(b[1].bestReward||0)-(a[1].bestReward||0)).slice(0,3).map(([,v])=>v);legacyCounts=Object.fromEntries(Object.keys(STAGES).map(k=>[k,valid.filter(([name])=>name.startsWith(k+'-')).reduce((s,[,m])=>s+(Number.isSafeInteger(m.attempts)&&m.attempts>0&&m.attempts<1e10?m.attempts:0),0)]));}catch{}
 get('light').checked=window.matchMedia('(pointer: coarse)').matches;
-settings();configure(model,Boolean(model&&!dirty),legacy,legacyCounts);
-sync.start(location.hash).then(()=>{if(new URLSearchParams(location.hash.slice(1)).has('access_token')||new URLSearchParams(location.hash.slice(1)).has('error'))history.replaceState(null,'',location.pathname+location.search);});
+settings();configure(model,legacy,legacyCounts);
+// Retire the former website login locally; no server requests are made.
+try{localStorage.removeItem('mydesk.robot.auth');}catch{}

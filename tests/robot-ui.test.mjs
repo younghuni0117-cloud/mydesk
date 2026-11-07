@@ -1,5 +1,6 @@
+import {RobotLearner} from '../robot-learning.mjs';
 import {Worker as NativeWorker} from 'node:worker_threads';import assert from 'node:assert/strict';
-const elements=new Map(),events={},windowEvents={},raf=new Map(),storage=new Map(),workers=[];let rafId=0,skinDraws=0,otpRequests=0;
+const elements=new Map(),events={},windowEvents={},raf=new Map(),storage=new Map(),workers=[];let rafId=0,skinDraws=0;
 const defaults={'rb-stage':'balance','rb-focus':'balance','rb-count':'100','rb-interval':'20','rb-source':'best','rb-gesture':'scroll','rb-strength':'5','rb-duration':'0','rb-direction':'0','rb-location':'torso'};
 function el(id){if(elements.has(id))return elements.get(id);const e={id,value:defaults[id]??'',checked:false,disabled:false,hidden:false,textContent:'',innerHTML:'',style:{},dataset:{},attrs:{},listeners:{},classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=String(v)},addEventListener(k,v){this.listeners[k]=v},getBoundingClientRect(){return {width:600,height:350,left:0,top:0}},getContext(){return new Proxy({}, {get:(_,key)=> (...args)=>{if(key==='drawImage')skinDraws++;assert.ok(args.every(v=>typeof v!=='number'||Number.isFinite(v)),'finite canvas coordinates')}})},append(){},setPointerCapture(){},setCustomValidity(v){this.validation=v},reportValidity(){this.reported=true},blur(){},click(){},focus(){}};elements.set(id,e);return e}
 const tabs=['learn','push','joints'].map(k=>{const e=el('tab-'+k);e.dataset.rbTab=k;return e});
@@ -8,16 +9,17 @@ globalThis.window={devicePixelRatio:1,matchMedia:()=>({matches:true}),addEventLi
 globalThis.localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)};
 globalThis.requestAnimationFrame=fn=>{raf.set(++rafId,fn);return rafId};globalThis.cancelAnimationFrame=id=>raf.delete(id);
 globalThis.Worker=class{constructor(){this.ready=false;this.queue=[];this.native=new NativeWorker(new URL('./robot-worker-harness.mjs',import.meta.url));workers.push(this);this.native.on('message',data=>{if(data.type==='wrapper-ready'){this.ready=true;for(const d of this.queue)this.native.postMessage(d);this.queue=[]}else this.onmessage?.({data})});this.native.on('error',()=>this.onerror?.())}postMessage(data){this.ready?this.native.postMessage(data):this.queue.push(data)}terminate(){return this.native.terminate()}};
-let testFetch=async()=>{throw Error('Unexpected test network request')};globalThis.fetch=(...args)=>testFetch(...args);
+let networkRequests=0;globalThis.fetch=async()=>{networkRequests++;throw Error('Local-only robot must not request a server')};
 globalThis.location={hash:'',origin:'https://younghuni0117-cloud.github.io',pathname:'/mydesk/robot.html',search:''};globalThis.history={replaceState(){}};
 let exported;URL.createObjectURL=blob=>{exported=blob;return 'blob:robot-test'};URL.revokeObjectURL=()=>{};
 const wait=async predicate=>{const start=Date.now();while(Date.now()-start<25000){if(predicate())return;await new Promise(r=>setTimeout(r,10))}throw Error('UI condition timeout: '+el('rb-status').textContent)};
 let clock=0;function tick(n=1){for(let i=0;i<n;i++){clock+=1000/60;const callbacks=[...raf.values()];raf.clear();callbacks.forEach(fn=>fn(clock))}}
 try{
+ const prior=new RobotLearner(null,42).snapshot();prior.attempts=7;prior.taskAttempts.balance=7;storage.set('mydesk.robot.v2',JSON.stringify({model:prior,owner:'former-account',dirty:true,cloudRevision:3}));storage.set('mydesk.robot.auth','old-session');
  await import('../robot.js?uitest2');await wait(()=>!el('rb-train').disabled);tick(10);assert.match(el('rb-view-label').textContent,/공통 모델/);
- const initial=JSON.parse(storage.get('mydesk.robot.v2')).model;assert.equal(initial.version,2);assert.equal(Object.keys(initial.abilities).length,5);
+ const initial=JSON.parse(storage.get('mydesk.robot.v2')).model;assert.equal(initial.version,2);assert.equal(initial.attempts,7);assert.deepEqual(initial.weights,prior.weights);assert.equal(storage.has('mydesk.robot.auth'),false);assert.equal(Object.keys(initial.abilities).length,5);
  el('rb-count').value='100000';el('rb-focus').value='walk';el('rb-focus').onchange();el('rb-train').onclick();await wait(()=>el('rb-status').textContent.includes('학습 2/100,000'));el('rb-train').onclick();await wait(()=>el('rb-status').textContent.includes('학습 중지'));
- const saved=JSON.parse(storage.get('mydesk.robot.v2')).model;assert.ok(saved.attempts>=2&&saved.attempts<100000);assert.equal(saved.taskAttempts.walk,saved.attempts);assert.equal(saved.taskAttempts.balance,0);
+ const saved=JSON.parse(storage.get('mydesk.robot.v2')).model;assert.ok(saved.attempts>=9&&saved.attempts<100007);assert.equal(saved.taskAttempts.walk,saved.attempts-7);assert.equal(saved.taskAttempts.balance,7);
  const weights=[...saved.weights];el('rb-focus').value='recover';el('rb-focus').onchange();await new Promise(r=>setTimeout(r,300));assert.deepEqual(JSON.parse(storage.get('mydesk.robot.v2')).model.weights,weights);
  el('rb-run').onclick();const beforeDraws=skinDraws;tick(20);assert.ok(skinDraws-beforeDraws>=20*17,'power saving must not cap the visual frame rate');assert.match(el('rb-view-label').textContent,/실시간/);el('rb-push').onclick();assert.match(el('rb-status').textContent,/5.0N·s/);tick(25);
  el('rb-zoom-in').onclick();assert.equal(el('rb-zoom-value').textContent,'120%');el('rb-zoom-out').onclick();assert.equal(el('rb-zoom-value').textContent,'100%');el('rb-fit').onclick();tick(2);
@@ -26,7 +28,6 @@ try{
  el('rb-export').onclick();const data=JSON.parse(await exported.text());assert.equal(data.format,'mydesk-robot-v2');assert.deepEqual(data.model.weights,weights);
  await el('rb-import').onchange({target:{files:[{size:exported.size,text:()=>exported.text()}],value:'model.json'}});await wait(()=>!el('rb-train').disabled);assert.equal(JSON.parse(storage.get('mydesk.robot.v2')).model.attempts,saved.attempts);
  el('rb-count').value='100';el('rb-train').onclick();await wait(()=>el('rb-status').textContent.includes('학습 2/100'));document.hidden=true;events.visibilitychange();await wait(()=>el('rb-status').textContent.includes('학습 중지'));
- assert.match(el('rb-sync-open').textContent,/로그인 필요/);assert.equal(el('rb-login-form').hidden,false);
- el('rb-email').value='owner@example.test';testFetch=async(url,opts)=>{assert.match(url,/auth\/v1\/otp/);assert.equal(JSON.parse(opts.body).email,'owner@example.test');otpRequests++;return{ok:true,json:async()=>({})};};await el('rb-login-form').onsubmit({preventDefault(){}});assert.equal(otpRequests,1);assert.match(el('rb-sync-open').textContent,/이메일을 보냈습니다/);assert.equal(el('rb-login-submit').disabled,false);
- console.log('PASS real worker UI: 100000 target without clamp, cancellation, shared policy across goals, five abilities, live physics, pushes, zoom, pinch, file roundtrip, background stop, honest cloud state');
+ assert.equal(networkRequests,0);assert.equal(JSON.parse(storage.get('mydesk.robot.v2')).model.version,2);
+ console.log('PASS real worker UI: 100000 target without clamp, cancellation, shared policy across goals, five abilities, live physics, pushes, zoom, pinch, file roundtrip, background stop, local-only persistence without network requests');
 }finally{await Promise.all(workers.map(w=>w.terminate()))}
