@@ -1,26 +1,28 @@
-import {RobotTeam} from './robot-team.mjs?v=robot7';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot7';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot7';
-import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot7';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot7';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot7';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot8';
+import {RobotTeam} from './robot-team.mjs?v=robot8';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot8';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot8';
+import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot8';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot8';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot8';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v2';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
 let model=RobotLearner.valid(cache.model)?cache.model:null;
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space'].includes(saved))skin=saved;}catch{}
-let options={terrain:'meadow',difficulty:1,robots:1};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:TERRAINS[o.terrain]?o.terrain:'meadow',difficulty:[1,2,3].includes(o.difficulty)?o.difficulty:1,robots:Number.isInteger(o.robots)&&o.robots>=1&&o.robots<=10?o.robots:1};}catch{}
+let options={terrain:'meadow',view:'terrain',robots:1};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1};}catch{}
 let liveRobots=[],previousFrames=[],currentFrames=[];
 let stage='balance',training=false,initializing=true;
 let mode='trace',scene=null,pendingScene=null,traceTime=0,viewPaused=false,live=null,liveWeights=Array(POLICY_SIZE).fill(0),geometry=null;
 let previousLive=null,currentLive=null,lastPersist=0,lastProgressHud=0;
 let lastTime=0,accumulator=0,frame=null,lastHud=0,lastDraw=0,pushArrow=null,drag=null;
-let zoom=1,panX=0,panY=0,follow=true,drawScale=100,cameraX=0;const pointers=new Map();let pinch=null;
+let zoom=1,panX=.4,panY=0,follow=options.view==='robot',drawScale=100,cameraX=0;const pointers=new Map();let pinch=null;
 const status=text=>{get('status').textContent=text},signed=n=>(n>0?'+':'')+n.toFixed(1);
 function persist(){try{localStorage.setItem(storageKey,JSON.stringify({model}));}catch{get('storage-note').textContent='브라우저 저장 공간이 부족합니다. 모델 파일을 저장하세요.';}}
 function backup(){if(model)try{localStorage.setItem('mydesk.robot.backup',JSON.stringify({model}));}catch{}}
-function progress(completed,target,label){const ratio=target?Math.min(100,completed/target*100):0;get('progress').value=ratio;get('progress').textContent=Math.round(ratio)+'%';get('progress-label').textContent=target?`${label} · ${completed.toLocaleString()} / ${target.toLocaleString()}회 (${Math.round(ratio)}%)`:'대기 중 · 0 / 0회';}
-function controls(){get('train').disabled=initializing;get('run').disabled=initializing;for(const id of ['terrain','difficulty','robots'])get(id).disabled=initializing||training;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';}
+let lastRequest={completed:0,target:0};
+function progress(completed,target,label,total=model?.attempts||0){lastRequest={completed,target};const ratio=target?Math.min(100,completed/target*100):0;get('progress').value=ratio;get('progress').textContent=Math.round(ratio)+'%';get('progress-label').textContent=`학습 ${completed.toLocaleString()}/${target.toLocaleString()}회 (총 ${total.toLocaleString()}회)`;}
+function controls(){get('train').disabled=initializing;get('run').disabled=initializing;for(const id of ['terrain'])get(id).disabled=initializing||training;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';}
 for(const id of ['focus'])for(const [value,s]of Object.entries(STAGES)){const o=document.createElement('option');o.value=value;o.textContent=s.label;get(id).append(o);}
 for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}
 const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('넘어졌다 ','').replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
@@ -30,13 +32,13 @@ function renderModel(){if(!model)return;for(const [key,a]of Object.entries(model
  get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('chart-range').textContent=`${start}~${end}회`;get('chart-svg').setAttribute('aria-label',`공통 모델 ${model.policyVersion}, 전체 보상 지수 ${rows.at(-1)?.overall.toFixed(1)}. 파란선 보존 모델, 점선 후보.`);
 }
 const worker=new RobotTeam();
-function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,difficulty:options.difficulty},robotCount:options.robots});}
+function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain},robotCount:options.robots});}
 function settings(){worker.postMessage({type:'settings',interval:Number(get('interval').value),source:get('source').value});}
 worker.onmessage=({data})=>{
- if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();return;}
- if(data.type==='ready'){initializing=false;controls();status(`${TERRAINS[options.terrain]} · 난이도 ${options.difficulty} · 로봇 ${options.robots}개 준비 완료`);return;}
+ if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();progress(lastRequest.completed,lastRequest.target,'학습');return;}
+ if(data.type==='ready'){initializing=false;controls();status(`${TERRAINS[options.terrain]} · 준비 완료`);return;}
  if(data.type==='training'){training=data.active;controls();return;}
- if(data.type==='progress'){progress(data.completed,data.target,'학습 중');if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
+ if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 (총 ${data.attempts.toLocaleString()}회) · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
  if(data.type==='preview'){if(data.stage!==stage)return;pendingScene=data;if(mode==='trace'&&!viewPaused)applyPreview();return;}
  if(data.type==='done'){progress(data.completed,data.target,data.cancelled?'중지':'완료');training=false;controls();status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 같은 로봇으로 다른 운동도 시험해 보세요.`);return;}
  if(data.type==='error'){training=false;initializing=false;controls();status(data.message);}
@@ -46,18 +48,18 @@ function applyPreview(){if(!pendingScene)return;scene={...pendingScene.scene,tea
 get('focus').onchange=()=>{stage=get('focus').value;mode='trace';viewPaused=false;scene=null;live=null;worker.postMessage({type:'goal',stage});controls();status(`${STAGES[stage].label} · 같은 로봇으로 관찰합니다.`);pendingScene=null;traceTime=0;get('view-label').textContent=STAGES[stage].label+' 준비 중';};
 get('train').onclick=()=>{if(training){worker.postMessage({type:'stop'});status('현재 시도를 마치고 저장합니다.');return;}const count=Number(get('count').value);if(!ALLOWED_ATTEMPTS.includes(count))return;progress(0,count,'시작');training=true;mode='trace';viewPaused=false;controls();worker.postMessage({type:'train',count,focus:get('focus').value});};
 for(const id of ['interval','source'])get(id).onchange=()=>{settings();if(id==='source')worker.postMessage({type:'preview'});};
-function startLive(){liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,seed:17+i*101,disturbances:false}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=model?[...model.weights]:Array(POLICY_SIZE).fill(0);geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;status(`공통 모델 v${model?.policyVersion||0} · ${STAGES[stage].label} · ${options.robots}개 실시간 시험`);controls();}
+function startLive(){liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,seed:17+i*101,disturbances:false}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=model?[...model.weights]:Array(POLICY_SIZE).fill(0);geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;status(`공통 모델 v${model?.policyVersion||0} · ${STAGES[stage].label} 실시간 시험`);controls();}
 get('run').onclick=startLive;
 get('preview').onclick=()=>{mode='trace';viewPaused=false;if(pendingScene)applyPreview();else worker.postMessage({type:'preview'});controls();};
 get('pause-view').onclick=()=>{viewPaused=!viewPaused;if(!viewPaused&&mode==='trace')applyPreview();controls();};
 function pushAt(direction,factor=1,point=null){if(initializing)return;if(mode!=='live'||!live||liveRobots.every(w=>w.done))startLive();let index=0;if(point){let best=Infinity;for(let i=0;i<liveRobots.length;i++){const p=liveRobots[i].parts.torso.getPosition(),distance=Math.hypot(p.x+i*3.8-point.x,p.y-point.y);if(distance<best){best=distance;index=i;}}}const robot=liveRobots[index],strength=clamp(factor*8,.5,30);robot.push(strength,direction,'torso');viewPaused=false;const p=robot.parts.torso.getPosition();pushArrow={x:p.x+index*3.8,y:p.y,angle:direction*Math.PI/180,strength,remaining:1.1};status(`로봇 ${index+1} · ${strength.toFixed(1)} N·s 밀기`);controls();}
 function setZoom(value){zoom=clamp(value,.04,2.5);get('zoom-value').textContent=Math.round(zoom*100)+'%';}
-get('zoom-in').onclick=()=>setZoom(zoom*1.2);get('zoom-out').onclick=()=>setZoom(zoom/1.2);get('fit').onclick=()=>{setZoom(Math.min(1,3.3/(options.robots*3.8)));panX=panY=0;follow=true;};
+get('zoom-in').onclick=()=>setZoom(zoom*1.2);get('zoom-out').onclick=()=>setZoom(zoom/1.2);get('fit').onclick=()=>{setZoom(1);panX=.4;panY=0;follow=options.view==='robot';};
 canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));},{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 let groundPixel=0;
 canvas.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')e.preventDefault();canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const[a,b]=[...pointers.values()];pinch={distance:Math.hypot(a.x-b.x,a.y-b.y),zoom,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2};drag=null;}else if(pointers.size===1){const rect=canvas.getBoundingClientRect();drag={id:e.pointerId,x:e.clientX,y:e.clientY,endX:e.clientX,endY:e.clientY,mode:e.button===2?'pan':'push',point:{x:cameraX+(e.clientX-rect.left-rect.width/2)/drawScale,y:(groundPixel-(e.clientY-rect.top))/drawScale}};}});
-function pan(dx,dy){if(follow){panX=cameraX;follow=false;}panX-=dx/drawScale;panY+=dy/drawScale;}
+function pan(dx,dy){if(follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale;follow=false;options.view='terrain';get('view').value='terrain';saveOptions();}panX-=dx/drawScale;panY+=dy/drawScale;}
 canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;const prev=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinch){const[a,b]=[...pointers.values()],cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;setZoom(pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/Math.max(1,pinch.distance));pan(cx-pinch.cx,cy-pinch.cy);pinch.cx=cx;pinch.cy=cy;return;}if(drag){drag.endX=e.clientX;drag.endY=e.clientY;if(drag.mode==='pan')pan(e.clientX-prev.x,e.clientY-prev.y);}});
 function release(e){if(drag&&drag.id===e.pointerId&&drag.mode==='push'&&e.type==='pointerup'){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>8)pushAt(Math.atan2(-dy,dx)*180/Math.PI,Math.hypot(dx,dy)/90,drag.point);}pointers.delete(e.pointerId);drag=null;pinch=null;}
 canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
@@ -71,17 +73,10 @@ function sourceFrame(){
 function draw(data){
  const rect=canvas.getBoundingClientRect(),ratio=Math.min(window.matchMedia('(pointer: coarse)').matches?1.5:2,window.devicePixelRatio||1),w=Math.max(1,Math.round(rect.width*ratio)),h=Math.max(1,Math.round(rect.height*ratio));
  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}ctx.setTransform(ratio,0,0,ratio,0,0);const W=w/ratio,H=h/ratio;ctx.clearRect(0,0,W,H);if(!data)return;
- const {frame,meta}=data,actors=data.actors||[{frame,meta,offset:0}],maxY=Math.max(1,...frame.parts.map((p,i)=>p[1]+(meta.parts[i].circle?meta.parts[i].w:Math.hypot(meta.parts[i].w,meta.parts[i].h)/2))),scale=Math.min(H/2.4,W/3.3,H*.78/maxY)*zoom,ground=H*.88+panY*scale,root=frame.parts[0],camera=follow?(actors.length>1?actors.reduce((sum,a)=>sum+a.frame.parts[0][0]+a.offset,0)/actors.length:root[0]+(['balance','recover'].includes(stage)?0:.55)):panX;drawScale=scale;cameraX=camera;groundPixel=ground;
+ const {frame,meta}=data,actors=data.actors||[{frame,meta,offset:0}],maxY=Math.max(1,...frame.parts.map((p,i)=>p[1]+(meta.parts[i].circle?meta.parts[i].w:Math.hypot(meta.parts[i].w,meta.parts[i].h)/2))),scale=Math.min(H/(2.6+Math.max(0,...(meta.terrain?.segments||[]).flatMap(s=>[s.y0,s.y1]))*1.2),W/3.3)*zoom,root=frame.parts[0],ground=(follow?H*.5+(root[1]-.1)*scale:H*.88)+panY*scale,camera=follow?root[0]:panX;drawScale=scale;cameraX=camera;groundPixel=ground;
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
- ctx.strokeStyle='#dce5f0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,ground);ctx.lineTo(W,ground);ctx.stroke();ctx.fillStyle=meta.terrain?.kind==='meadow'?'#dce8d8':meta.terrain?.kind==='ice'?'#dceff5':meta.terrain?.kind==='construction'?'#e6ded0':'#e5ebf3';ctx.fillRect(0,ground,W,H-ground);
- ctx.fillStyle='#a4b2c4';ctx.font='9px sans-serif';ctx.textAlign='center';
- const gridStep=Math.max(1,Math.ceil(50/scale));
- for(let x=Math.floor((camera-W/scale/2)/gridStep)*gridStep;x<camera+W/scale/2+gridStep;x+=gridStep){ctx.beginPath();ctx.moveTo(X(x),ground);ctx.lineTo(X(x),ground+5);ctx.stroke();ctx.fillText(`${x}m`,X(x),ground+17)}
- for(const actor of actors){const offset=actor.offset,r=actor.frame.parts[0],Xlocal=x=>X(x+offset),segments=actor.meta.terrain?.segments||[];ctx.save();const left=actors.length>1?r[0]-1.85:camera-W/scale/2-1,right=actors.length>1?r[0]+1.85:camera+W/scale/2+1;ctx.beginPath();ctx.rect(Xlocal(left),0,(right-left)*scale,H);ctx.clip();
-  for(const t of segments){ctx.fillStyle=actor.meta.terrain?.kind==='hills'?'#b5c9a6':'#c8c4b9';ctx.beginPath();ctx.moveTo(Xlocal(t.x0),Y(-.2));ctx.lineTo(Xlocal(t.x1),Y(-.2));ctx.lineTo(Xlocal(t.x1),Y(t.y1));ctx.lineTo(Xlocal(t.x0),Y(t.y0));ctx.closePath();ctx.fill();}
-  for(const o of actor.meta.obstacles||[]){const y=terrainHeight(segments,o.x);ctx.fillStyle=o.side==='left'?'#cc945e':o.side==='right'?'#6e9bb7':'#a1acb8';ctx.fillRect(Xlocal(o.x-o.width/2),Y(y+o.height),o.width*scale,o.height*scale);}ctx.restore();
-  drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);if(actors.length>1){ctx.fillStyle='#536d89';ctx.font='10px sans-serif';ctx.fillText('로봇 '+(Math.round(offset/3.8)+1),Xlocal(r[0]),Y(Math.max(...actor.frame.parts.map(p=>p[1]))+.25));}
- }
+ drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:meta.terrain,obstacles:meta.obstacles||[],X,Y});
+ for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);}
  if(pushArrow){const a=pushArrow,dx=Math.cos(a.angle)*(.3+a.strength/25)*scale,dy=-Math.sin(a.angle)*(.3+a.strength/25)*scale,x=X(a.x),y=Y(a.y);ctx.strokeStyle='#bf875c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y+dy);ctx.stroke();ctx.beginPath();const angle=Math.atan2(dy,dx);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle-.45),y+dy-10*Math.sin(angle-.45));ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle+.45),y+dy-10*Math.sin(angle+.45));ctx.stroke();}
  if(drag&&drag.mode==='push'){ctx.strokeStyle='#b38d68';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(drag.x-rect.left,drag.y-rect.top);ctx.lineTo(drag.endX-rect.left,drag.endY-rect.top);ctx.stroke();}
 }
@@ -108,9 +103,10 @@ if(!model)try{const old=JSON.parse(localStorage.getItem('mydesk.robot.v1')||'{}'
 function selectSkin(value){skin=value;for(const button of document.querySelectorAll('[data-rb-skin]'))button.setAttribute('aria-pressed',String(button.dataset.rbSkin===skin));try{localStorage.setItem('mydesk.robot.skin',skin);}catch{}}
 for(const button of document.querySelectorAll('[data-rb-skin]'))button.onclick=()=>selectSkin(button.dataset.rbSkin);
 selectSkin(skin);progress(0,0,'대기');
-for(const id of ['terrain','difficulty','robots'])get(id).value=String(options[id]);
-for(const id of ['terrain','difficulty','robots'])get(id).onchange=()=>{options={terrain:get('terrain').value,difficulty:Number(get('difficulty').value),robots:Number(get('robots').value)};try{localStorage.setItem('mydesk.robot.options',JSON.stringify(options));}catch{}setZoom(Math.min(1,3.3/(options.robots*3.8)));panX=panY=0;follow=true;configure(model);};
-if(options.robots>1)setZoom(Math.min(1,3.3/(options.robots*3.8)));
+get('terrain').value=options.terrain;get('view').value=options.view;
+function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view}));}catch{}}
+get('terrain').onchange=()=>{options.terrain=get('terrain').value;saveOptions();setZoom(1);panX=.4;panY=0;follow=options.view==='robot';configure(model);};
+get('view').onchange=()=>{const next=get('view').value;if(next==='terrain'&&follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale;}else if(next==='robot')panY=0;options.view=next;follow=next==='robot';saveOptions();};
 settings();configure(model,legacy,legacyCounts);
 // Retire the former website login locally; no server requests are made.
 try{localStorage.removeItem('mydesk.robot.auth');}catch{}

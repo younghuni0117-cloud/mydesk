@@ -1,4 +1,4 @@
-import {makeTerrain,terrainHeight} from './robot-terrain.mjs?v=robot7';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot8';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
 export const DT = 1 / 60;
 export const POLICY_SIZE = 128;
@@ -19,12 +19,12 @@ export class RobotWorld {
     this.seed=options.seed??1;this.random=seeded(this.seed);this.time=0;this.reward=0;this.energy=0;this.steps=0;
     this.falls=0;this.recoveries=0;this.uprightTime=0;this.stableTime=0;this.isDown=false;this.downTime=0;this.recoveryClock=0;this.impactCost=0;this.passed=new Set();this.contacts=new Map();
     this.world=new World(Vec2(0,-9.81));this.bodies=[];this.parts={};this.joints={};this.motors=[];
-    this.terrain=makeTerrain(options.terrain,options.difficulty);this.terrainSegments=this.terrain.segments;this.groundHeight=x=>terrainHeight(this.terrainSegments,x);
+    this.terrain=makeTerrain(options.terrain);this.terrainSegments=this.terrain.segments;this.groundHeight=x=>terrainHeight(this.terrainSegments,x);
     const floor=this.world.createBody({userData:'ground'});floor.createFixture(Box(500,.15,Vec2(0,-.15)),{friction:options.friction??this.terrain.friction});
     for(const s of this.terrainSegments)if(s.y0>0||s.y1>0){const body=this.world.createBody({userData:'ground'});body.createFixture(Polygon([Vec2(s.x0,-.2),Vec2(s.x1,-.2),Vec2(s.x1,s.y1),Vec2(s.x0,s.y0)]),{friction:this.terrain.friction});}
     this.obstacles=[...this.terrain.obstacles];
     if(this.stage==='obstacles'&&this.terrain.kind==='meadow')for(const [i,x]of [2,4.2,6.4,8.6].entries())this.obstacles.push({x,width:.32,height:(options.obstacleHeight??.14)+(i%2)*.04,side:'both'});
-    for(const o of this.obstacles){const body=this.world.createBody({position:Vec2(o.x,this.groundHeight(o.x)+o.height/2),userData:'obstacle'});body.createFixture(Box(o.width/2,o.height/2),{friction:.8,filterMaskBits:o.side==='left'?3:o.side==='right'?5:0xffff});}
+    for(const o of this.obstacles){const body=this.world.createBody({position:Vec2(o.x,this.groundHeight(o.x)+o.height/2),userData:'obstacle'});body.createFixture(o.shape==='rock'?Polygon(rockVertices(o).map(p=>Vec2(...p))):Box(o.width/2,o.height/2),{friction:.8,filterMaskBits:o.side==='left'?3:o.side==='right'?5:0xffff});}
     const lying=this.stage==='recover' && options.startStanding!==true;
     this.spawnAngle=lying?(this.random()<.5?Math.PI/2:-Math.PI/2):(this.random()-.5)*.025;
     this.spawnY=(lying?.34:1.03)+this.groundHeight(0);

@@ -1,4 +1,4 @@
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,clamp,seeded} from './robot-core.mjs?v=robot7';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,clamp,seeded} from './robot-core.mjs?v=robot8';
 export const MODEL_VERSION=2;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
