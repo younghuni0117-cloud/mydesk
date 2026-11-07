@@ -1,4 +1,4 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot16';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot17';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
 export const DT = 1 / 60;
 export const POLICY_SIZE = 128;

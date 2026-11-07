@@ -6,3 +6,5 @@ export function traceFrame(frames,time){
  const a=frames[low],b=frames[Math.min(low+1,frames.length-1)];return interpolateFrame(a,b,b.time>a.time?(time-a.time)/(b.time-a.time):0);
 }
 export function chartDomain(rows){const values=rows.flatMap(r=>[r.overall,r.candidate]).filter(Number.isFinite);const low=Math.min(...values),high=Math.max(...values);if(!values.length)return[-100,100];const span=Math.max(4,high-low),mid=(low+high)/2;return [mid-span*.65,mid+span*.65];}
+
+export function taskChartRows(model,task){const end=model.taskAttempts[task],trained=Object.keys(model.taskAttempts).filter(k=>model.taskAttempts[k]>0),singleTask=trained.length===1&&trained[0]===task,points=new Map();for(const r of model.history){if(!Number.isFinite(r.rewards?.[task]))continue;let count=r.taskAttempts?.[task];if(!Number.isSafeInteger(count)){if(singleTask)count=r.attempts;else if(r.attempts===model.attempts)count=end;else continue;}if(count<0||count>end)continue;points.set(count,{attempts:count,overall:r.rewards[task],candidate:Number.isFinite(r.candidateRewards?.[task])?r.candidateRewards[task]:r.rewards[task]});}return [...points.values()].sort((a,b)=>a.attempts-b.attempts);}

@@ -1,4 +1,4 @@
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,clamp,seeded,normalizePushSettings} from './robot-core.mjs?v=robot16';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,clamp,seeded,normalizePushSettings} from './robot-core.mjs?v=robot17';
 export const MODEL_VERSION=2;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -7,7 +7,7 @@ export const overallScore=abilities=>stages.reduce((sum,s)=>sum+Math.tanh(abilit
 export function preservesAbilities(previous,next){
  return stages.every(s=>next[s].meanReward>=previous[s].meanReward-Math.max(1,Math.abs(previous[s].meanReward)*.02)&&previous[s].cases.every((c,i)=>!c.passed||next[s].cases[i].passed));
 }
-export function compactHistory(rows){if(rows.length<=160)return rows;return [...rows.slice(0,-40).filter((_,i)=>i%2===0),...rows.slice(-40)];}
+export function compactHistory(rows){if(rows.length<=160)return rows;const keep=new Set([0,...rows.map((_,i)=>i).slice(-40)]);for(const task of stages){const indices=rows.flatMap((r,i)=>r.task===task?[i]:[]);if(indices.length)keep.add(indices[0]);for(const i of indices.slice(-12))keep.add(i);}const rest=rows.map((_,i)=>i).filter(i=>!keep.has(i)),budget=Math.max(0,120-keep.size);for(let i=0;i<Math.min(budget,rest.length);i++)keep.add(rest[Math.floor(i*rest.length/Math.min(budget,rest.length))]);return [...keep].sort((a,b)=>a-b).map(i=>rows[i]);}
 export class RobotLearner {
  constructor(saved=null,seed=Date.now(),environment={}){
   this.environment=environment;
@@ -18,16 +18,16 @@ export class RobotLearner {
   for(const k of ['weights','mean','spread'])while(this[k].length<POLICY_SIZE)this[k].push(k==='spread'?.12:0);
   if(saved&&JSON.stringify(saved.environment||{})!==JSON.stringify(environment))this.history=[];
   this.abilities=evaluateAbilities(this.weights,this.environment);this.bestReward=overallScore(this.abilities);
-  if(!this.history.length||!this.history.some(r=>r.rewards))this.record(this.bestReward,false);
+  if(!this.history.length||!this.history.some(r=>r.rewards&&r.taskAttempts)){this.record(this.bestReward,false);this.history.at(-1).baseline=true;}
  }
  static valid(s){
   return s&&s.version===2&&s.physicsVersion===2&&typeof s.id==='string'&&s.id.length<150&&['weights','mean','spread'].every(k=>vector(s[k]))&&['mean','spread'].every(k=>s[k].length===s.weights.length)&&s.spread.every(v=>v>=.03&&v<5)
    &&Number.isSafeInteger(s.attempts)&&s.attempts>=0&&s.attempts<1e12&&Number.isSafeInteger(s.modelAttempt)&&s.modelAttempt>=0&&s.modelAttempt<=s.attempts
    &&['revision','policyVersion'].every(k=>Number.isSafeInteger(s[k])&&s[k]>=0)&&s.taskAttempts&&stages.every(k=>Number.isSafeInteger(s.taskAttempts[k])&&s.taskAttempts[k]>=0)&&stages.reduce((sum,k)=>sum+s.taskAttempts[k],0)===s.attempts
    &&s.abilities&&stages.every(k=>s.abilities[k]&&Number.isFinite(s.abilities[k].meanReward)&&Math.abs(s.abilities[k].meanReward)<1e6&&Number.isFinite(s.abilities[k].passRate)&&s.abilities[k].passRate>=0&&s.abilities[k].passRate<=1&&Array.isArray(s.abilities[k].cases)&&s.abilities[k].cases.length===4&&s.abilities[k].cases.every((c,i)=>c.id===VALIDATION_CASES[i].id&&typeof c.passed==='boolean'))
-   &&Array.isArray(s.history)&&s.history.length<=200&&s.history.every(r=>r&&Number.isSafeInteger(r.attempts)&&r.attempts>=0&&r.attempts<=s.attempts&&Number.isFinite(r.overall)&&Math.abs(r.overall)<=101&&Number.isFinite(r.candidate)&&Math.abs(r.candidate)<=101&&(!r.rewards||stages.every(s=>Number.isFinite(r.rewards[s])&&Math.abs(r.rewards[s])<1e6))&&(!r.candidateRewards||stages.every(s=>Number.isFinite(r.candidateRewards[s])&&Math.abs(r.candidateRewards[s])<1e6)));
+   &&Array.isArray(s.history)&&s.history.length<=200&&s.history.every(r=>r&&Number.isSafeInteger(r.attempts)&&r.attempts>=0&&r.attempts<=s.attempts&&(!r.taskAttempts||(stages.every(k=>Number.isSafeInteger(r.taskAttempts[k])&&r.taskAttempts[k]>=0&&r.taskAttempts[k]<=s.taskAttempts[k])&&stages.reduce((sum,k)=>sum+r.taskAttempts[k],0)===r.attempts))&&Number.isFinite(r.overall)&&Math.abs(r.overall)<=101&&Number.isFinite(r.candidate)&&Math.abs(r.candidate)<=101&&(!r.rewards||stages.every(s=>Number.isFinite(r.rewards[s])&&Math.abs(r.rewards[s])<1e6))&&(!r.candidateRewards||stages.every(s=>Number.isFinite(r.candidateRewards[s])&&Math.abs(r.candidateRewards[s])<1e6)));
  }
- record(candidate,accepted,candidateAbilities=this.abilities){const row={attempts:this.attempts,task:this.focus,overall:this.bestReward,candidate,accepted,rewards:Object.fromEntries(stages.map(s=>[s,this.abilities[s].meanReward])),candidateRewards:Object.fromEntries(stages.map(s=>[s,candidateAbilities[s].meanReward]))};if(this.history.at(-1)?.attempts===this.attempts)this.history[this.history.length-1]=row;else this.history.push(row);this.history=compactHistory(this.history);}
+ record(candidate,accepted,candidateAbilities=this.abilities){const row={attempts:this.attempts,taskAttempts:{...this.taskAttempts},task:this.focus,overall:this.bestReward,candidate,accepted,rewards:Object.fromEntries(stages.map(s=>[s,this.abilities[s].meanReward])),candidateRewards:Object.fromEntries(stages.map(s=>[s,candidateAbilities[s].meanReward]))};if(this.history.at(-1)?.attempts===this.attempts)this.history[this.history.length-1]=row;else this.history.push(row);this.history=compactHistory(this.history);}
  setFocus(stage){if(STAGES[stage])this.focus=stage;}
  setTrainingPushSettings(settings){this.trainingPush=normalizePushSettings(settings);}
  trainOne(){

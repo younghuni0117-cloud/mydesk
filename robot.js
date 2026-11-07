@@ -1,10 +1,10 @@
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot16';
-import {RobotTeam} from './robot-team.mjs?v=robot16';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot16';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot16';
-import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot16';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot16';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot16';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot17';
+import {RobotTeam} from './robot-team.mjs?v=robot17';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot17';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot17';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot17';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot17';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot17';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v2';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
@@ -14,7 +14,7 @@ let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,inte
 let liveRobots=[],previousFrames=[],currentFrames=[];
 let stage='balance',training=false,initializing=true;
 let mode='trace',scene=null,pendingScene=null,traceTime=0,viewPaused=false,live=null,liveWeights=Array(POLICY_SIZE).fill(0),geometry=null;
-let viewSource='best',liveSource='best',liveAttempt=0,liveVersion=0,latestPreview=null,liveTrial=null;
+let viewSource='best',liveSource='best',liveAttempt=0,liveVersion=0,latestPreview=null,liveTrial=null,resetPending=false;
 let previousLive=null,currentLive=null,lastPersist=0,lastProgressHud=0;
 let lastTime=0,accumulator=0,frame=null,lastHud=0,lastDraw=0,pushArrow=null,drag=null;
 let zoom=1,panX=.4,panY=0,follow=options.view==='robot',drawScale=100,cameraX=0;const pointers=new Map();let pinch=null;
@@ -23,7 +23,7 @@ function persist(){try{localStorage.setItem(storageKey,JSON.stringify({model}));
 function backup(){if(model)try{localStorage.setItem('mydesk.robot.backup',JSON.stringify({model}));}catch{}}
 let lastRequest={completed:0,target:0};
 function progress(completed,target,label,total=model?.attempts||0){lastRequest={completed,target};const ratio=target?Math.min(100,completed/target*100):0;get('progress').value=ratio;get('progress').textContent=Math.round(ratio)+'%';get('progress-label').textContent=`학습 ${completed.toLocaleString()}/${target.toLocaleString()}회 (총 ${total.toLocaleString()}회)`;}
-function controls(){get('train').disabled=initializing;get('run').disabled=initializing;for(const id of ['terrain'])get(id).disabled=initializing||training;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('auto-push').disabled=training||initializing;for(const id of ['push-min','push-max'])get(id).disabled=training||initializing||!options.autoPush;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
+function controls(){get('train').disabled=initializing;get('reset').disabled=initializing;get('run').disabled=initializing;for(const id of ['terrain'])get(id).disabled=initializing||training;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('auto-push').disabled=training||initializing;for(const id of ['push-min','push-max'])get(id).disabled=training||initializing||!options.autoPush;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
 for(const id of ['focus'])for(const [value,s]of Object.entries(STAGES)){const o=document.createElement('option');o.value=value;o.textContent=s.label;get(id).append(o);}
 for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}
 const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('넘어졌다 ','').replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
@@ -31,12 +31,12 @@ function renderModel(){if(!model)return;for(const [key,a]of Object.entries(model
  renderChart();
 }
 function renderChart(){if(!model)return;
- const rows=model.history.filter(r=>Number.isFinite(r.rewards?.[stage])).map(r=>({attempts:r.attempts,overall:r.rewards[stage],candidate:Number.isFinite(r.candidateRewards?.[stage])?r.candidateRewards[stage]:r.rewards[stage]}));
- const current=model.abilities[stage].meanReward,end=model.attempts,values=[...rows,{overall:current,candidate:current}],[min,max]=chartDomain(values),Y=v=>95-(v-min)/(max-min)*90,X=n=>end?n/end*300:0;
+ const rows=taskChartRows(model,stage);
+ const current=model.abilities[stage].meanReward,end=model.taskAttempts[stage],values=[...rows,{overall:current,candidate:current}],[min,max]=chartDomain(values),Y=v=>95-(v-min)/(max-min)*90,X=n=>end?n/end*300:0;
  for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']])get(id).setAttribute('d',rows.map((r,i)=>`${i?'L':'M'}${X(r.attempts)} ${Y(r[k])}`).join(' '));
  get('chart-dot').setAttribute('cx',X(end));get('chart-dot').setAttribute('cy',Y(current));
  get('chart-title').textContent=STAGES[stage].label+' · 평균 보상';get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('chart-range').textContent=`0~${end.toLocaleString()}회`;get('x-mid').textContent=Math.round(end/2).toLocaleString();get('x-max').textContent=end.toLocaleString()+'회';
- get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} 평균 보상 ${current.toFixed(1)}점. 가로축 0~${end}회. 기록이 있는 평가 시점만 표시합니다.`);
+ get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} 평균 보상 ${current.toFixed(1)}점. 가로축 ${STAGES[stage].label} 학습 0~${end}회. 기록이 있는 평가 시점만 표시합니다.`);
 }
 
 const worker=new RobotTeam();
@@ -44,7 +44,7 @@ function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;
 function settings(){worker.postMessage({type:'settings',interval:options.interval});}
 worker.onmessage=({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();progress(lastRequest.completed,lastRequest.target,'학습');return;}
- if(data.type==='ready'){initializing=false;if(!live)startLive();controls();status(`${TERRAINS[options.terrain]} · 준비 완료`);return;}
+ if(data.type==='ready'){initializing=false;if(!live)startLive();controls();status(`${resetPending?'모든 로봇 학습 데이터 초기화 완료 · ':''}${TERRAINS[options.terrain]} · 준비 완료`);resetPending=false;return;}
  if(data.type==='training'){training=data.active;controls();return;}
  if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();renderChart();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 (총 ${data.attempts.toLocaleString()}회) · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
  if(data.type==='preview'){if(data.stage!==stage)return;latestPreview=data;if(viewSource==='candidate'&&(!viewPaused||live?.done))showRecent();return;}
@@ -110,6 +110,7 @@ function animate(time){
 }
 frame=requestAnimationFrame(animate);
 
+get('reset').onclick=()=>{if(initializing||!window.confirm('이 브라우저의 모든 로봇 학습 데이터(통합 모델·운동 능력별 학습 횟수·그래프·백업)를 초기화할까요? 초기화하면 복구할 수 없습니다.'))return;worker.terminate();try{const keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith('mydesk.robot.')&&!['mydesk.robot.options','mydesk.robot.skin'].includes(key))keys.push(key);}for(const key of keys)localStorage.removeItem(key);}catch{configure(model);status('브라우저 저장소에 접근할 수 없어 초기화하지 못했습니다.');return;}model=null;cache={};legacy=null;legacyCounts=null;latestPreview=null;liveTrial=null;pushArrow=null;resetPending=true;for(const cellsForTask of Object.values(cells)){cellsForTask[0].textContent='0';cellsForTask[1].textContent='—';cellsForTask[2].textContent='—';}for(const id of ['chart-best','chart-current'])get(id).setAttribute('d','');get('chart-range').textContent='0~0회';get('x-mid').textContent='0';get('x-max').textContent='0회';get('chart-dot').setAttribute('cx',0);get('chart-dot').setAttribute('cy',50);progress(0,0,'초기화',0);configure(null);status('로봇 학습 데이터를 초기화하고 새 모델을 준비합니다.');};
 get('export').onclick=()=>{const blob=new Blob([JSON.stringify({format:'mydesk-robot-v2',model},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='mydesk-robot-model.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 get('import').onchange=async event=>{const file=event.target.files?.[0];if(!file)return;try{if(file.size>2*1024*1024)throw Error('모델 파일은 2MB 이하여야 합니다.');const data=JSON.parse(await file.text());if(data.format!=='mydesk-robot-v2'||!RobotLearner.valid(data.model))throw Error('올바른 v2 통합 모델 파일이 아닙니다.');backup();model=data.model;configure(model);status('모델을 불러와 무보조 성능을 다시 확인합니다.');}catch(e){status(e.message);}finally{event.target.value='';}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden){worker.postMessage({type:'stop'});viewPaused=true;controls();}});

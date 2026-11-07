@@ -94,3 +94,17 @@ body[data-page=robot].robot-wide-fit .robot-chart{flex:none;min-height:0;max-hei
 
 .robot-train-row .robot-auto-push{grid-column:1/-1;min-height:22px;gap:6px;font-size:10px}.robot-auto-push input{width:14px;height:14px;margin:0;accent-color:#527aa4}.robot-auto-push span{font-size:9px;color:#8798ac}
 @media(max-width:599px) and (min-height:701px){body[data-page=robot] .robot-stage{height:clamp(245px,calc(43dvh - 26px),364px);min-height:245px}}
+
+.robot-reset{min-height:34px;border:1px solid #d7b1ae;border-radius:5px;background:#fff8f6;color:#99524a;font:inherit;cursor:pointer}.robot-reset:disabled{opacity:.5;cursor:wait}
+@media(max-width:599px){
+ body[data-page=robot] main{padding-bottom:calc(155px + env(safe-area-inset-bottom,0px))}
+ body[data-page=robot] .robot-stage{height:clamp(190px,min(52dvh,calc(100dvh - 380px)),500px);min-height:190px}
+ body[data-page=robot] .robot-metrics{margin-top:2px}
+ body[data-page=robot] .robot-metrics span{font-size:8px;line-height:10px}
+ body[data-page=robot] .robot-metrics strong{font-size:14px;line-height:18px}
+ body[data-page=robot] .robot-progress{padding:2px 0}
+ body[data-page=robot] .robot-progress>div{font-size:9px;line-height:12px}
+ body[data-page=robot] .robot-progress progress{height:5px;margin-top:2px}
+ body[data-page=robot] #rb-status{min-height:0;height:24px;max-height:24px;padding:2px 0;margin-top:2px;font-size:9px;line-height:12px;overflow:hidden}
+ body[data-page=robot] .robot-train-row{position:fixed;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom,0px));z-index:18;padding:6px max(12px,env(safe-area-inset-right,0px)) 6px max(12px,env(safe-area-inset-left,0px));gap:4px 8px;border-top:1px solid #d5deea;background:#f8fafd}
+}

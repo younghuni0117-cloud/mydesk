@@ -1,5 +1,5 @@
-import {RobotLearner,ALLOWED_ATTEMPTS,overallScore} from './robot-learning.mjs?v=robot16';
-import {STAGES,evaluateAbilities} from './robot-core.mjs?v=robot16';
+import {RobotLearner,ALLOWED_ATTEMPTS,overallScore} from './robot-learning.mjs?v=robot17';
+import {STAGES,evaluateAbilities} from './robot-core.mjs?v=robot17';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
