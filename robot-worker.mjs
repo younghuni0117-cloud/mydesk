@@ -1,17 +1,11 @@
-import {RobotLearner,ALLOWED_ATTEMPTS,overallScore} from './robot-learning.mjs?v=robot17';
-import {STAGES,evaluateAbilities} from './robot-core.mjs?v=robot17';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot18';
+import {STAGES} from './robot-core.mjs?v=robot18';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
 function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[]});}
 async function initialize(data,token){
  environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
- if(Array.isArray(data.legacy)&&!data.saved){
-  let best=learner.bestReward;
-  for(const old of data.legacy.slice(0,3)){if(!Array.isArray(old.weights)||![32,128].includes(old.weights.length)||old.weights.some(v=>!Number.isFinite(v)))continue;const weights=Array.from({length:128},(_,i)=>old.weights[i]||0),a=evaluateAbilities(weights,environment),score=overallScore(a);if(score>best){learner.weights=[...weights];learner.mean=[...weights];learner.abilities=a;learner.bestReward=score;best=score;}await yieldControl();if(token!==initToken)return;}
-  if(data.legacyCounts){for(const task of Object.keys(STAGES))learner.taskAttempts[task]=Math.max(0,Math.floor(Number(data.legacyCounts[task])||0));learner.attempts=Object.values(learner.taskAttempts).reduce((a,b)=>a+b,0);learner.modelAttempt=learner.attempts;}
-  learner.history=[];learner.record(learner.bestReward,false);
- }
  if(token!==initToken)return;sendModel();preview();postMessage({type:'ready'});
 }
 self.onmessage=async({data})=>{

@@ -108,3 +108,5 @@ body[data-page=robot].robot-wide-fit .robot-chart{flex:none;min-height:0;max-hei
  body[data-page=robot] #rb-status{min-height:0;height:24px;max-height:24px;padding:2px 0;margin-top:2px;font-size:9px;line-height:12px;overflow:hidden}
  body[data-page=robot] .robot-train-row{position:fixed;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom,0px));z-index:18;padding:6px max(12px,env(safe-area-inset-right,0px)) 6px max(12px,env(safe-area-inset-left,0px));gap:4px 8px;border-top:1px solid #d5deea;background:#f8fafd}
 }
+
+.robot-reward-common,.robot-reward-tasks details{margin:10px 0;border:1px solid #d5deea;border-radius:6px;padding:10px 12px;color:#536d89}.robot-reward-common summary,.robot-reward-tasks summary{cursor:pointer;font-size:12px;font-weight:600}.robot-reward-tasks p,.robot-reward-common p{margin:10px 0 2px}.robot-model-transfer [hidden]{display:none!important}

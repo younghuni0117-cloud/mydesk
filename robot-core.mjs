@@ -1,7 +1,9 @@
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot17';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot18';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
 export const DT = 1 / 60;
-export const POLICY_SIZE = 128;
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot18';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot18';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot18';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 8 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
@@ -12,7 +14,7 @@ export const STAGES = {
 export const JOINTS = ['waist','neck','leftHip','leftKnee','leftAnkle','leftToe','rightHip','rightKnee','rightAnkle','rightToe','leftShoulder','leftElbow','leftWrist','rightShoulder','rightElbow','rightWrist'];
 export const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 export function normalizePushSettings(raw={}){const low=Number(raw?.pushMin),high=Number(raw?.pushMax),valid=Number.isFinite(low)&&Number.isFinite(high)&&low>=.1&&high<=30&&low<=high;return {autoPush:raw?.autoPush!==false,pushMin:valid?low:1,pushMax:valid?high:6};}
-export const WAIST_RESISTANCE=Object.freeze({stiffness:55,damping:9,maxTorque:110,targetRate:1.2,speedLimit:2.3});
+export const WAIST_RESISTANCE=Object.freeze({stiffness:55,damping:9,maxTorque:110});
 export function seeded(seed) { return () => {seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}; }
 const wrap = a => Math.atan2(Math.sin(a),Math.cos(a));
 export class RobotWorld {
@@ -20,7 +22,7 @@ export class RobotWorld {
     this.stage = STAGES[stage] ? stage : 'balance'; this.task=STAGES[this.stage];
     this.duration=Number.isInteger(options.observationSeconds)&&options.observationSeconds>=1&&options.observationSeconds<=3600?options.observationSeconds:this.task.duration;
     this.seed=options.seed??1;this.random=seeded(this.seed);this.time=0;this.reward=0;this.energy=0;this.steps=0;
-    this.falls=0;this.recoveries=0;this.uprightTime=0;this.stableTime=0;this.isDown=false;this.downTime=0;this.recoveryClock=0;this.impactCost=0;this.passed=new Set();this.contacts=new Map();
+    this.falls=0;this.recoveries=0;this.uprightTime=0;this.stableTime=0;this.isDown=false;this.downTime=0;this.impactCost=0;this.passed=new Set();this.contacts=new Map();
     this.world=new World(Vec2(0,-9.81));this.world.setAutoClearForces(false);this.bodies=[];this.parts={};this.joints={};this.motors=[];
     this.terrain=makeTerrain(options.terrain);this.terrainSegments=this.terrain.segments;this.groundHeight=x=>terrainHeight(this.terrainSegments,x);
     const floor=this.world.createBody({userData:'ground'});floor.createFixture(Box(500,.15,Vec2(0,-.15)),{friction:options.friction??this.terrain.friction});
@@ -32,14 +34,14 @@ export class RobotWorld {
     const lying=this.stage==='recover' && options.startStanding!==true;
     this.spawnAngle=lying?(this.random()<.5?Math.PI/2:-Math.PI/2):(this.random()-.5)*.025;
     this.spawnY=(lying?.34:1.03)+this.groundHeight(0);
-    this.makeRobot();this.initialX=this.parts.pelvis.getPosition().x;this.lastX=this.initialX;this.lastHeight=this.parts.pelvis.getPosition().y;
-    this.phaseOffset=Math.PI/2;
+    this.makeRobot();this.motors.sort((a,b)=>JOINTS.indexOf(a.name)-JOINTS.indexOf(b.name));this.initialX=this.parts.pelvis.getPosition().x;this.lastX=this.initialX;this.lastHeight=this.parts.pelvis.getPosition().y;
+    this.actions=Array(JOINTS.length).fill(0);this.activeTorques=Array(JOINTS.length).fill(0);this.rewardTerms={};if(lying)this.isDown=true;
     this.pushes = options.pushes ? options.pushes.map(p=>({...p})) : [];
     const pushSettings=normalizePushSettings(options);
     if(options.disturbances!==false&&pushSettings.autoPush&&!options.pushes){
       this.pushes.push({time:.9+this.random()*Math.max(.1,this.duration-2.4),strength:pushSettings.pushMin+this.random()*(pushSettings.pushMax-pushSettings.pushMin),direction:this.random()*360,location:['torso','shoulder','pelvis'][Math.floor(this.random()*3)],duration:0});
     }
-    this.waistTarget=0;this.nextPushIndex=0;this.pushesApplied=0;this.pushRecoveryTime=0;this.lastPushAt=-Infinity;this.obstacleHeight=options.obstacleHeight??.14;
+    this.nextPushIndex=0;this.pushesApplied=0;this.pushRecoveryTime=0;this.lastPushAt=-Infinity;this.obstacleHeight=options.obstacleHeight??.14;
     const contact=(contact,amount)=>{
       const a=contact.getFixtureA().getBody().getUserData(),b=contact.getFixtureB().getBody().getUserData();
       const name=a==='ground'||a==='obstacle'?b:b==='ground'||b==='obstacle'?a:null;
@@ -48,7 +50,7 @@ export class RobotWorld {
     this.world.on('begin-contact',c=>contact(c,1));this.world.on('end-contact',c=>contact(c,-1));
     this.world.on('post-solve',(c,impulse)=>{
       const names=[c.getFixtureA().getBody().getUserData(),c.getFixtureB().getBody().getUserData()];
-      if(names.includes('ground')||names.includes('obstacle'))if(names.some(n=>['head','torso','pelvis'].includes(n)))this.impactCost+=Math.min(4,impulse.normalImpulses.reduce((a,b)=>a+b,0)*.06);
+      if(names.includes('ground')||names.includes('obstacle'))if(names.some(n=>['head','torso','pelvis'].includes(n)))this.impactCost+=Math.min(REWARDS.impactCap,impulse.normalImpulses.reduce((a,b)=>a+b,0)*REWARDS.impactImpulse);
     });
   }
   transform(x,y){const dy=y-1.03,c=Math.cos(this.spawnAngle),s=Math.sin(this.spawnAngle);return Vec2(c*x-s*dy,this.spawnY+s*x+c*dy);}
@@ -59,7 +61,7 @@ export class RobotWorld {
     const item={name,body,w,h,circle,color};this.bodies.push(item);this.parts[name]=body;return body;
   }
   joint(name,a,b,x,y,lower,upper,torque){
-    const joint=this.world.createJoint(RevoluteJoint({enableLimit:true,lowerAngle:lower,upperAngle:upper,enableMotor:true,maxMotorTorque:torque,motorSpeed:0,collideConnected:false},a,b,this.transform(x,y)));
+    const joint=this.world.createJoint(RevoluteJoint({enableLimit:true,lowerAngle:lower,upperAngle:upper,enableMotor:false,maxMotorTorque:torque,motorSpeed:0,collideConnected:false},a,b,this.transform(x,y)));
     this.joints[name]=joint;this.motors.push({name,joint,lower,upper,torque});
   }
   makeRobot(){
@@ -94,99 +96,36 @@ export class RobotWorld {
     else body.applyLinearImpulse(vector,point,true);
   }
   resistWaist(){const j=this.joints.waist,t=clamp(-WAIST_RESISTANCE.stiffness*j.getJointAngle()-WAIST_RESISTANCE.damping*j.getJointSpeed(),-WAIST_RESISTANCE.maxTorque,WAIST_RESISTANCE.maxTorque);j.getBodyB().applyTorque(t,true);j.getBodyA().applyTorque(-t,true);return t;}
-  control(weights){
-    const p=i=>Math.tanh(weights[i]||0),pelvis=this.parts.pelvis,torso=this.parts.torso;
-    const pa=wrap(pelvis.getAngle()),ta=wrap(torso.getAngle()),tw=torso.getAngularVelocity(),height=pelvis.getPosition().y-this.groundHeight(pelvis.getPosition().x);
-    const low=height<.5||Math.abs(ta)>1;
-    if(low){this.downTime+=DT;if(!this.isDown&&this.downTime>.15){this.isDown=true;this.falls++;this.reward-=12;this.recoveryClock=0;}}
-    else this.downTime=0;
-    let targets={waist:clamp(-pa-.1*tw,-1.3,.8),neck:clamp(-.5*ta-.06*tw,-1,1)};
-    const recovering=this.isDown && this.stableTime<.8;
-    if(recovering){
-      this.recoveryClock+=DT;const t=this.recoveryClock%(3.2+.6*p(15));
-      const folded=t<.65, pushing=t>=.65&&t<1.9;
-      for(const side of ['left','right']){
-        const back=pa<0;
-        targets[side+'Hip']=back?(folded?1.15:pushing?.95:.25):(folded?-.9:pushing?-.6:.2);
-        targets[side+'Knee']=back?(folded?-.65:pushing?-.5:-.45):(folded?-1.8:pushing?-1.1:-.45);
-        targets[side+'Ankle']=clamp(-pa-targets[side+'Hip']-targets[side+'Knee'],-1.05,1.05);
-        targets[side+'Toe']=0;
-        const face=ta>0?-1:1;
-        targets[side+'Shoulder']=face*(folded?1.1:pushing?1.6:.1);
-        targets[side+'Elbow']=folded?1.4:pushing?.2:.35;
-        targets[side+'Wrist']=-face*.4;
-      }
-      targets.waist=clamp(-pa*.65,-1.3,.8);
-    }else{
-      const speed=this.task.speed, frequency=speed===0?0:(this.stage==='run'?2.2:1.2)+.5*p(3);
-      const phase=this.time*frequency*2*Math.PI+this.phaseOffset;
-      const ramp=clamp((this.time-1.2)/1.5,0,1);
-      const stride=speed===0?0:((this.stage==='run'?.27:.12)+.08*p(0))*ramp;
-      const lean=speed===0?0:-.035-.035*p(4);
-      const correction=clamp(-(.2+.15*p(5))*(ta-lean)-(.04+.03*p(6))*tw,-.3,.3);
-      for(const [index,side] of ['left','right'].entries()){
-        const phaseLeg=phase+index*Math.PI,swing=Math.max(0,Math.sin(phaseLeg));
-        let lift=speed===0?0:((this.stage==='run'?.16:.065)+.04*p(1))*ramp;
-        const footX=this.parts[side+'Foot'].getPosition().x;
-        const ahead=this.obstacles.find(o=>o.shape!=='stalactite'&&(o.side==='both'||o.side===side)&&o.x>footX-.12);
-        if(ahead&&ahead.x-pelvis.getPosition().x<.9)lift=Math.max(lift,ahead.height+.12+.05*p(2));
-        const ankleY=.12+lift*swing+this.groundHeight(footX+.25)-this.groundHeight(pelvis.getPosition().x);
-        const down=clamp(height-ankleY,.45,.89);
-        const dx=clamp(-stride*Math.cos(phaseLeg)+correction+.06*p(7)-.035,-.36,.36);
-        const r2=clamp(dx*dx+down*down,.04,.899*.899);
-        const knee=-Math.acos(clamp((r2-2*.45*.45)/(2*.45*.45),-1,1));
-        const hip=Math.atan2(dx,down)-knee/2;
-        targets[side+'Hip']=hip-pa;
-        targets[side+'Knee']=knee+.08*p(10);
-        targets[side+'Ankle']=clamp(-hip-knee+(1.6+.6*p(5))*(ta-lean)+(.3+.12*p(6))*tw+.1*p(2),-1.05,1.05);
-        targets[side+'Toe']=.16*swing*p(11);
-        targets[side+'Shoulder']=-.4*stride*Math.cos(phaseLeg)*(1+.8*p(8));
-        targets[side+'Elbow']=.25;
-        targets[side+'Wrist']=0;
-      }
-      targets.waist=clamp(-pa-(.2+.15*p(9))*tw,-1.3,.8);
-    }
-    this.resistWaist();let work=0;
-    const kp=10+5*p(12),kd=.6+.25*p(13),gain=1+.25*p(14);
-    for(const [i,name] of JOINTS.entries()){
-      const motor=this.motors.find(m=>m.name===name),joint=motor.joint;
-      const side=name.startsWith('left')?'left':name.startsWith('right')?'right':null,foot=side?this.parts[side+'Foot']:this.parts.pelvis;
-      const inputs=[Math.sin(this.time*7),Math.cos(this.time*7),clamp(ta,-2,2),clamp(joint.getJointSpeed()/8,-1,1),side&&this.contacts.get(side+'Foot')>0?1:0,clamp(this.groundHeight(foot.getPosition().x+.3)-this.groundHeight(foot.getPosition().x)-(this.terrain.kind==='cave'?clamp(2.3-(terrainHeight(this.terrain.ceilings,foot.getPosition().x+.35)-this.groundHeight(foot.getPosition().x)),0,1):0),-1,.5)];
-      const independent=inputs.reduce((sum,input,j)=>sum+input*p(32+i*6+j),0)*.65;
-      let target=clamp((targets[name]||0)+(recovering?.45:.13)*p(16+i)+independent,motor.lower+.01,motor.upper-.01);
-      const speedLimit=name==='waist'?WAIST_RESISTANCE.speedLimit:9;if(name==='waist'){this.waistTarget+=clamp(target-this.waistTarget,-WAIST_RESISTANCE.targetRate*DT,WAIST_RESISTANCE.targetRate*DT);target=this.waistTarget;}
-      joint.setMotorSpeed(clamp(kp*(target-joint.getJointAngle())-kd*joint.getJointSpeed(),-speedLimit,speedLimit));joint.setMaxMotorTorque(motor.torque*gain);
-
-      work+=Math.abs(joint.getMotorTorque(2/DT)*joint.getJointSpeed())*DT;
-    }
-    return work;
+  observations(){const torso=this.parts.torso,pelvis=this.parts.pelvis,p=pelvis.getPosition(),v=pelvis.getLinearVelocity(),a=torso.getAngle(),ahead=side=>{const x=this.parts[side+'Foot'].getPosition().x,ground=this.groundHeight(x);let top=Math.max(this.groundHeight(x+.2),this.groundHeight(x+.5));for(const o of this.obstacles)if(o.shape!=='stalactite'&&(o.side==='both'||o.side===side)&&o.x+o.width/2>x&&o.x-o.width/2<x+.6)top=Math.max(top,(o.bottom??this.groundHeight(o.x))+o.height);return clamp((top-ground)/.6,-1,1);};
+   return [Math.sin(a),Math.cos(a),clamp(torso.getAngularVelocity()/8,-1,1),clamp((p.y-this.groundHeight(p.x))/1.2,-1,1),clamp(v.x/3,-1,1),clamp(v.y/3,-1,1),this.task.speed/2,((this.contacts.get('leftFoot')||0)+(this.contacts.get('leftToePart')||0))>0?1:0,((this.contacts.get('rightFoot')||0)+(this.contacts.get('rightToePart')||0))>0?1:0,ahead('left'),ahead('right'),this.terrain.ceilings.length?clamp((terrainHeight(this.terrain.ceilings,p.x)-p.y)/3,-1,1):1,...this.motors.map(m=>m.joint.getJointAngle()/Math.PI),...this.motors.map(m=>clamp(m.joint.getJointSpeed()/8,-1,1))];
   }
+  control(weights){
+   if(this.policyWeights!==weights){this.policyWeights=weights;this.zeroPolicy=weights.every(v=>v===0);}
+   if(this.steps%3===0)this.actions=this.zeroPolicy?Array(JOINTS.length).fill(0):policyActions(weights,this.observations());
+  }
+  applyActuation(dt){let work=0;for(const [i,m]of this.motors.entries()){m.joint.enableMotor(false);let torque=this.actions[i]*m.torque;const angle=m.joint.getJointAngle(),speed=m.joint.getJointSpeed();torque*=torque>0?clamp((m.upper-angle)/.12,0,1):clamp((angle-m.lower)/.12,0,1);torque*=clamp(1-Math.sign(torque)*speed/9,0,1);this.activeTorques[i]=torque;if(torque){m.joint.getBodyB().applyTorque(torque,true);m.joint.getBodyA().applyTorque(-torque,true);}work+=Math.abs(torque*speed)*dt;}return work;}
   step(weights=Array(POLICY_SIZE).fill(0)){
-    this.impactCost=0;const work=this.control(weights);this.energy+=work;
-    if(this.sustainedPush&&this.sustainedPush.remaining>0){this.sustainedPush.body.applyForce(this.sustainedPush.vector,this.sustainedPush.body.getWorldPoint(this.sustainedPush.localPoint),true);this.sustainedPush.remaining-=DT;}
+    this.impactCost=0;this.control(weights);let work=0;
     while(this.nextPushIndex<this.pushes.length&&this.time>=this.pushes[this.nextPushIndex].time){const p=this.pushes[this.nextPushIndex++];this.push(p.strength,p.direction,p.location,p.duration||0);this.pushesApplied++;this.lastPushAt=this.time;}
-    // Two 120 Hz substeps keep impact impulses from visibly overshooting anatomical stops.
-    for(let i=0;i<2;i++)this.world.step(DT/2,8,6);this.world.clearForces();this.time+=DT;this.steps++;
+    // Smaller physical steps keep stiff joints stable under freely explored torques.
+    const substeps=this.actions.some(a=>Math.abs(a)>.1)||this.motors.some(m=>Math.abs(m.joint.getJointSpeed())>4.5)?8:2;
+    for(let i=0;i<substeps;i++){this.resistWaist();work+=this.applyActuation(DT/substeps);if(this.sustainedPush&&this.sustainedPush.remaining>0){this.sustainedPush.body.applyForce(this.sustainedPush.vector,this.sustainedPush.body.getWorldPoint(this.sustainedPush.localPoint),true);this.sustainedPush.remaining-=DT/substeps;}this.world.step(DT/substeps,8,6);this.world.clearForces();}this.energy+=work;this.time+=DT;this.steps++;
     const pelvis=this.parts.pelvis,torso=this.parts.torso,pos=pelvis.getPosition(),velocity=pelvis.getLinearVelocity();
     const angle=wrap(torso.getAngle()),footDown=['leftFoot','rightFoot','leftToePart','rightToePart'].some(n=>(this.contacts.get(n)||0)>0);
     const relativeHeight=pos.y-this.groundHeight(pos.x);
     const upright=relativeHeight>.75&&Math.abs(angle)<.5&&footDown;
-    if(upright){this.uprightTime+=DT;this.stableTime+=DT;if(this.time-this.lastPushAt<1.5)this.pushRecoveryTime+=DT;}else this.stableTime=0;
-    if(this.isDown&&this.stableTime>.8){this.isDown=false;this.recoveries++;this.reward+=8;}
-    const dx=pos.x-this.lastX;
-    const target=this.task.speed,tracking=Math.exp(-Math.pow(velocity.x-target,2)/.3);
-    let r=DT*((upright?2:.1)+tracking*2-1.2*angle*angle-.8*Math.max(0,.9-relativeHeight));
-    if(target>0)r+=clamp(dx,-.08,.08)*(upright?5:.1);else r-=DT*.8*Math.abs(pos.x);
-    if(this.stage==='recover')r+=2*(pos.y-this.lastHeight);
-    if(this.time-this.lastPushAt<1.5)r+=DT*(upright?1.5:-.5); // Reward resisting and recovering after an actual perturbation.
-    r-=this.impactCost*.5;
-    r-=.003*work;
-    for(const [i,o]of this.obstacles.entries())if(o.x>this.initialX+.3&&!this.passed.has(i)&&pos.x>o.x+o.width/2+.2&&upright){this.passed.add(i);r+=10;}
-    this.reward+=r;this.lastX=pos.x;this.lastHeight=pos.y;
+    const low=relativeHeight<.5||Math.abs(angle)>1;let newFall=false,recovered=false;
+    if(low){this.downTime+=DT;if(!this.isDown&&this.downTime>.15){this.isDown=true;this.falls++;newFall=true;}}else this.downTime=0;
+    if(upright){this.uprightTime+=DT;this.stableTime+=DT;if(this.time-this.lastPushAt<REWARDS.pushWindow)this.pushRecoveryTime+=DT;}else this.stableTime=0;
+    if(this.isDown&&this.stableTime>.8){this.isDown=false;this.recoveries++;recovered=true;}
+    let passed=0;for(const [i,o]of this.obstacles.entries())if(o.x>this.initialX+.3&&!this.passed.has(i)&&pos.x>o.x+o.width/2+REWARDS.obstacleClearance&&upright){this.passed.add(i);passed++;}
+    const terms=rewardBreakdown(this.stage,{dt:DT,upright,speed:velocity.x,target:this.task.speed,angle,height:relativeHeight,distance:pos.x-this.initialX,dx:pos.x-this.lastX,dy:pos.y-this.lastHeight,newFall,recovered,afterPush:this.time-this.lastPushAt<REWARDS.pushWindow,impactCost:this.impactCost,work,passed});
+    for(const [key,value]of Object.entries(terms)){this.reward+=value;this.rewardTerms[key]=(this.rewardTerms[key]||0)+value;}
+    this.lastX=pos.x;this.lastHeight=pos.y;
     this.done=this.steps>=Math.round(this.duration/DT)||Math.abs(pos.x)>40||pos.y<-.8||!Number.isFinite(this.reward);
     return this.metrics();
   }
-  metrics(){const p=this.parts.pelvis.getPosition();return {time:this.time,reward:this.reward,distance:p.x-this.initialX,speed:(p.x-this.initialX)/Math.max(this.time,DT),height:p.y-this.groundHeight(p.x),falls:this.falls,recoveries:this.recoveries,passed:this.passed.size,upright:this.uprightTime/Math.max(this.time,DT),energy:this.energy,pushes:this.pushesApplied,pushResistance:this.pushRecoveryTime,done:!!this.done,recovering:this.isDown};}
+  metrics(){const p=this.parts.pelvis.getPosition();return {time:this.time,reward:this.reward,rewardTerms:{...this.rewardTerms},distance:p.x-this.initialX,speed:(p.x-this.initialX)/Math.max(this.time,DT),height:p.y-this.groundHeight(p.x),falls:this.falls,recoveries:this.recoveries,passed:this.passed.size,upright:this.uprightTime/Math.max(this.time,DT),energy:this.energy,pushes:this.pushesApplied,pushResistance:this.pushRecoveryTime,done:!!this.done,recovering:this.isDown};}
   snapshot(){return {time:this.time,parts:this.bodies.map(p=>{const v=p.body.getPosition();return [v.x,v.y,p.body.getAngle()]}),metrics:this.metrics()};}
 }
 export function robotGeometry(sim){
