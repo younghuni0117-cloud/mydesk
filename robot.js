@@ -1,93 +1,64 @@
-import {RobotWorld,STAGES,JOINTS,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs';
-import {RobotLearner} from './robot-learning.mjs';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot2';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot2';
+import {RobotSync} from './robot-sync.mjs?v=robot2';
+import {SYNC_CONFIG} from './robot-sync-config.mjs?v=robot2';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
-const storageKey='mydesk.robot.v1';let bank={};
-try{const saved=JSON.parse(localStorage.getItem(storageKey));if(saved&&typeof saved==='object')for(const [key,model]of Object.entries(saved))if(RobotLearner.valid(model))bank[key]=model;}catch{}
-let stage='balance',assist=.6,model=null,training=false,initializing=true,requestDone=0,requestTarget=0;
+const storageKey='mydesk.robot.v2';let owner='guest',dirty=false,cache={};
+try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
+let model=RobotLearner.valid(cache.model)?cache.model:null;owner=cache.owner||'guest';dirty=Boolean(cache.dirty);
+let stage='balance',training=false,initializing=true,restoring=false;
 let mode='trace',scene=null,pendingScene=null,traceTime=0,viewPaused=false,live=null,liveWeights=Array(POLICY_SIZE).fill(0),geometry=null;
 let lastTime=0,accumulator=0,frame=null,lastHud=0,lastDraw=0,pushArrow=null,drag=null;
-const key=()=>`${stage}-${Math.round(assist*100)}`;
-const status=text=>{get('status').textContent=text};
-const signed=n=>(n>0?'+':'')+n.toFixed(1);
-function persist(){try{localStorage.setItem(storageKey,JSON.stringify(bank));}catch{get('storage-note').textContent='이 브라우저에 모델을 저장할 수 없습니다. 도움말의 전체 모델 저장으로 파일을 내려받으세요.'}}
-function controls(){get('train').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('curriculum').disabled=training;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('pause-view').setAttribute('aria-label',viewPaused?'관찰 화면 재생':'관찰 화면 일시정지');}
-function updateModel(data){
- bank[data.key]=data.model;persist();if(data.key!==key())return;
- model=data.model;get('attempts-total').textContent=`${model.attempts.toLocaleString()}회`;get('reward').textContent=signed(model.bestReward);get('success').textContent=`${Math.round(model.success*100)}%`;
- const rows=model.history.slice(-100);const values=rows.flatMap(r=>[r.best,r.candidate]);let low=Math.min(0,...values),high=Math.max(1,...values);const span=Math.max(10,high-low);low-=span*.1;high+=span*.1;
- const start=rows[0]?.attempts??0,end=rows.at(-1)?.attempts??0;
- for(const [id,name]of [['chart-best','best'],['chart-current','candidate']])get(id).setAttribute('d',rows.map((r,i)=>`${i?'L':'M'}${start===end?0:(r.attempts-start)/(end-start)*300} ${95-(r[name]-low)/(high-low)*90}`).join(' '));
- get('chart-min').textContent=low.toFixed(0);get('chart-max').textContent=high.toFixed(0);get('chart-range').textContent=`${start}~${end}회`;
- get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label}, 보조 ${assist*100}%. 최고 평균 보상 ${model.bestReward.toFixed(1)}점, ${model.attempts}회 학습. 파란색 최고 모델, 점선 후보 모델.`);
+let zoom=1,panX=0,panY=0,follow=true,drawScale=100;const pointers=new Map();let pinch=null;
+const status=text=>{get('status').textContent=text},signed=n=>(n>0?'+':'')+n.toFixed(1);
+function persist(){try{localStorage.setItem(storageKey,JSON.stringify({model,owner,dirty,cloudRevision:sync.baseRevision}));}catch{get('storage-note').textContent='브라우저 저장 공간이 부족합니다. 모델 파일을 저장하세요.';}}
+function backup(){if(model)try{localStorage.setItem('mydesk.robot.backup.'+owner,JSON.stringify({model,owner,dirty}));}catch{}}
+function controls(){get('train').disabled=initializing;get('run').disabled=initializing;get('push').disabled=initializing;get('stage').disabled=initializing;get('preview').disabled=initializing;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing;get('focus').disabled=training||initializing;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('use-local').disabled=training||initializing;get('use-remote').disabled=training||initializing;}
+for(const id of ['stage','focus'])for(const [value,s]of Object.entries(STAGES)){const o=document.createElement('option');o.value=value;o.textContent=s.label;get(id).append(o);}
+for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}
+const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('넘어졌다 ','').replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
+function renderModel(){if(!model)return;get('attempts-total').textContent=model.attempts.toLocaleString()+'회';get('policy-version').textContent='공통 모델 v'+model.policyVersion;for(const [key,a]of Object.entries(model.abilities)){cells[key][0].textContent=model.taskAttempts[key].toLocaleString();cells[key][1].textContent=signed(a.meanReward);cells[key][2].textContent=Math.round(a.passRate*100)+'%';cells[key][2].title=a.cases.map(c=>c.label+': '+(c.passed?'통과':'미통과')).join('\n');}
+ const rows=model.history,start=rows[0]?.attempts||0,end=rows.at(-1)?.attempts||0;
+ for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']])get(id).setAttribute('d',rows.map((r,i)=>`${i?'L':'M'}${end===start?0:(r.attempts-start)/(end-start)*300} ${95-(r[k]+100)/200*90}`).join(' '));
+ get('chart-range').textContent=`${start}~${end}회`;get('chart-svg').setAttribute('aria-label',`공통 모델 ${model.policyVersion}, 전체 보상 지수 ${rows.at(-1)?.overall.toFixed(1)}. 파란선 보존 모델, 점선 후보.`);
 }
-function configure(nextStage=stage,nextAssist=assist){
- stage=STAGES[nextStage]?nextStage:'balance';assist=[0,.3,.6].includes(Number(nextAssist))?Number(nextAssist):.6;
- get('stage').value=stage;get('assist').value=String(assist);initializing=true;training=false;model=bank[key()]||null;
- mode='trace';scene=null;pendingScene=null;live=null;traceTime=0;viewPaused=false;pushArrow=null;drag=null;
- if(model)updateModel({key:key(),model});else{get('attempts-total').textContent='0회';get('reward').textContent='—';get('success').textContent='—';get('chart-best').setAttribute('d','');get('chart-current').setAttribute('d','');}
- const initial=new RobotWorld(stage,{assist,seed:31});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles};
- status(`${STAGES[stage].label} · 보조 ${assist*100}% 모델을 준비하고 있습니다.`);controls();
- worker.postMessage({type:'init',stage,assist,saved:model});
-}
-const worker=new Worker(new URL('./robot-worker.mjs',import.meta.url),{type:'module'});
+const sync=new RobotSync(SYNC_CONFIG,{validate:RobotLearner.valid,onSaved:()=>{dirty=Boolean(sync.pending);persist();},onState:text=>{get('sync-open').textContent=text;get('sync-detail').textContent=text;},onIdentity:uid=>{
+ if(owner!==uid){const previousOwner=owner;backup();let saved=null;try{saved=JSON.parse(localStorage.getItem('mydesk.robot.backup.'+uid)||'null');}catch{}owner=uid;dirty=false;sync.pending=null;sync.baseRevision=0;if(RobotLearner.valid(saved?.model)){model=saved.model;dirty=Boolean(saved.dirty);configure(model,true);}else if(previousOwner!=='guest'){model=null;configure(null,true);}}
+ else sync.baseRevision=cache.cloudRevision||0;
+ if(dirty&&model)sync.pending=structuredClone(model);persist();
+},onEmpty:()=>{if(model){dirty=true;sync.queue(model);persist();}},onRemote:remote=>{backup();dirty=false;model=remote;configure(remote,true);persist();},onConflict:()=>{worker.postMessage({type:'stop'});get('conflict').hidden=false;status('다른 기기 모델과 충돌했습니다. 도움말·저장에서 사용할 모델을 선택하세요.');}});
+const worker=new Worker(new URL('./robot-worker.mjs?v=robot2',import.meta.url),{type:'module'});
+function configure(saved=model,remote=false,legacy=null,legacyCounts=null){initializing=true;restoring=remote;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles};controls();worker.postMessage({type:'init',stage,focus:get('focus').value,saved,legacy,legacyCounts});}
 function settings(){worker.postMessage({type:'settings',interval:Number(get('interval').value),source:get('source').value,light:get('light').checked});}
 worker.onmessage=({data})=>{
- if(data.type==='model'){updateModel(data);return;}
- if(data.type==='ready'){if(data.key!==key())return;initializing=false;controls();status(`${STAGES[stage].label} · 보조 ${assist*100}% · 학습 시도 횟수를 입력하세요. 기본 제어기에서 실제 정책을 탐색합니다.`);return;}
+ if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();if(!restoring){dirty=true;sync.queue(model);}persist();return;}
+ if(data.type==='ready'){initializing=false;restoring=false;controls();status('공통 모델 준비 완료 · 실행 과제를 바꿔도 학습된 운동 능력을 함께 사용합니다.');return;}
  if(data.type==='training'){training=data.active;controls();return;}
- if(data.type==='progress'){if(data.key!==key())return;requestDone=data.completed;requestTarget=data.target;get('attempts-total').textContent=`${data.attempts.toLocaleString()}회`;status(`학습 ${data.completed}/${data.target}회 · 최근 시도 보상 ${signed(data.score)}점 · ${get('interval').value}회마다 중간 모델을 확인합니다.`);return;}
- if(data.type==='preview'){
-  if(data.key!==key())return;
-  pendingScene=data;
-  if(mode==='trace'&&!viewPaused){scene={...data.scene,observedAttempts:data.attempts,observedSource:data.source};geometry={parts:scene.parts,joints:scene.joints};traceTime=0;pendingScene=null;}
-  return;
- }
- if(data.type==='advance'){
-  stage=data.stage;assist=data.assist;get('stage').value=stage;get('assist').value=String(assist);mode='trace';traceTime=0;scene=null;viewPaused=false;
-  status(`검증 조건 통과. ${STAGES[stage].label}, 보조 ${assist*100}%로 이동했습니다.`);return;
- }
- if(data.type==='done'){training=false;requestDone=data.completed;controls();status(`${data.cancelled?'학습 중지':'학습 완료'} · 이번 요청 ${data.completed}/${data.target}회. 과제·보조 수준별 모델이 저장됐습니다. 중간 관찰 또는 모델 실행으로 확인하세요.`);return;}
+ if(data.type==='progress'){if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;dirty=true;renderModel();persist();sync.queue(model);}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
+ if(data.type==='preview'){if(data.stage!==stage)return;pendingScene=data;if(mode==='trace'&&!viewPaused)applyPreview();return;}
+ if(data.type==='done'){training=false;controls();status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 같은 로봇으로 다른 운동도 시험해 보세요.`);sync.flush().catch(()=>{});return;}
  if(data.type==='error'){training=false;initializing=false;controls();status(data.message);}
 };
-worker.onerror=()=>{training=false;initializing=true;controls();status('학습 스레드를 실행하지 못했습니다. 페이지를 새로고침해 주세요. 모델 실행은 별도로 사용할 수 있습니다.');};
-get('light').checked=window.matchMedia('(pointer: coarse)').matches;
-settings();configure();
-get('stage').onchange=()=>configure(get('stage').value,assist);get('assist').onchange=()=>configure(stage,Number(get('assist').value));
-get('train').onclick=()=>{
- if(training){worker.postMessage({type:'stop'});status('현재 시도를 마치고 학습을 중지합니다.');return;}
- const count=Number(get('count').value);get('count').setCustomValidity('');if(!Number.isInteger(count)||count<1||count>500){get('count').setCustomValidity('1~500회 정수로 입력해 주세요.');get('count').reportValidity();return;}
- get('count').blur();requestDone=0;requestTarget=count;mode='trace';viewPaused=false;training=true;controls();status(`학습 ${count}회를 시작합니다. 중간 관찰 간격은 ${get('interval').value}회입니다.`);
- worker.postMessage({type:'train',count,curriculum:get('curriculum').checked,bank});
-};
-get('count').oninput=()=>get('count').setCustomValidity('');
+worker.onerror=()=>{training=false;initializing=true;controls();status('학습 스레드 오류입니다. 저장된 모델을 유지합니다. 새로고침해 주세요.');};
+function applyPreview(){if(!pendingScene)return;scene={...pendingScene.scene,observedAttempts:pendingScene.attempts,observedSource:pendingScene.source,policyVersion:pendingScene.policyVersion};geometry={parts:scene.parts,joints:scene.joints};traceTime=0;pendingScene=null;}
+get('stage').onchange=()=>{stage=get('stage').value;mode='trace';viewPaused=false;scene=null;live=null;worker.postMessage({type:'goal',stage});controls();status(`${STAGES[stage].label} · 같은 공통 모델로 관찰합니다.`);};
+get('train').onclick=()=>{if(training){worker.postMessage({type:'stop'});status('현재 시도를 마치고 저장합니다.');return;}const count=Number(get('count').value);if(!ALLOWED_ATTEMPTS.includes(count))return;training=true;mode='trace';viewPaused=false;controls();worker.postMessage({type:'train',count,focus:get('focus').value});};
 for(const id of ['interval','source','light'])get(id).onchange=()=>{settings();if(id==='source')worker.postMessage({type:'preview'});};
-function startLive(){
- live=new RobotWorld(stage,{assist,seed:17});liveWeights=model?[...model.weights]:Array(POLICY_SIZE).fill(0);geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;
- status(`${model?.attempts?`${model.modelAttempt}회 시점 모델`:'초기 정책'} 실시간 시험 · 보조 ${assist*100}%. 이 시험은 추가 학습하지 않습니다.`);controls();
-}
+function startLive(){live=new RobotWorld(stage,{seed:17,disturbances:false});liveWeights=model?[...model.weights]:Array(POLICY_SIZE).fill(0);geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;status(`공통 모델 v${model?.policyVersion||0} · ${STAGES[stage].label} 실시간 시험`);controls();}
 get('run').onclick=startLive;
-get('preview').onclick=()=>{mode='trace';viewPaused=false;if(pendingScene){scene={...pendingScene.scene,observedAttempts:pendingScene.attempts,observedSource:pendingScene.source};geometry={parts:scene.parts,joints:scene.joints};traceTime=0;pendingScene=null;}else worker.postMessage({type:'preview'});controls();};
-get('pause-view').onclick=()=>{viewPaused=!viewPaused;if(!viewPaused&&pendingScene&&mode==='trace'){scene={...pendingScene.scene,observedAttempts:pendingScene.attempts,observedSource:pendingScene.source};geometry={parts:scene.parts,joints:scene.joints};traceTime=0;pendingScene=null;}controls();};
-for(const button of document.querySelectorAll('[data-rb-tab]'))button.onclick=()=>{
- for(const item of document.querySelectorAll('[data-rb-tab]')){const active=item===button;item.classList.toggle('selected',active);item.setAttribute('aria-pressed',String(active));get('panel-'+item.dataset.rbTab).hidden=!active;}
-};
+get('preview').onclick=()=>{mode='trace';viewPaused=false;if(pendingScene)applyPreview();else worker.postMessage({type:'preview'});controls();};
+get('pause-view').onclick=()=>{viewPaused=!viewPaused;if(!viewPaused&&mode==='trace')applyPreview();controls();};
 function strengthLabel(){get('strength-value').textContent=`${get('strength').value} ${Number(get('duration').value)?'N':'N·s'}`;}
 get('strength').oninput=strengthLabel;get('duration').onchange=strengthLabel;
-function push(direction=Number(get('direction').value),factor=1){
- if(mode!=='live'||!live||live.done)startLive();
- const strength=Number(get('strength').value)*factor,duration=Number(get('duration').value),location=get('location').value;
- live.push(strength,direction,location,duration);viewPaused=false;
- const body=live.parts[location]||live.parts.torso;pushArrow={x:body.getPosition().x,y:body.getPosition().y,angle:direction*Math.PI/180,strength,remaining:1.1};
- status(`${STAGES[stage].label} · ${strength.toFixed(1)}${duration?'N을 0.5초간':'N·s 충격량으로'} 밀었습니다. 보조 ${assist*100}%에서 회복 반응을 관찰하세요.`);controls();
-}
+function push(direction=Number(get('direction').value),factor=1){if(initializing)return;if(mode!=='live'||!live||live.done)startLive();const strength=Number(get('strength').value)*factor,duration=Number(get('duration').value),location=get('location').value;live.push(strength,direction,location,duration);viewPaused=false;const body=live.parts[location]||live.parts.torso;pushArrow={x:body.getPosition().x,y:body.getPosition().y,angle:direction*Math.PI/180,strength,remaining:1.1};status(`${strength.toFixed(1)}${duration?'N 힘':'N·s 충격'} · 보조 없이 회복 반응을 관찰합니다.`);controls();}
 get('push').onclick=()=>push();
-canvas.addEventListener('pointerdown',event=>{canvas.setPointerCapture(event.pointerId);drag={id:event.pointerId,x:event.clientX,y:event.clientY,endX:event.clientX,endY:event.clientY}});
-canvas.addEventListener('pointermove',event=>{if(drag&&drag.id===event.pointerId){drag.endX=event.clientX;drag.endY=event.clientY}});
-canvas.addEventListener('pointerup',event=>{if(!drag||drag.id!==event.pointerId)return;const dx=event.clientX-drag.x,dy=event.clientY-drag.y;drag=null;if(Math.hypot(dx,dy)>8)push(Math.atan2(-dy,dx)*180/Math.PI,clamp(Math.hypot(dx,dy)/90,.2,1));});
-canvas.addEventListener('pointercancel',()=>{drag=null});
-const jointLabels=['허리','목','좌 엉덩이','좌 무릎','좌 발목','좌 발끝','우 엉덩이','우 무릎','우 발목','우 발끝','좌 어깨','좌 팔꿈치','좌 손목','우 어깨','우 팔꿈치','우 손목'];
-const jointCells=[];
-JOINTS.forEach((name,i)=>{const cell=document.createElement('div'),value=document.createElement('strong');cell.append(document.createTextNode(jointLabels[i]),value);get('joints').append(cell);jointCells.push(value)});
+function setZoom(value){zoom=clamp(value,.5,2.5);get('zoom-value').textContent=Math.round(zoom*100)+'%';}
+get('zoom-in').onclick=()=>setZoom(zoom*1.2);get('zoom-out').onclick=()=>setZoom(zoom/1.2);get('fit').onclick=()=>{setZoom(1);panX=panY=0;follow=true;};
+canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));},{passive:false});
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const[a,b]=[...pointers.values()];pinch={distance:Math.hypot(a.x-b.x,a.y-b.y),zoom};drag=null;}else if(pointers.size===1)drag={id:e.pointerId,x:e.clientX,y:e.clientY,endX:e.clientX,endY:e.clientY};});
+canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;const prev=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinch){const[a,b]=[...pointers.values()];setZoom(pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/Math.max(1,pinch.distance));return;}if(drag){drag.endX=e.clientX;drag.endY=e.clientY;if(get('gesture').value==='pan'){if(follow){const data=sourceFrame();panX=data?.frame.parts[0][0]+.75||0;follow=false;}panX-=(e.clientX-prev.x)/drawScale;panY+=(e.clientY-prev.y)/drawScale;}}});
+function release(e){if(drag&&drag.id===e.pointerId&&get('gesture').value==='push'&&e.type==='pointerup'){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>8)push(Math.atan2(-dy,dx)*180/Math.PI,clamp(Math.hypot(dx,dy)/90,.2,1));}pointers.delete(e.pointerId);drag=null;pinch=null;}
+canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
 function sourceFrame(){
  if(mode==='live'&&live)return {frame:live.snapshot(),meta:{...geometry,obstacles:live.obstacles}};
  if(!scene?.trace?.length)return null;
@@ -100,26 +71,28 @@ function sourceFrame(){
 function draw(data){
  const rect=canvas.getBoundingClientRect(),ratio=Math.min(2,window.devicePixelRatio||1),w=Math.max(1,Math.round(rect.width*ratio)),h=Math.max(1,Math.round(rect.height*ratio));
  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}ctx.setTransform(ratio,0,0,ratio,0,0);const W=w/ratio,H=h/ratio;ctx.clearRect(0,0,W,H);if(!data)return;
- const {frame,meta}=data,maxY=Math.max(1,...frame.parts.map((p,i)=>p[1]+(meta.parts[i].circle?meta.parts[i].w:Math.hypot(meta.parts[i].w,meta.parts[i].h)/2))),scale=Math.min(H/2.4,W/4.1,H*.78/maxY),ground=H*.88,root=frame.parts[0],camera=root[0]+.75;
+ const {frame,meta}=data,maxY=Math.max(1,...frame.parts.map((p,i)=>p[1]+(meta.parts[i].circle?meta.parts[i].w:Math.hypot(meta.parts[i].w,meta.parts[i].h)/2))),scale=Math.min(H/2.4,W/4.1,H*.78/maxY)*zoom,ground=H*.88+panY*scale,root=frame.parts[0],camera=follow?root[0]+.75:panX;drawScale=scale;
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
  ctx.strokeStyle='#dce5f0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,ground);ctx.lineTo(W,ground);ctx.stroke();ctx.fillStyle='#e5ebf3';ctx.fillRect(0,ground,W,H-ground);
  ctx.fillStyle='#a4b2c4';ctx.font='9px sans-serif';ctx.textAlign='center';
  for(let x=Math.floor(camera-W/scale/2);x<camera+W/scale/2+1;x++){ctx.beginPath();ctx.moveTo(X(x),ground);ctx.lineTo(X(x),ground+5);ctx.stroke();ctx.fillText(`${x}m`,X(x),ground+17)}
  for(const o of meta.obstacles||[]){ctx.fillStyle='#c2ccda';ctx.fillRect(X(o.x-o.width/2),Y(o.height),o.width*scale,o.height*scale);ctx.fillStyle='#95a6be';ctx.fillRect(X(o.x-o.width/2),Y(o.height),o.width*scale,3)}
- if(assist>0){ctx.strokeStyle='#9cb7cf';ctx.setLineDash([4,5]);ctx.beginPath();ctx.moveTo(X(root[0]),8);ctx.lineTo(X(root[0]),Y(root[1]));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#98acc3';ctx.textAlign='left';ctx.fillText(`보조 ${Math.round(assist*100)}%`,X(root[0])+7,Math.max(30,Y(root[1])-.3*scale));}
- for(const [i,definition]of meta.parts.entries()){
-  const p=frame.parts[i];ctx.save();ctx.translate(X(p[0]),Y(p[1]));ctx.rotate(-p[2]);ctx.globalAlpha=definition.name.startsWith('left')?.68:1;ctx.fillStyle=definition.color;ctx.strokeStyle='#f8fafc';ctx.lineWidth=1;
-  if(definition.circle){ctx.beginPath();ctx.arc(0,0,definition.w*scale,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#627b99';ctx.fillRect(.02*scale,-.04*scale,.07*scale,.03*scale)}
-  else{ctx.fillRect(-definition.w*scale/2,-definition.h*scale/2,definition.w*scale,definition.h*scale);ctx.strokeRect(-definition.w*scale/2,-definition.h*scale/2,definition.w*scale,definition.h*scale)}ctx.restore();
+ const order=meta.parts.map((d,i)=>({d,i})).sort((a,b)=>(a.d.name.startsWith('left')?-1:a.d.name.startsWith('right')?1:0)-(b.d.name.startsWith('left')?-1:b.d.name.startsWith('right')?1:0));
+ for(const {d:definition,i}of order){
+  const p=frame.parts[i],name=definition.name;ctx.save();ctx.translate(X(p[0]),Y(p[1]));ctx.rotate(-p[2]);ctx.fillStyle=name.startsWith('left')?'#94a9bf':name.startsWith('right')?'#738fa9':definition.color;ctx.strokeStyle='#516b85';ctx.lineWidth=Math.max(.7,scale*.008);
+  const w=definition.w*scale,h=definition.h*scale;
+  if(definition.circle){ctx.beginPath();ctx.ellipse(0,0,w*.9,w*1.08,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#435b73';ctx.beginPath();ctx.arc(w*.48,-w*.15,Math.max(1,w*.08),0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(w*.7,0);ctx.lineTo(w*1.08,w*.15);ctx.lineTo(w*.7,w*.22);ctx.stroke();}
+  else if(name==='torso'||name==='pelvis'){ctx.beginPath();const upper=name==='torso'?.57:.45,lower=name==='torso'?.38:.55;ctx.moveTo(-w*upper,-h*.42);ctx.quadraticCurveTo(0,-h*.6,w*upper,-h*.42);ctx.lineTo(w*lower,h*.46);ctx.quadraticCurveTo(0,h*.57,-w*lower,h*.46);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#ffffff50';ctx.beginPath();ctx.moveTo(0,-h*.35);ctx.lineTo(0,h*.3);ctx.stroke();}
+  else{ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,Math.min(w,h)*.42);ctx.fill();ctx.stroke();}ctx.restore();
  }
- for(const joint of meta.joints||[]){const p=frame.parts[joint.a],c=Math.cos(p[2]),s=Math.sin(p[2]),x=p[0]+c*joint.anchor[0]-s*joint.anchor[1],y=p[1]+s*joint.anchor[0]+c*joint.anchor[1];ctx.fillStyle='#f4f7fb';ctx.strokeStyle='#7c92ae';ctx.beginPath();ctx.arc(X(x),Y(y),Math.max(2.1,.026*scale),0,Math.PI*2);ctx.fill();ctx.stroke();}
+ for(const joint of meta.joints||[]){const p=frame.parts[joint.a],c=Math.cos(p[2]),s=Math.sin(p[2]),x=p[0]+c*joint.anchor[0]-s*joint.anchor[1],y=p[1]+s*joint.anchor[0]+c*joint.anchor[1];ctx.fillStyle='#f4f7fb';ctx.strokeStyle='#7c92ae';ctx.beginPath();ctx.arc(X(x),Y(y),Math.max(1.4,.02*scale),0,Math.PI*2);ctx.fill();ctx.stroke();}
  if(pushArrow){const a=pushArrow,dx=Math.cos(a.angle)*(.3+a.strength/25)*scale,dy=-Math.sin(a.angle)*(.3+a.strength/25)*scale,x=X(a.x),y=Y(a.y);ctx.strokeStyle='#bf875c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y+dy);ctx.stroke();ctx.beginPath();const angle=Math.atan2(dy,dx);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle-.45),y+dy-10*Math.sin(angle-.45));ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle+.45),y+dy-10*Math.sin(angle+.45));ctx.stroke();}
- if(drag){ctx.strokeStyle='#b38d68';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(drag.x-rect.left,drag.y-rect.top);ctx.lineTo(drag.endX-rect.left,drag.endY-rect.top);ctx.stroke();}
+ if(drag&&get('gesture').value==='push'){ctx.strokeStyle='#b38d68';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(drag.x-rect.left,drag.y-rect.top);ctx.lineTo(drag.endX-rect.left,drag.endY-rect.top);ctx.stroke();}
 }
 function hud(data){if(!data)return;const m=data.frame.metrics;get('time').innerHTML=`${m.time.toFixed(1)}<small>초</small>`;get('distance').innerHTML=`${signed(m.distance)}<small>m</small>`;get('speed').innerHTML=`${m.speed.toFixed(1)}<small>m/s</small>`;get('events').textContent=`${m.recoveries} / ${m.passed}`;
- const observed=scene?.observedAttempts||0,source=scene?.observedSource==='candidate'?'최근 후보':'최고 모델';get('view-label').textContent=mode==='live'?`실시간 시험 · ${m.recovering?'회복 시도 중':'이동·균형 제어'} · 보조 ${assist*100}%`:`${observed?source:'초기 정책'} 검증 재생 · ${observed}회 학습 · 보조 ${assist*100}%`;
- for(const [i,name]of JOINTS.entries()){const j=data.meta.joints?.find(j=>j.name===name);if(j){const angle=data.frame.parts[j.b][2]-data.frame.parts[j.a][2];jointCells[i].textContent=`${(Math.atan2(Math.sin(angle),Math.cos(angle))*180/Math.PI).toFixed(0)}°`;}}
+ const observed=scene?.observedAttempts||0,source=scene?.observedSource==='candidate'?'최근 후보':'공통 모델';get('view-label').textContent=mode==='live'?`실시간 · v${model?.policyVersion||0} · ${m.recovering?'회복 시도':'균형·이동 제어'}`:`${source} v${scene?.policyVersion||0} · ${observed}회 시점 재생`;
 }
+
 function animate(time){
  if(time-lastDraw<(get('light').checked?1000/24:1000/60)){frame=requestAnimationFrame(animate);return;}lastDraw=time;
  const dt=lastTime?Math.min(.1,(time-lastTime)/1000):0;lastTime=time;
@@ -128,9 +101,19 @@ function animate(time){
  frame=requestAnimationFrame(animate);
 }
 frame=requestAnimationFrame(animate);
-get('export').onclick=()=>{const blob=new Blob([JSON.stringify({format:'mydesk-robot-v1',models:bank},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='mydesk-robot-models.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);status('저장된 모델들을 파일로 내려받았습니다. 다른 기기에서 불러올 수 있습니다.');};
-get('import').onchange=async event=>{const file=event.target.files?.[0];if(!file)return;try{if(file.size>1024*1024)throw Error('모델 파일은 1MB 이하여야 합니다.');const data=JSON.parse(await file.text());if(data.format!=='mydesk-robot-v1'||!data.models)throw Error('지원하는 로봇 모델 파일이 아닙니다.');let count=0;for(const [k,v]of Object.entries(data.models)){const match=k.match(/^(balance|recover|walk|run|obstacles)-(0|30|60)$/);if(match&&RobotLearner.valid(v)&&v.stage===match[1]&&Math.round(Number(v.options?.assist)*100)===Number(match[2])){bank[k]=v;count++;}}if(!count)throw Error('유효한 모델이 없습니다.');persist();configure();status(`${count}개 조건의 모델을 불러왔습니다.`);}catch(e){status(e.message);}finally{event.target.value='';}};
-get('reset').onclick=()=>{delete bank[key()];persist();configure();status('현재 과제·보조 수준의 모델만 초기화했습니다. 다른 조건은 유지됩니다.');};
-document.addEventListener('visibilitychange',()=>{if(document.hidden){worker.postMessage({type:'stop'});viewPaused=true;controls();}});
+
+get('export').onclick=()=>{const blob=new Blob([JSON.stringify({format:'mydesk-robot-v2',model},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='mydesk-robot-model.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+get('import').onchange=async event=>{const file=event.target.files?.[0];if(!file)return;try{if(file.size>2*1024*1024)throw Error('모델 파일은 2MB 이하여야 합니다.');const data=JSON.parse(await file.text());if(data.format!=='mydesk-robot-v2'||!RobotLearner.valid(data.model))throw Error('올바른 v2 공통 모델 파일이 아닙니다.');backup();model=data.model;configure(model);status('모델을 불러와 무보조 성능을 다시 확인합니다.');}catch(e){status(e.message);}finally{event.target.value='';}};
+get('sync-open').onclick=()=>document.getElementById('game-help-open').click();
+get('login-form').hidden=!sync.enabled;
+get('login-form').onsubmit=async e=>{e.preventDefault();try{await sync.login(get('email').value,location.origin+location.pathname);}catch(error){get('sync-detail').textContent=error.message;}};
+get('logout').onclick=async()=>{worker.postMessage({type:'stop'});backup();await sync.logout();dirty=false;persist();};
+for(const [id,choice]of [['use-local',true],['use-remote',false]])get(id).onclick=async()=>{try{backup();await sync.resolve(choice);get('conflict').hidden=true;dirty=Boolean(sync.pending);persist();}catch(e){get('sync-detail').textContent=e.message;}};
+document.addEventListener('visibilitychange',()=>{if(document.hidden){worker.postMessage({type:'stop'});viewPaused=true;controls();sync.flush().catch(()=>{});}});
 document.addEventListener('game:help-open',()=>{viewPaused=true;controls();});
-window.addEventListener('pagehide',()=>{worker.postMessage({type:'stop'});viewPaused=true;});
+window.addEventListener('pagehide',()=>{worker.postMessage({type:'stop'});viewPaused=true;persist();});
+let legacy=null,legacyCounts=null;
+if(!model)try{const old=JSON.parse(localStorage.getItem('mydesk.robot.v1')||'{}'),valid=Object.entries(old).filter(([k,m])=>/^(balance|recover|walk|run|obstacles)-(0|30|60)$/.test(k)&&Array.isArray(m?.weights)&&m.weights.length===32&&m.weights.every(v=>Number.isFinite(v)&&Math.abs(v)<20));legacy=valid.sort((a,b)=>(b[1].bestReward||0)-(a[1].bestReward||0)).slice(0,3).map(([,v])=>v);legacyCounts=Object.fromEntries(Object.keys(STAGES).map(k=>[k,valid.filter(([name])=>name.startsWith(k+'-')).reduce((s,[,m])=>s+(Number.isSafeInteger(m.attempts)&&m.attempts>0&&m.attempts<1e10?m.attempts:0),0)]));}catch{}
+get('light').checked=window.matchMedia('(pointer: coarse)').matches;
+settings();configure(model,false,legacy,legacyCounts);
+sync.start(location.hash).then(()=>{if(new URLSearchParams(location.hash.slice(1)).has('access_token'))history.replaceState(null,'',location.pathname+location.search);});

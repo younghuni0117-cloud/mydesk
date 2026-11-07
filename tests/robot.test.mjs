@@ -1,43 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {RobotWorld,JOINTS,POLICY_SIZE,episode,robotGeometry} from '../robot-core.mjs';
-import {RobotLearner} from '../robot-learning.mjs';
+import {RobotWorld,STAGES,JOINTS,POLICY_SIZE,episode,robotGeometry,evaluateAbilities,VALIDATION_CASES} from '../robot-core.mjs';
+import {RobotLearner,preservesAbilities,ALLOWED_ATTEMPTS} from '../robot-learning.mjs';
 const zero=Array(POLICY_SIZE).fill(0);
-test('16 independently driven joints connect 17 rigid bodies',()=>{
- const s=new RobotWorld('walk',{assist:0});
- assert.equal(s.bodies.length,17);assert.equal(s.motors.length,16);assert.equal(new Set(JOINTS).size,16);
- assert.deepEqual(new Set(Object.keys(s.joints)),new Set(JOINTS));
- const altered=[...zero];altered[16+JOINTS.indexOf('leftKnee')]=2;
- const other=new RobotWorld('walk',{assist:0});for(let i=0;i<60;i++){s.step(zero);other.step(altered)}
- assert.notEqual(s.joints.leftKnee.getJointAngle(),other.joints.leftKnee.getJointAngle());
- assert.equal(robotGeometry(s).joints.length,16);
+test('17 rigid bodies and 16 physical joints; no external support even from old options',()=>{
+ const a=new RobotWorld('walk',{seed:31,assist:0}),b=new RobotWorld('walk',{seed:31,assist:.6});
+ assert.equal(a.bodies.length,17);assert.equal(a.motors.length,16);assert.equal(new Set(JOINTS).size,16);assert.equal(robotGeometry(a).joints.length,16);
+ for(let i=0;i<180;i++){a.step(zero);b.step(zero);}assert.deepEqual(a.snapshot().parts,b.snapshot().parts);
+ const changed=[...zero];changed[16+JOINTS.indexOf('leftKnee')]=2;const c=new RobotWorld('walk',{seed:31});for(let i=0;i<180;i++)c.step(changed);assert.notEqual(a.joints.leftKnee.getJointAngle(),c.joints.leftKnee.getJointAngle());
 });
-test('push direction, strength and application location change actual physics',()=>{
- const a=new RobotWorld('balance',{assist:0}),b=new RobotWorld('balance',{assist:0});
- a.push(2,0,'torso');b.push(8,180,'shoulder');
- assert.ok(a.parts.torso.getLinearVelocity().x>0);assert.ok(b.parts.torso.getLinearVelocity().x<0);
- assert.ok(b.parts.torso.getAngularVelocity()!==0,'off-centre shoulder impulse rotates torso');
- assert.ok(Math.abs(b.parts.torso.getLinearVelocity().x)>Math.abs(a.parts.torso.getLinearVelocity().x));
+test('shoulder is attached to torso edge and elbow/wrist join limb ends',()=>{
+ const w=new RobotWorld();for(const side of ['left','right']){const j=w.joints[side+'Shoulder'],anchor=j.getAnchorA();assert.ok(Math.abs(Math.abs(anchor.x)-.155)<.03);assert.ok(Math.abs(anchor.y-1.54)<.03);assert.ok(w.joints[side+'Elbow'].getAnchorA().sub(w.joints[side+'Elbow'].getAnchorB()).length()<1e-8);}
 });
-test('assisted motion is physical and can walk, move faster and recover',()=>{
- const walk=episode(zero,'walk',31,{assist:.6}),run=episode(zero,'run',31,{assist:.6}),recover=episode(zero,'recover',31,{assist:.6});
- assert.ok(walk.metrics.distance>1.5&&walk.metrics.upright>.6);
- assert.ok(run.metrics.speed>walk.metrics.speed);
- assert.ok(recover.metrics.recoveries>=1&&recover.metrics.height>.75);
- const unaided=episode(zero,'walk',31,{assist:0});assert.notEqual(unaided.metrics.reward,walk.metrics.reward,'assistance must not be hidden');
+test('push strength, direction and off-centre location change actual velocities',()=>{const a=new RobotWorld(),b=new RobotWorld();a.push(2,0,'torso');b.push(8,180,'shoulder');assert.ok(a.parts.torso.getLinearVelocity().x>0);assert.ok(b.parts.torso.getLinearVelocity().x<0);assert.notEqual(b.parts.torso.getAngularVelocity(),0);});
+test('varied training perturbations and actual replay frames',()=>{
+ const a=new RobotWorld('balance',{seed:31}),b=new RobotWorld('balance',{seed:1000});assert.notDeepEqual(a.pushes,b.pushes);assert.equal(a.pushes.length,3);
+ const r=episode(zero,'balance',31,{record:true});assert.equal(r.metrics.pushes,3);assert.ok(r.trace.length>100);assert.ok(r.trace.every(f=>f.parts.flat().every(Number.isFinite)));assert.notDeepEqual(r.trace[0].parts,r.trace.at(-1).parts);
 });
-test('preview frames are actual physics snapshots and contain all joints',()=>{
- const result=episode(zero,'walk',31,{assist:.6,record:true});
- assert.ok(result.trace.length>100);assert.equal(result.parts.length,17);assert.equal(result.joints.length,16);
- assert.notDeepEqual(result.trace[0].parts,result.trace.at(-1).parts);
- assert.ok(result.trace.every(f=>f.parts.flat().every(Number.isFinite)));
- assert.equal(new RobotWorld('obstacles').obstacles.length,4);
+test('all abilities use identical policy and four documented actual validation cases',()=>{const a=evaluateAbilities(zero);for(const key of Object.keys(STAGES)){assert.equal(a[key].cases.length,4);assert.deepEqual(a[key].cases.map(c=>c.id),VALIDATION_CASES.map(c=>c.id));assert.equal(a[key].passRate,a[key].cases.filter(c=>c.passed).length/4);assert.ok(Number.isFinite(a[key].meanReward));}for(const c of a.balance.cases)if(c.passed){assert.equal(c.metrics.falls,0);assert.ok(c.metrics.upright>.95);}});
+test('one robot retains shared policy across focus changes and counts actual trials',()=>{
+ const l=new RobotLearner(null,42),before=l.bestReward;const original=[...l.weights];for(let i=0;i<12;i++)l.trainOne();l.checkpoint();assert.equal(l.attempts,12);assert.ok(l.bestReward>=before);const learned=[...l.weights];l.setFocus('walk');assert.deepEqual(l.weights,learned);l.trainOne();assert.equal(l.attempts,13);assert.equal(l.taskAttempts.balance,12);assert.equal(l.taskAttempts.walk,1);l.checkpoint();const saved=l.snapshot();assert.ok(RobotLearner.valid(saved));const loaded=new RobotLearner(saved,5);assert.equal(loaded.attempts,13);assert.deepEqual(loaded.weights,l.weights);assert.deepEqual(loaded.abilities,l.abilities);assert.equal(RobotLearner.valid({...saved,attempts:14}),false);assert.equal(RobotLearner.valid({...saved,weights:[NaN]}),false);assert.deepEqual(ALLOWED_ATTEMPTS,[100,200,500,1000,2000,5000,10000,100000]);
 });
-test('learner counts real trials, searches policies and preserves its best validation score',()=>{
- const l=new RobotLearner('balance',null,42,{assist:0});const before=l.bestReward;
- for(let i=0;i<48;i++)l.trainOne();l.checkpoint();
- assert.equal(l.attempts,48);assert.ok(l.bestReward>=before);assert.ok(l.mean.some(v=>v!==0));
- assert.ok(l.history.every((r,i,a)=>i===0||r.best>=a[i-1].best));
- const saved=l.snapshot();assert.ok(RobotLearner.valid(saved));assert.equal(new RobotLearner('balance',saved,42,{assist:0}).attempts,48);
- assert.equal(RobotLearner.valid({...saved,weights:[NaN]}),false);
-});
+test('cross-task regression guard rejects forgetting passed cases even if score rises',()=>{const previous=Object.fromEntries(Object.keys(STAGES).map(k=>[k,{meanReward:10,cases:[{passed:true},{passed:false},{passed:false},{passed:false}]}]));const next=structuredClone(previous);assert.ok(preservesAbilities(previous,next));next.walk.cases[0].passed=false;next.walk.meanReward=100;assert.equal(preservesAbilities(previous,next),false);next.walk.cases[0].passed=true;next.balance.meanReward=-1;assert.equal(preservesAbilities(previous,next),false);});
