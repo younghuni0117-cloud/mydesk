@@ -1,12 +1,14 @@
-import {terrainHeight,rockVertices,TERRAINS} from './robot-terrain.mjs?v=robot9';
-let atlas=null;
-export const terrainArtReady=typeof Image==='undefined'?Promise.resolve(false):new Promise(resolve=>{atlas=new Image();atlas.onload=()=>resolve(true);atlas.onerror=()=>resolve(false);atlas.src=new URL('./assets/terrain-atlas-v9.webp',import.meta.url).href;});
+import {terrainHeight,rockVertices,TERRAINS} from './robot-terrain.mjs?v=robot10';
+let atlas=null,caveAtlas=null;
+function loadArt(file,set){return new Promise(resolve=>{const image=new Image();set(image);image.onload=()=>resolve(true);image.onerror=()=>resolve(false);image.src=new URL(file,import.meta.url).href;});}
+export const terrainArtReady=typeof Image==='undefined'?Promise.resolve(false):Promise.all([loadArt('./assets/terrain-atlas.webp',i=>atlas=i),loadArt('./assets/terrain-atlas-v9.webp',i=>caveAtlas=i)]).then(r=>r.every(Boolean));
 const noise=i=>{let n=Math.imul(i+913,374761393);n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;};
 const palettes={meadow:['#7e9c59','#b6956e','#557c3e'],hills:['#81975a','#b89b73','#526d3d'],stones:['#a9a58a','#a78f73','#6c7259'],stairs:['#a9ad97','#959483','#68765d'],construction:['#b6a181','#a58a67','#736752'],rockyhills:['#a28f6d','#b19b7d','#675f50'],ice:['#bcdce4','#8fbccf','#688fa4'],cave:['#66616b','#393b46','#212a35']};
 function paintTerrain(ctx,{W,H,scale,camera,ground,terrain,obstacles,X,Y}){
  const kind=terrain?.kind||'meadow',segments=terrain?.segments||[],colors=palettes[kind]||palettes.meadow;
  ctx.fillStyle='#edf2ed';ctx.fillRect(0,0,W,H);
- if(atlas?.complete&&atlas.naturalWidth){const index=Object.keys(TERRAINS).indexOf(kind),pw=atlas.naturalWidth/2,ph=atlas.naturalHeight/4,aspect=W/H;let sw=pw-6,sh=ph-6;if(sw/sh>aspect)sw=sh*aspect;else sh=sw/aspect;const sx=(index%2)*pw+(pw-sw)/2,sy=Math.floor(index/2)*ph+(ph-sh)/2;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(atlas,sx,sy,sw,sh,0,0,W,H);}
+ const image=kind==='cave'?caveAtlas:atlas;
+ if(image?.complete&&image.naturalWidth){let sx,sy,sw,sh;const aspect=W/H;if(kind==='cave'){const pw=image.naturalWidth/2,ph=image.naturalHeight/4;sw=pw-6;sh=ph-6;if(sw/sh>aspect)sw=sh*aspect;else sh=sw/aspect;sx=pw+(pw-sw)/2;sy=3*ph+(ph-sh)/2;}else{const index=Object.keys(TERRAINS).indexOf(kind),pw=image.naturalWidth/7;sw=pw-8;sh=Math.min(image.naturalHeight,sw/aspect);sx=index*pw+4;sy=(image.naturalHeight-sh)*.36;}ctx.save();ctx.globalAlpha=.64;ctx.drawImage(image,sx,sy,sw,sh,0,0,W,H);ctx.restore();}
 
  const left=camera-W/scale/2-.3,right=camera+W/scale/2+.3,step=Math.max(.08,(right-left)/250),height=x=>terrainHeight(segments,x);
  const ridge=[[left,height(left)]];for(const s of segments){if(s.x0>left&&s.x0<right)ridge.push([s.x0,height(s.x0-1e-7)],[s.x0,s.y0]);if(s.x1>left&&s.x1<right)ridge.push([s.x1,s.y1],[s.x1,height(s.x1+1e-7)]);}ridge.push([right,height(right)]);
@@ -19,7 +21,8 @@ function paintTerrain(ctx,{W,H,scale,camera,ground,terrain,obstacles,X,Y}){
  ctx.restore();ctx.strokeStyle=colors[2];ctx.lineWidth=Math.max(1.2,Math.min(3,scale*.012));ctx.beginPath();let first=true;for(const [x,y]of ridge){if(first){ctx.moveTo(X(x),Y(y));first=false;}else ctx.lineTo(X(x),Y(y));}ctx.stroke();
  // Irregular world-space vegetation and rubble; each cluster has its own size and shape.
  for(const d of terrain?.decorations||[]){if(d.x<left-.5||d.x>right+.5)continue;const px=X(d.x),py=Y(height(d.x)),size=Math.max(2,Math.min(80,d.size*scale)),v=d.variant;ctx.lineWidth=1;
-  if(d.type==='bush'){ctx.fillStyle=kind==='cave'?'#456f67':kind==='ice'?'#8cadb5':'#426d35';ctx.strokeStyle=kind==='cave'?'#213d40':'#2e5031';for(let j=0;j<5;j++){ctx.beginPath();ctx.ellipse(px+(j-2)*size*.19,py-size*(.2+noise(j+Math.floor(d.x*71))*.22),size*.26,size*(.23+v*.19),j*.6,0,Math.PI*2);ctx.fill();ctx.stroke();}ctx.strokeStyle='#abc568';ctx.beginPath();ctx.moveTo(px-size*.4,py-size*.22);ctx.lineTo(px+size*.2,py-size*.43);ctx.stroke();}
+  if(['frost','lichen','gravel','crystal'].includes(d.type)){ctx.strokeStyle=d.type==='frost'?'#edfaff':d.type==='crystal'?'#9e9bc6':'#899078';ctx.lineWidth=1;ctx.beginPath();if(d.type==='crystal'){ctx.moveTo(px-size*.2,py);ctx.lineTo(px,py-size);ctx.lineTo(px+size*.25,py);ctx.closePath();ctx.fillStyle='#8e93b4';ctx.fill();}else{ctx.moveTo(px-size*.4,py+2);ctx.lineTo(px,py+size*.3);ctx.lineTo(px+size*.5,py+1);}ctx.stroke();}
+  else if(d.type==='bush'){ctx.fillStyle=kind==='cave'?'#456f67':kind==='ice'?'#8cadb5':'#426d35';ctx.strokeStyle=kind==='cave'?'#213d40':'#2e5031';for(let j=0;j<5;j++){ctx.beginPath();ctx.ellipse(px+(j-2)*size*.19,py-size*(.2+noise(j+Math.floor(d.x*71))*.22),size*.26,size*(.23+v*.19),j*.6,0,Math.PI*2);ctx.fill();ctx.stroke();}ctx.strokeStyle='#abc568';ctx.beginPath();ctx.moveTo(px-size*.4,py-size*.22);ctx.lineTo(px+size*.2,py-size*.43);ctx.stroke();}
   else if(d.type==='pebbles'){for(let j=0;j<3+Math.floor(v*5);j++){const a=px+(noise(j+Math.floor(d.x*43))-.5)*size*1.8,b=py+noise(j+51)*3;ctx.fillStyle=kind==='cave'?'#6c7391':j%2?'#b2ab92':'#7c8575';ctx.strokeStyle='#505e58';ctx.beginPath();ctx.ellipse(a,b-size*.12,Math.max(1,size*.2),Math.max(1,size*.12),v*3,0,Math.PI*2);ctx.fill();ctx.stroke();}}
   else if(d.type==='stump'){ctx.fillStyle='#79654d';ctx.strokeStyle='#493f35';ctx.beginPath();ctx.moveTo(px-size*.25,py);ctx.lineTo(px-size*.18,py-size*.8);ctx.lineTo(px+size*.25,py-size*.68);ctx.lineTo(px+size*.35,py);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#b29c70';ctx.beginPath();ctx.moveTo(px,py-2);ctx.lineTo(px-size*.03,py-size*.65);ctx.stroke();}
   else{const leaves=d.type==='fern'?7:3+Math.floor(v*4);ctx.strokeStyle=kind==='cave'?'#559c87':kind==='ice'?'#c7e6df':'#497534';for(let j=0;j<leaves;j++){const dx=(j-(leaves-1)/2)*size*.25;ctx.beginPath();ctx.moveTo(px,py);ctx.quadraticCurveTo(px+dx*.3,py-size*.35,px+dx,py-size*(.35+noise(j+Math.floor(d.x*23))*.55));ctx.stroke();if(d.type==='flowers'||kind==='cave'){ctx.fillStyle=kind==='cave'?'#65c4b2':v>.5?'#f2c15e':'#e7e0d4';ctx.beginPath();ctx.arc(px+dx,py-size*.65,Math.max(1,size*.08),0,Math.PI*2);ctx.fill();}}}
@@ -39,7 +42,7 @@ function paintTerrain(ctx,{W,H,scale,camera,ground,terrain,obstacles,X,Y}){
 
 let cached=null,cacheKey='',lastTerrain=null,lastObstacles=null;
 export function drawTerrainScene(ctx,args){
- const key=[args.W,args.H,args.scale,args.camera,args.ground,Boolean(atlas?.complete&&atlas.naturalWidth)].join(':');
+ const key=[args.W,args.H,args.scale,args.camera,args.ground,Boolean(atlas?.complete&&atlas.naturalWidth&&caveAtlas?.complete&&caveAtlas.naturalWidth)].join(':');
  if(!cached)cached=document.createElement('canvas');
  if(key!==cacheKey||lastTerrain!==args.terrain||lastObstacles!==args.obstacles){const ratio=Math.min(2,globalThis.window?.devicePixelRatio||1);cached.width=Math.max(1,Math.ceil(args.W*ratio));cached.height=Math.max(1,Math.ceil(args.H*ratio));const context=cached.getContext('2d');context.setTransform(ratio,0,0,ratio,0,0);paintTerrain(context,args);cacheKey=key;lastTerrain=args.terrain;lastObstacles=args.obstacles;}
  ctx.drawImage(cached,0,0,args.W,args.H);

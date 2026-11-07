@@ -1,10 +1,10 @@
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot9';
-import {RobotTeam} from './robot-team.mjs?v=robot9';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot9';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot9';
-import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot9';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot9';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot9';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot10';
+import {RobotTeam} from './robot-team.mjs?v=robot10';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot10';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot10';
+import {traceFrame,interpolateFrame,chartDomain} from './robot-view.mjs?v=robot10';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp} from './robot-core.mjs?v=robot10';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot10';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storageKey='mydesk.robot.v2';let cache={};
 try{cache=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
@@ -27,25 +27,32 @@ for(const id of ['focus'])for(const [value,s]of Object.entries(STAGES)){const o=
 for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}
 const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('넘어졌다 ','').replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
 function renderModel(){if(!model)return;for(const [key,a]of Object.entries(model.abilities)){cells[key][0].textContent=model.taskAttempts[key].toLocaleString();cells[key][1].textContent=signed(a.meanReward);cells[key][2].textContent=Math.round(a.passRate*100)+'%';cells[key][2].title=a.cases.map(c=>c.label+': '+(c.passed?'통과':'미통과')).join('\n');}
- const rows=model.history,[min,max]=chartDomain(rows),start=rows[0]?.attempts||0,end=rows.at(-1)?.attempts||0;
- for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']])get(id).setAttribute('d',rows.map((r,i)=>`${i?'L':'M'}${end===start?0:(r.attempts-start)/(end-start)*300} ${95-(r[k]-min)/Math.max(.01,max-min)*90}`).join(' '));
- get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('chart-range').textContent=`${start}~${end}회`;get('chart-svg').setAttribute('aria-label',`공통 모델 ${model.policyVersion}, 전체 보상 지수 ${rows.at(-1)?.overall.toFixed(1)}. 파란선 보존 모델, 점선 후보.`);
+ renderChart();
 }
+function renderChart(){if(!model)return;
+ const rows=model.history.filter(r=>Number.isFinite(r.rewards?.[stage])).map(r=>({attempts:r.attempts,overall:r.rewards[stage],candidate:Number.isFinite(r.candidateRewards?.[stage])?r.candidateRewards[stage]:r.rewards[stage]}));
+ const current=model.abilities[stage].meanReward,end=model.attempts,values=[...rows,{overall:current,candidate:current}],[min,max]=chartDomain(values),Y=v=>95-(v-min)/(max-min)*90,X=n=>end?n/end*300:0;
+ for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']])get(id).setAttribute('d',rows.map((r,i)=>`${i?'L':'M'}${X(r.attempts)} ${Y(r[k])}`).join(' '));
+ get('chart-dot').setAttribute('cx',X(end));get('chart-dot').setAttribute('cy',Y(current));
+ get('chart-title').textContent=STAGES[stage].label+' · 평균 보상';get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('chart-range').textContent=`0~${end.toLocaleString()}회`;get('x-mid').textContent=Math.round(end/2).toLocaleString();get('x-max').textContent=end.toLocaleString()+'회';
+ get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} 평균 보상 ${current.toFixed(1)}점. 가로축 0~${end}회. 기록이 있는 평가 시점만 표시합니다.`);
+}
+
 const worker=new RobotTeam();
-function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:3},robotCount:options.robots});}
+function configure(saved=model,legacy=null,legacyCounts=null){initializing=true;training=false;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};controls();worker.postMessage({type:'init',stage,focus:stage,saved,legacy,legacyCounts,environment:{terrain:options.terrain,courseVersion:4},robotCount:options.robots});}
 function settings(){worker.postMessage({type:'settings',interval:Number(get('interval').value),source:get('source').value});}
 worker.onmessage=({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();progress(lastRequest.completed,lastRequest.target,'학습');return;}
  if(data.type==='ready'){initializing=false;controls();status(`${TERRAINS[options.terrain]} · 준비 완료`);return;}
  if(data.type==='training'){training=data.active;controls();return;}
- if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 (총 ${data.attempts.toLocaleString()}회) · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
+ if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(Date.now()-lastProgressHud>250){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();renderChart();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}const minutes=Math.ceil(data.remainingMs/60000);status(`학습 ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 (총 ${data.attempts.toLocaleString()}회) · 보상 ${signed(data.score)} · 예상 남은 시간 ${minutes}분`);return;}
  if(data.type==='preview'){if(data.stage!==stage)return;pendingScene=data;if(mode==='trace'&&!viewPaused)applyPreview();return;}
  if(data.type==='done'){progress(data.completed,data.target,data.cancelled?'중지':'완료');training=false;controls();status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · 같은 로봇으로 다른 운동도 시험해 보세요.`);return;}
  if(data.type==='error'){training=false;initializing=false;controls();status(data.message);}
 };
 worker.onerror=()=>{training=false;initializing=true;controls();status('학습 스레드 오류입니다. 저장된 모델을 유지합니다. 새로고침해 주세요.');};
 function applyPreview(){if(!pendingScene)return;scene={...pendingScene.scene,teamScenes:pendingScene.scenes,observedAttempts:pendingScene.attempts,observedSource:pendingScene.source,policyVersion:pendingScene.policyVersion};geometry={parts:scene.parts,joints:scene.joints};traceTime=0;pendingScene=null;}
-get('focus').onchange=()=>{stage=get('focus').value;mode='trace';viewPaused=false;scene=null;live=null;worker.postMessage({type:'goal',stage});controls();status(`${STAGES[stage].label} · 같은 로봇으로 관찰합니다.`);pendingScene=null;traceTime=0;get('view-label').textContent=STAGES[stage].label+' 준비 중';};
+get('focus').onchange=()=>{stage=get('focus').value;renderChart();mode='trace';viewPaused=false;scene=null;live=null;worker.postMessage({type:'goal',stage});controls();status(`${STAGES[stage].label} · 같은 로봇으로 관찰합니다.`);pendingScene=null;traceTime=0;get('view-label').textContent=STAGES[stage].label+' 준비 중';};
 get('train').onclick=()=>{if(training){worker.postMessage({type:'stop'});status('현재 시도를 마치고 저장합니다.');return;}const count=Number(get('count').value);if(!ALLOWED_ATTEMPTS.includes(count))return;progress(0,count,'시작');training=true;mode='trace';viewPaused=false;controls();worker.postMessage({type:'train',count,focus:get('focus').value});};
 for(const id of ['interval','source'])get(id).onchange=()=>{settings();if(id==='source')worker.postMessage({type:'preview'});};
 function startLive(){liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,seed:17+i*101,disturbances:false}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=model?[...model.weights]:Array(POLICY_SIZE).fill(0);geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;status(`공통 모델 v${model?.policyVersion||0} · ${STAGES[stage].label} 실시간 시험`);controls();}
@@ -107,7 +114,7 @@ get('terrain').value=options.terrain;get('view').value=options.view;
 function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view}));}catch{}}
 get('terrain').onchange=()=>{options.terrain=get('terrain').value;saveOptions();setZoom(1);panX=.4;panY=0;follow=options.view==='robot';configure(model);};
 get('view').onchange=()=>{const next=get('view').value;if(next==='terrain'&&follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale;}else if(next==='robot')panY=0;options.view=next;follow=next==='robot';saveOptions();};
-if(model&&model.environment?.courseVersion!==3)backup();
+if(model&&model.environment?.courseVersion!==4)backup();
 settings();configure(model,legacy,legacyCounts);
 // Retire the former website login locally; no server requests are made.
 try{localStorage.removeItem('mydesk.robot.auth');}catch{}
