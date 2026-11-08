@@ -2,3 +2,26 @@ body[data-page=calendar] main{padding:28px 30px 40px;max-width:none}.calendar-to
 @media(max-width:1200px){.calendar-layout{grid-template-columns:minmax(0,1fr)}.calendar-rail{display:none}.cal-filter-row{display:flex;gap:17px;overflow:auto;padding:0 20px 12px;white-space:nowrap}.cal-filter-row .cal-filter{font-size:10px;gap:5px;padding:2px 0}.cal-filter-dot{width:9px;height:9px}.calendar-mobile-note{display:block}.cal-day{min-height:109px}}
 @media(max-width:760px){body[data-page=calendar] main{padding:21px 14px 30px}.calendar-heading{gap:10px;margin-bottom:20px}.calendar-heading h1{font-size:23px}.calendar-heading p{font-size:10px}.calendar-logo{width:39px;height:39px;border-radius:11px}.calendar-logo svg{width:23px;height:23px}.calendar-heading-title{gap:10px}.calendar-heading-actions{gap:6px}.calendar-heading-actions .cal-button{padding:7px 9px;font-size:11px}.cal-toolbar{padding:15px 12px}.cal-navigation{gap:8px}.cal-navigation h2{font-size:18px}.cal-arrows button{width:24px}.cal-view-switch button{padding:6px 9px;font-size:10px}.cal-day{min-height:100px;padding:4px 3px}.cal-event-chip{font-size:10px;padding:2px 3px;gap:3px}.cal-event-time{display:none}.cal-date-number{width:24px;height:24px;font-size:11px}.cal-filter-row{padding:0 12px 11px;gap:13px}.cal-weekdays span{font-size:10px;padding:8px 0}.cal-day-panel{padding:18px 15px}.cal-day-panel-heading h2{font-size:16px}.calendar-sheet-footer{font-size:9px;gap:7px;padding:9px 10px}.calendar-sheet-footer button{font-size:9px}.cal-agenda{padding:6px 16px;min-height:300px}.cal-agenda-time{min-width:64px;font-size:10px}.cal-agenda-content strong{font-size:12px}.cal-agenda-event{gap:10px}.calendar-top-note{font-size:9px}}
 @media(max-width:480px){.calendar-heading{flex-wrap:wrap}.calendar-heading-title{flex:1}.calendar-heading-actions .cal-button{min-height:34px}.calendar-heading p{display:none}.calendar-logo{width:34px;height:34px}.calendar-heading h1{font-size:21px}.calendar-heading-title{gap:8px}.cal-navigation{gap:5px}.cal-navigation h2{font-size:15px}.cal-navigation>.cal-button{font-size:10px;min-height:30px;padding:5px 9px}.cal-arrows button{font-size:23px;width:20px}.cal-view-switch button{padding:5px 7px}.cal-toolbar{gap:6px;padding:13px 9px}.cal-day{min-height:94px;padding:3px 2px}.cal-event-chip{font-size:9px;padding:2px;gap:2px}.cal-event-dot{width:3px;height:3px}.cal-more{font-size:9px;padding:0 1px}.cal-day-head{margin-bottom:2px}.calendar-sheet-footer>span:first-child{display:none}#cal-editor{padding:22px 18px}.cal-form-row{gap:10px}#cal-form input:not([type=checkbox]),#cal-form select,#cal-form textarea{font-size:16px}.cal-day-panel-heading>.cal-button{font-size:11px}}
+
+/* Compact calendar controls; retain stable form IDs and schedule storage. */
+body[data-page=calendar] main{padding-top:18px}
+.cal-toolbar{flex-wrap:wrap;gap:12px}
+.cal-toolbar-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
+.cal-toolbar-actions>.cal-button{min-height:34px;font-size:11px;padding:6px 10px}
+.cal-toolbar-actions .cal-primary span{font-size:17px;margin-right:2px}
+.cal-day.holiday .cal-date-number{color:#c65f65}
+.cal-day.holiday .cal-date-number.today{background:#c65f65!important;color:white!important}
+.cal-holiday-name{display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:0;background:none;color:#c65f65;text-align:left;font:inherit;font-size:10px;line-height:16px;padding:0 3px 3px}
+#cal-mini-grid button.holiday,#cal-mini-grid button.sunday{color:#c65f65}
+#cal-mini-grid button.saturday:not(.holiday){color:#7293bf}
+#cal-mini-grid button.holiday.today{box-shadow:inset 0 0 0 1px #d18a8e}
+.cal-holiday-row{cursor:default;--event-color:#c65f65}
+.cal-holiday-row .cal-agenda-content strong{color:#c65f65}
+.cal-holiday-row+.cal-day-empty{padding-top:12px}
+#cal-holiday-status{color:#a28d7c;font-size:9px}
+.calendar-sheet-footer{flex-wrap:wrap}
+@media(max-width:760px){.cal-toolbar{gap:10px}.cal-toolbar-actions{gap:6px}.cal-toolbar-actions>.cal-button{font-size:10px;padding:6px 8px}.cal-holiday-name{font-size:9px;line-height:14px}}
+@media(max-width:599px){.cal-toolbar{align-items:stretch;padding:8px 10px;gap:7px}.cal-navigation{flex-basis:100%}.cal-navigation h2{font-size:19px}.cal-toolbar-actions{justify-content:flex-end;flex-basis:100%;margin-left:0}.cal-toolbar-actions .cal-view-switch button{font-size:11px}.cal-toolbar-actions>.cal-button{font-size:11px;min-height:34px}.cal-filter-row{padding-top:2px}}
+@media(max-width:360px){.cal-toolbar-actions>.cal-button,.cal-toolbar-actions .cal-view-switch button{font-size:10px}.cal-toolbar-actions{gap:5px}.cal-holiday-name{font-size:8px;padding-left:1px;padding-right:1px}}
+/* Keep the page heading and form labels accessible without reserving space. */
+body[data-page=calendar] .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

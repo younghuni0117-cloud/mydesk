@@ -1,5 +1,5 @@
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot31';
-export const CATEGORIES=Object.freeze({family:{label:'가족',color:'#4285f4',soft:'#eaf2ff'},personal:{label:'개인',color:'#8e63ce',soft:'#f2ebfc'},school:{label:'학교·교육',color:'#df9130',soft:'#fff3df'},medical:{label:'건강·병원',color:'#289c83',soft:'#e6f5f0'},other:{label:'기타',color:'#788594',soft:'#edf0f4'}});
+export const CATEGORIES=Object.freeze({family:{label:'공통',color:'#4285f4',soft:'#eaf2ff'},personal:{label:'영훈',color:'#8e63ce',soft:'#f2ebfc'},school:{label:'서정',color:'#df9130',soft:'#fff3df'},medical:{label:'하경',color:'#289c83',soft:'#e6f5f0'},other:{label:'하윤',color:'#788594',soft:'#edf0f4'}});
 export function todaySeoul(now=new Date()){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`;}
 export const dateUTC=iso=>new Date(iso+'T00:00:00Z');
 export function addDays(iso,n){const d=dateUTC(iso);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
