@@ -5,8 +5,16 @@ export const dateUTC=iso=>new Date(iso+'T00:00:00Z');
 export function addDays(iso,n){const d=dateUTC(iso);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
 export function monthStart(iso){return iso.slice(0,7)+'-01';}
 export function shiftMonth(iso,n){const d=dateUTC(monthStart(iso));d.setUTCMonth(d.getUTCMonth()+n);return d.toISOString().slice(0,10);}
-export function monthDays(iso){const first=monthStart(iso),start=addDays(first,-dateUTC(first).getUTCDay());return Array.from({length:42},(_,i)=>addDays(start,i));}
-export function onDay(event,day){return event.starts_on<=day&&event.ends_on>=day;}
+export function monthDays(iso){const first=monthStart(iso),start=addDays(first,-dateUTC(first).getUTCDay());const last=addDays(shiftMonth(first,1),-1),count=Math.ceil((dateUTC(last)-dateUTC(start))/86400000+1);return Array.from({length:Math.ceil(count/7)*7},(_,i)=>addDays(start,i));}
+export function weekDays(iso){const first=addDays(iso,-dateUTC(iso).getUTCDay());return Array.from({length:7},(_,i)=>addDays(first,i));}
+export function hourLater(day,time){const d=new Date(day+'T'+time+':00Z');d.setUTCHours(d.getUTCHours()+1);return {day:d.toISOString().slice(0,10),time:d.toISOString().slice(11,16)};}
+export function onDay(event,day){return event.starts_on<=day&&event.ends_on>=day&&(event.all_day||day!==event.ends_on||event.end_time!=='00:00');}
+export function timedLayout(events,day){
+ const minute=t=>Number(t.slice(0,2))*60+Number(t.slice(3,5));
+ const rows=events.filter(e=>!e.all_day&&onDay(e,day)).map(event=>({event,start:event.starts_on<day?0:minute(event.start_time),end:event.ends_on>day?1440:minute(event.end_time)})).sort((a,b)=>a.start-b.start||a.end-b.end);
+ let group=[],until=0;const finish=()=>{const lanes=[];for(const row of group){let lane=lanes.findIndex(end=>end<=row.start);if(lane<0)lane=lanes.length;lanes[lane]=Math.max(row.end,row.start+30);row.lane=lane;}for(const row of group)row.columns=lanes.length;};
+ for(const row of rows){if(group.length&&row.start>=until){finish();group=[];}group.push(row);until=Math.max(group.length===1?0:until,row.end,row.start+30);}finish();return rows;
+}
 export function validDate(s){return /^\d{4}-\d{2}-\d{2}$/.test(s)&&s>='1900-01-01'&&s<='2199-12-31'&&Number.isFinite(dateUTC(s).getTime())&&dateUTC(s).toISOString().slice(0,10)===s;}
 export function eventPayload(input){
  const out={id:input.id,title:String(input.title||'').trim(),person:String(input.person||'').trim(),category:input.category,starts_on:input.starts_on,ends_on:input.ends_on,all_day:input.all_day===true,start_time:input.all_day?null:input.start_time?.slice(0,5),end_time:input.all_day?null:input.end_time?.slice(0,5),location:String(input.location||'').trim(),notes:String(input.notes||'').trim()};
