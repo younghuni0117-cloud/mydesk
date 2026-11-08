@@ -1,11 +1,11 @@
-import {observationScene} from './robot-transfer.mjs?v=robot33';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot33';
-import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot33';
-import {STAGES} from './robot-core.mjs?v=robot33';
+import {observationScene} from './robot-transfer.mjs?v=robot34';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot34';
+import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot34';
+import {STAGES} from './robot-core.mjs?v=robot34';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null,rollouts=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
-function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:observationScene(lastTrial?.scene),endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,trainingSeconds:lastTrial?.trainingSeconds,spawnRange:lastTrial?.spawnRange});}
+function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:observationScene(lastTrial?.scene),endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,trainingSeconds:lastTrial?.trainingSeconds,terrainVariant:lastTrial?.terrainVariant,spawnRange:lastTrial?.spawnRange});}
 async function initialize(data,token){
  rollouts?.close();rollouts=new ParallelRollouts(typeof data.parallel==='boolean'?{enabled:data.parallel}:{});environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
  await rollouts.start();if(token!==initToken)return;sendModel();preview();postMessage({type:'ready',parallelism:rollouts.ready?2:1});

@@ -1,12 +1,14 @@
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot33';
-import {motionQuality} from './robot-performance.mjs?v=robot33';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot33';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot34';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot34';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot34';
+import {motionQuality} from './robot-performance.mjs?v=robot34';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot34';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot33';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot34';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot33';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot33';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot33';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot34';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot34';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot34';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
@@ -27,7 +29,7 @@ export class RobotWorld {
     this.seed=options.seed??1;this.random=seeded(this.seed);this.time=0;this.reward=0;this.energy=0;this.steps=0;
     this.endOnFall=options.endOnFall===true&&this.stage==='balance';this.balanceLostTime=0;this.qualityTime=0;this.longestUpright=0;this.falls=0;this.recoveries=0;this.uprightTime=0;this.stableTime=0;this.isDown=false;this.downTime=0;this.impactCost=0;this.passed=new Set();this.contacts=new Map();
     this.world=new World(Vec2(0,-9.81));this.world.setAutoClearForces(false);this.bodies=[];this.parts={};this.joints={};this.motors=[];
-    this.terrain=makeTerrain(options.terrain);this.terrainSegments=this.terrain.segments;this.groundHeight=x=>terrainHeight(this.terrainSegments,x);
+    this.terrain=makeTerrain(options.terrain,options.terrainVariant);this.terrainSegments=this.terrain.segments;this.groundHeight=x=>terrainHeight(this.terrainSegments,x);
     const floor=this.world.createBody({userData:'ground'});floor.createFixture(Box(500,.15,Vec2(0,-.15)),{friction:options.friction??this.terrain.friction});
     for(const s of this.terrainSegments)if(s.y0>0||s.y1>0){const body=options.groupStatic===false?this.world.createBody({userData:'ground'}):floor;body.createFixture(Polygon([Vec2(s.x0,-.2),Vec2(s.x1,-.2),Vec2(s.x1,s.y1),Vec2(s.x0,s.y0)]),{friction:s.friction??this.terrain.friction});}
     let ceiling;for(const s of this.terrain.ceilings||[]){const body=options.groupStatic===false?this.world.createBody({userData:'obstacle'}):(ceiling??=this.world.createBody({userData:'obstacle'}));body.createFixture(Polygon([Vec2(s.x0,s.y0),Vec2(s.x1,s.y1),Vec2(s.x1,Math.max(s.y0,s.y1)+6),Vec2(s.x0,Math.max(s.y0,s.y1)+6)]),{friction:.85});}
@@ -43,9 +45,9 @@ export class RobotWorld {
     this.pushes = options.pushes ? options.pushes.map(p=>({...p})) : [];
     const pushSettings=normalizePushSettings(options);
     if(options.disturbances!==false&&pushSettings.autoPush&&!options.pushes){
-      this.pushes.push({time:.9+this.random()*Math.max(.1,this.duration-2.4),strength:pushSettings.pushMin+this.random()*(pushSettings.pushMax-pushSettings.pushMin),direction:this.random()*360,location:['torso','shoulder','pelvis'][Math.floor(this.random()*3)],duration:0});
+      this.pushes.push({time:.9+this.random()*Math.max(.1,this.duration-2.4),strength:pushSettings.pushMin+this.random()*(pushSettings.pushMax-pushSettings.pushMin),direction:this.random()*360,location:PUSH_PARTS[Math.floor(this.random()*PUSH_PARTS.length)],duration:0});
     }
-    this.nextPushIndex=0;this.pushesApplied=0;this.pushRecoveryTime=0;this.lastPushAt=-Infinity;this.obstacleHeight=options.obstacleHeight??.14;
+    this.impactEvents=[];this.pushSequence=0;this.nextPushIndex=0;this.pushesApplied=0;this.pushRecoveryTime=0;this.lastPushAt=-Infinity;this.obstacleHeight=options.obstacleHeight??.14;
     const contact=(contact,amount)=>{
       const a=contact.getFixtureA().getBody().getUserData(),b=contact.getFixtureB().getBody().getUserData();
       const name=a==='ground'||a==='obstacle'?b:b==='ground'||b==='obstacle'?a:null;
@@ -102,6 +104,7 @@ export class RobotWorld {
     const body=location==='shoulder'?this.parts.torso:this.parts[location]||this.parts.torso,angle=direction*Math.PI/180;
     const vector=Vec2(Math.cos(angle)*strength,Math.sin(angle)*strength);
     const point=location==='shoulder'?body.getWorldPoint(Vec2(.12,.2)):body.getWorldCenter();
+    this.impactEvents.push({id:++this.pushSequence,time:this.time,scheduledTime:this.time,strength,direction,requestedLocation:location,location:body.getUserData(),point:[point.x,point.y]});if(this.impactEvents.length>12)this.impactEvents.shift();
     if(duration>0)this.sustainedPush={body,vector,localPoint:body.getLocalPoint(point),remaining:duration};
     else body.applyLinearImpulse(vector,point,true);
   }
@@ -109,7 +112,7 @@ export class RobotWorld {
   goalState(){return commandState(this.command,this.parts.pelvis.getPosition().x,this.command?this.commandAnchor:this.initialX,this.task.speed,true);}
   resistWaist(){const j=this.joints.waist,t=clamp(-WAIST_RESISTANCE.stiffness*j.getJointAngle()-WAIST_RESISTANCE.damping*j.getJointSpeed(),-WAIST_RESISTANCE.maxTorque,WAIST_RESISTANCE.maxTorque);j.getBodyB().applyTorque(t,true);j.getBodyA().applyTorque(-t,true);return t;}
   observations(){const torso=this.parts.torso,pelvis=this.parts.pelvis,p=pelvis.getPosition(),v=pelvis.getLinearVelocity(),a=torso.getAngle(),goal=this.goalState(),ahead=side=>{const x=this.parts[side+'Foot'].getPosition().x,ground=this.groundHeight(x);let top=Math.max(this.groundHeight(x+.2),this.groundHeight(x+.5));for(const o of this.obstacles)if(o.shape!=='stalactite'&&(o.side==='both'||o.side===side)&&o.x+o.width/2>x&&o.x-o.width/2<x+.6)top=Math.max(top,(o.bottom??this.groundHeight(o.x))+o.height);return clamp((top-ground)/.6,-1,1);};
-   return [Math.sin(a),Math.cos(a),clamp(torso.getAngularVelocity()/8,-1,1),clamp((p.y-this.groundHeight(p.x))/1.2,-1,1),clamp(v.x/3,-1,1),clamp(v.y/3,-1,1),goal.target/2,((this.contacts.get('leftFoot')||0)+(this.contacts.get('leftToePart')||0))>0?1:0,((this.contacts.get('rightFoot')||0)+(this.contacts.get('rightToePart')||0))>0?1:0,ahead('left'),ahead('right'),this.terrain.ceilings.length?clamp((terrainHeight(this.terrain.ceilings,p.x)-p.y)/3,-1,1):1,...this.motors.map(m=>m.joint.getJointAngle()/Math.PI),...this.motors.map(m=>clamp(m.joint.getJointSpeed()/8,-1,1)),clamp(goal.error/5,-1,1),goal.positioned?1:0,goal.low?1:0];
+   return [Math.sin(a),Math.cos(a),clamp(torso.getAngularVelocity()/8,-1,1),clamp((p.y-this.groundHeight(p.x))/1.2,-1,1),clamp(v.x/3,-1,1),clamp(v.y/3,-1,1),goal.target/2,((this.contacts.get('leftFoot')||0)+(this.contacts.get('leftToePart')||0))>0?1:0,((this.contacts.get('rightFoot')||0)+(this.contacts.get('rightToePart')||0))>0?1:0,ahead('left'),ahead('right'),this.terrain.ceilings.length?clamp((terrainHeight(this.terrain.ceilings,p.x)-p.y)/3,-1,1):1,...this.motors.map(m=>m.joint.getJointAngle()/Math.PI),...this.motors.map(m=>clamp(m.joint.getJointSpeed()/8,-1,1)),clamp(goal.error/5,-1,1),goal.positioned?1:0,goal.low?1:0,...sampleEnvironment(this.terrain,this.obstacles,p,{left:this.parts.leftFoot.getPosition(),right:this.parts.rightFoot.getPosition()},this.parts.head.getPosition(),goal.target<0?-1:1).values];
   }
   control(weights){
    if(this.policyWeights!==weights){this.policyWeights=weights;this.zeroPolicy=weights.every(v=>v===0);}
@@ -120,10 +123,10 @@ export class RobotWorld {
   step(weights=Array(POLICY_SIZE).fill(0),report=true,actions=null){
     this.applyScheduledCommands();
     this.impactCost=0;this.torqueLoad=0;const previousActions=[...this.actions];if(actions)this.actions=actions;else this.control(weights);const actionChange=this.actions.reduce((sum,a,i)=>sum+(a-previousActions[i])**2,0)/this.actions.length;let work=0;
-    while(this.nextPushIndex<this.pushes.length&&this.time>=this.pushes[this.nextPushIndex].time){const p=this.pushes[this.nextPushIndex++];this.push(p.strength,p.direction,p.location,p.duration||0);this.pushesApplied++;this.lastPushAt=this.time;}
-    // Smaller physical steps keep stiff joints stable under freely explored torques.
+    while(this.nextPushIndex<this.pushes.length&&this.time>=this.pushes[this.nextPushIndex].time){const p=this.pushes[this.nextPushIndex++];this.push(p.strength,p.direction,p.location,p.duration||0);this.impactEvents.at(-1).scheduledTime=p.time;this.pushesApplied++;this.lastPushAt=this.time;}
+    // Smaller physical steps and ten position iterations enforce joint limits under limb impacts; no motor target or posture correction is added.
     const substeps=this.actions.some(a=>Math.abs(a)>.1)||this.motors.some(m=>Math.abs(m.joint.getJointSpeed())>4.5)?8:2;
-    for(let i=0;i<substeps;i++){this.resistWaist();work+=this.applyActuation(DT/substeps);if(this.sustainedPush&&this.sustainedPush.remaining>0){this.sustainedPush.body.applyForce(this.sustainedPush.vector,this.sustainedPush.body.getWorldPoint(this.sustainedPush.localPoint),true);this.sustainedPush.remaining-=DT/substeps;}this.world.step(DT/substeps,8,6);this.world.clearForces();}this.energy+=work;this.time+=DT;this.steps++;
+    for(let i=0;i<substeps;i++){this.resistWaist();work+=this.applyActuation(DT/substeps);if(this.sustainedPush&&this.sustainedPush.remaining>0){this.sustainedPush.body.applyForce(this.sustainedPush.vector,this.sustainedPush.body.getWorldPoint(this.sustainedPush.localPoint),true);this.sustainedPush.remaining-=DT/substeps;}this.world.step(DT/substeps,8,10);this.world.clearForces();}this.energy+=work;this.time+=DT;this.steps++;
     const pelvis=this.parts.pelvis,torso=this.parts.torso,pos=pelvis.getPosition(),velocity=pelvis.getLinearVelocity();
     const angle=wrap(torso.getAngle()),footDown=['leftFoot','rightFoot','leftToePart','rightToePart'].some(n=>(this.contacts.get(n)||0)>0);
     const relativeHeight=pos.y-this.groundHeight(pos.x);
@@ -147,7 +150,7 @@ export class RobotWorld {
     return report?this.metrics():undefined;
   }
   metrics(){const p=this.parts.pelvis.getPosition(),goal=this.goalState();return {motionQuality:this.qualityTime/Math.max(this.time,DT),longestUpright:this.longestUpright,plannedDuration:this.duration,terminationReason:this.terminationReason,time:this.time,reward:this.reward,rewardTerms:{...this.rewardTerms},distance:p.x-this.initialX,speed:(p.x-this.initialX)/Math.max(this.time,DT),height:p.y-this.groundHeight(p.x),falls:this.falls,recoveries:this.recoveries,passed:this.passed.size,upright:this.uprightTime/Math.max(this.time,DT),energy:this.energy,pushes:this.pushesApplied,pushResistance:this.pushRecoveryTime,done:!!this.done,recovering:this.isDown,targetSpeed:goal.target,goalDistance:goal.error,command:this.command?{...this.command}:null};}
-  snapshot(){return {time:this.time,parts:this.bodies.map(p=>{const v=p.body.getPosition();return [v.x,v.y,p.body.getAngle()]}),metrics:this.metrics()};}
+  snapshot(){return {time:this.time,hits:this.impactEvents.filter(h=>this.time-h.time<.7).map(h=>({...h,point:[...h.point]})),parts:this.bodies.map(p=>{const v=p.body.getPosition();return [v.x,v.y,p.body.getAngle()]}),metrics:this.metrics()};}
 }
 export function robotGeometry(sim){
  return {parts:sim.bodies.map(({name,w,h,circle,color})=>({name,w,h,circle,color})),joints:sim.motors.map(m=>({name:m.name,a:sim.bodies.findIndex(p=>p.body===m.joint.getBodyA()),b:sim.bodies.findIndex(p=>p.body===m.joint.getBodyB()),anchor:[m.joint.getLocalAnchorA().x,m.joint.getLocalAnchorA().y]}))};

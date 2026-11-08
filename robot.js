@@ -1,16 +1,18 @@
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot33';
-import {abilitySummary} from './robot-performance.mjs?v=robot33';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot33';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot33';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot33';
-import {rewardHelp} from './robot-rewards.mjs?v=robot33';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot33';
-import {RobotTeam} from './robot-team.mjs?v=robot33';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot33';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot33';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot33';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot33';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot33';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot34';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot34';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot34';
+import {abilitySummary} from './robot-performance.mjs?v=robot34';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot34';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot34';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot34';
+import {rewardHelp} from './robot-rewards.mjs?v=robot34';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot34';
+import {RobotTeam} from './robot-team.mjs?v=robot34';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot34';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot34';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot34';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot34';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot34';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -18,6 +20,7 @@ let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,inte
 Object.assign(options,normalizeEvaluationSettings(model?.environment));try{const raw=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');Object.assign(options,normalizeEvaluationSettings({...options,...raw}));}catch{}
 let command=normalizeCommand();try{command=normalizeCommand(JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}').command);}catch{}
 try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options.algorithm=['cem','ppo'].includes(o.algorithm)?o.algorithm:model?.algorithm||'ppo';options.curriculum=o.curriculum!==false;options.graphRange=['all','500','1000','2000','5000','10000','custom'].includes(o.graphRange)?o.graphRange:'all';options.graphCustom=Number.isSafeInteger(o.graphCustom)&&o.graphCustom>=1?o.graphCustom:5000;options.graphVersion=o.graphVersion==='previous'?'previous':'current';options.focus=STAGES[o.focus]?o.focus:model?.focus||'balance';}catch{Object.assign(options,{algorithm:model?.algorithm||'ppo',curriculum:true,graphRange:'all',graphCustom:5000,graphVersion:'current',focus:model?.focus||'balance'});}
+options.sensorVisible=false;try{options.sensorVisible=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}').sensorVisible===true;}catch{}
 let pickingTarget=false;
 let liveRobots=[],previousFrames=[],currentFrames=[];
 let stage=options.focus,training=false,initializing=true;
@@ -91,7 +94,7 @@ function updateEvaluationOptions(report=false){
 }
 for(const key of ['validation','monitor'])get(key+'-seconds').onchange=()=>{if(training||initializing||!updateEvaluationOptions(true))return;configure(model);};
 get('observation-seconds').onchange=()=>{const input=get('observation-seconds'),seconds=Number(input.value);if(!Number.isInteger(seconds)||seconds<1||seconds>3600){input.setCustomValidity('1~3600초 사이의 정수를 입력하세요.');input.reportValidity();return;}input.setCustomValidity('');options.observationSeconds=seconds;saveOptions();if(live)startLive(liveWeights,liveSource,liveAttempt,liveVersion,liveTrial);};
-function startLive(weights=model?.weights||Array(POLICY_SIZE).fill(0),source='best',attempt=model?.attempts||0,version=model?.policyVersion||0,trial=null){liveTrial=trial;liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,seed:trial?.seed??31+i*101,disturbances:false,pushes:trial?.pushPlan||[],spawnRange:trial?.spawnRange,spawnTilt:trial?.spawnTilt,command:source==='best'?command:null,commandSchedule:source==='candidate'?trial?.commandSchedule||[]:[]}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=[...weights];liveSource=source;liveAttempt=attempt;liveVersion=version;geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;if(!training)status(`${source==='candidate'?'최근 모델':'통합 모델'} v${version} · ${STAGES[stage].label} · ${options.observationSeconds}초 관찰`);controls();}
+function startLive(weights=model?.weights||Array(POLICY_SIZE).fill(0),source='best',attempt=model?.attempts||0,version=model?.policyVersion||0,trial=null){liveTrial=trial;liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,seed:trial?.seed??31+i*101,disturbances:false,pushes:trial?.pushPlan||[],terrainVariant:trial?.terrainVariant??0,spawnRange:trial?.spawnRange,spawnTilt:trial?.spawnTilt,command:source==='best'?command:null,commandSchedule:source==='candidate'?trial?.commandSchedule||[]:[]}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=[...weights];liveSource=source;liveAttempt=attempt;liveVersion=version;geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;if(!training)status(`${source==='candidate'?'최근 모델':'통합 모델'} v${version} · ${STAGES[stage].label} · ${options.observationSeconds}초 관찰`);controls();}
 function syncCommandControls(){
  get('command-mode').value=command.mode;get('command-direction').value=String(command.direction);get('command-speed').value=String(command.speed);get('command-speed-value').textContent=command.speed.toFixed(2)+'m/s';get('command-position').value=String(command.position);get('command-posture').value=command.posture;
  get('command-direction-row').hidden=command.mode!=='move';get('command-speed-row').hidden=command.mode==='hold';get('command-position-row').hidden=command.mode!=='position';get('pick-target').hidden=command.mode!=='position';get('command-summary').textContent=commandLabel(command);if(command.mode!=='position')setPicking(false);
@@ -119,7 +122,7 @@ canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;c
 function release(e){if(drag&&drag.id===e.pointerId&&drag.mode==='push'&&e.type==='pointerup'){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(pickingTarget){const rect=canvas.getBoundingClientRect(),x=clamp(cameraX+(e.clientX-rect.left-rect.width/2)/drawScale,-30,30);setPicking(false);applyCommand({...command,mode:'position',position:Math.round(x*10)/10});}else if(Math.hypot(dx,dy)>8)pushAt(Math.atan2(-dy,dx)*180/Math.PI,Math.hypot(dx,dy)/90,drag.point);}pointers.delete(e.pointerId);drag=null;pinch=null;}
 canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
 function sourceFrame(){
- if(mode==='live'&&live){const actors=liveRobots.map((w,i)=>({frame:interpolateFrame(previousFrames[i],currentFrames[i],w.done?1:accumulator/DT),meta:{...geometry,obstacles:w.obstacles,terrain:w.terrain},offset:i*3.8}));return {...actors[0],actors};}
+ if(mode==='live'&&live){const actors=liveRobots.map((w,i)=>({frame:interpolateFrame(previousFrames[i],currentFrames[i],w.done?1:accumulator/DT),meta:{...geometry,obstacles:w.obstacles,terrain:w.terrain,pushPlan:w.pushes},offset:i*3.8}));return {...actors[0],actors};}
  if(!scene?.trace?.length)return null;
  const scenes=scene.teamScenes||[scene],actors=scenes.flatMap((s,i)=>s?.trace?.length?[{frame:traceFrame(s.trace,traceTime%(s.metrics?.time||STAGES[stage].duration)),meta:s,offset:i*3.8}]:[]);
  return actors.length?{...actors[0],actors}:null;
@@ -137,7 +140,7 @@ function draw(data){
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
  drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:meta.terrain,obstacles:meta.obstacles||[],X,Y});
  if(liveSource==='best'&&command.mode==='position'){const x=X(command.position),y=Y(terrainHeight(meta.terrain.segments,command.position));ctx.strokeStyle='#527aa4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-36);ctx.lineTo(x+14,y-30);ctx.lineTo(x,y-24);ctx.stroke();ctx.fillStyle='#466989';ctx.font='10px sans-serif';ctx.fillText(command.position.toFixed(1)+'m',x+4,y-40);}
- for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);}
+ for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);ctx.save();ctx.lineWidth=1;for(const s of sensors.samples){ctx.strokeStyle=s.side==='left'?'#4a9fbd88':'#c7934d88';ctx.fillStyle=s.side==='left'?'#4a9fbd':'#c7934d';ctx.beginPath();ctx.moveTo(Xlocal(pelvis.x),Y(pelvis.y));ctx.lineTo(Xlocal(s.x),Y(s.y));ctx.stroke();ctx.beginPath();ctx.arc(Xlocal(s.x),Y(s.y),2.5,0,Math.PI*2);ctx.fill();}ctx.restore();}for(const effect of hammerEffects(actor.frame,actor.meta))drawHammer(ctx,effect,Xlocal,Y,scale);}
  if(pushArrow){const a=pushArrow,dx=Math.cos(a.angle)*(.3+a.strength/25)*scale,dy=-Math.sin(a.angle)*(.3+a.strength/25)*scale,x=X(a.x),y=Y(a.y);ctx.strokeStyle='#bf875c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y+dy);ctx.stroke();ctx.beginPath();const angle=Math.atan2(dy,dx);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle-.45),y+dy-10*Math.sin(angle-.45));ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle+.45),y+dy-10*Math.sin(angle+.45));ctx.stroke();}
  if(drag&&drag.mode==='push'){ctx.strokeStyle='#b38d68';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(drag.x-rect.left,drag.y-rect.top);ctx.lineTo(drag.endX-rect.left,drag.endY-rect.top);ctx.stroke();}
 }
@@ -162,8 +165,8 @@ window.addEventListener('pagehide',()=>{worker.postMessage({type:'stop'});viewPa
 function selectSkin(value){skin=value;get('character').value=skin;try{localStorage.setItem('mydesk.robot.skin',skin);}catch{}}
 get('character').onchange=()=>selectSkin(get('character').value);
 selectSkin(skin);progress(0,0,'대기');
-get('validation-seconds').value=String(options.validationSeconds);get('monitor-seconds').value=String(options.monitorSeconds);get('terrain').value=options.terrain;get('view').value=options.view;get('observation-seconds').value=String(options.observationSeconds);get('interval').value=String(options.interval);get('auto-push').checked=options.autoPush;get('push-min').value=String(options.pushMin);get('push-max').value=String(options.pushMax);
-function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view,...normalizeEvaluationSettings(options),observationSeconds:options.observationSeconds,interval:options.interval,...normalizePushSettings(options),command,algorithm:options.algorithm,curriculum:options.curriculum,graphRange:options.graphRange,graphCustom:options.graphCustom,graphVersion:options.graphVersion,focus:stage}));}catch{}}
+get('sensor-visible').checked=options.sensorVisible;get('sensor-visible').onchange=()=>{options.sensorVisible=get('sensor-visible').checked;saveOptions();};get('validation-seconds').value=String(options.validationSeconds);get('monitor-seconds').value=String(options.monitorSeconds);get('terrain').value=options.terrain;get('view').value=options.view;get('observation-seconds').value=String(options.observationSeconds);get('interval').value=String(options.interval);get('auto-push').checked=options.autoPush;get('push-min').value=String(options.pushMin);get('push-max').value=String(options.pushMax);
+function saveOptions(){try{localStorage.setItem('mydesk.robot.options',JSON.stringify({terrain:options.terrain,view:options.view,sensorVisible:options.sensorVisible,...normalizeEvaluationSettings(options),observationSeconds:options.observationSeconds,interval:options.interval,...normalizePushSettings(options),command,algorithm:options.algorithm,curriculum:options.curriculum,graphRange:options.graphRange,graphCustom:options.graphCustom,graphVersion:options.graphVersion,focus:stage}));}catch{}}
 get('terrain').onchange=()=>{options.terrain=get('terrain').value;saveOptions();setZoom(1);panX=.4;panY=0;follow=options.view==='robot';configure(model);};
 get('view').onchange=()=>{const next=get('view').value;if(next==='terrain'&&follow){panX=cameraX;panY=(groundPixel-canvas.getBoundingClientRect().height*.88)/drawScale-terrainDatum;}else if(next==='robot')panY=0;options.view=next;follow=next==='robot';saveOptions();};
 get('focus').value=stage;get('algorithm').value=options.algorithm;get('curriculum').checked=options.curriculum;get('graph-range').value=options.graphRange;get('graph-custom').value=String(options.graphCustom);get('graph-custom-row').hidden=options.graphRange!=='custom';get('graph-version').value=options.graphVersion;
