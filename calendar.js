@@ -21,7 +21,7 @@ function render(){
  for(const day of monthDays(month)){
   const dayEvents=visible.filter(e=>onDay(e,day)).sort(sortEvents),outside=day.slice(0,7)!==month.slice(0,7),cell=node('div','cal-day'+(outside?' outside':'')+(day===selected?' selected':''));cell.dataset.date=day;
   const head=node('div','cal-day-head'),date=node('button','cal-date-number'+(day===today?' today':''),String(Number(day.slice(8))));date.type='button';date.setAttribute('aria-label',dayLabel(day)+' 일정 보기');if(day===today)date.setAttribute('aria-current','date');date.onclick=()=>selectDay(day);
-  const plus=node('button','cal-day-add','＋');plus.type='button';plus.setAttribute('aria-label',dayLabel(day)+' 일정 추가');plus.onclick=()=>openEditor(null,plus,day);head.append(date,plus);cell.append(head);
+  head.append(date);cell.append(head);
   for(const event of dayEvents.slice(0,3)){const chip=node('button','cal-event-chip');chip.type='button';paintCategory(chip,event.category);chip.title=event.title;chip.setAttribute('aria-label',event.title+' · '+eventTime(event));chip.append(node('span','cal-event-dot'));if(!event.all_day){const time=day===event.starts_on?event.start_time:day===event.ends_on?'~'+event.end_time:'';if(time)chip.append(node('span','cal-event-time',time));}chip.append(node('span','cal-event-name',event.title));chip.onclick=()=>openEditor(event,chip);cell.append(chip);}
   if(dayEvents.length>3){const more=node('button','cal-more',`+${dayEvents.length-3}개 더 보기`);more.type='button';more.onclick=()=>selectDay(day,true);cell.append(more);}
   cell.onclick=e=>{if(!e.target.closest('button'))openEditor(null,date,day);};grid.append(cell);
