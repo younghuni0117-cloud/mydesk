@@ -1,13 +1,14 @@
-import {motionQuality} from './robot-performance.mjs?v=robot30';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot30';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot33';
+import {motionQuality} from './robot-performance.mjs?v=robot33';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot33';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot30';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot33';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot30';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot30';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot30';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot33';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot33';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot33';
 export const STAGES = {
-  balance: { label: '균형 잡기', speed: 0, duration: 8 },
+  balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
   walk: { label: '앞으로 걷기', speed: .55, duration: 10 },
   run: { label: '빠르게 달리기', speed: 1.4, duration: 10 },
@@ -156,8 +157,8 @@ export function episode(weights,stage='balance',seed=1,options={}){
   while(!sim.done){sim.step(weights,false);if(options.record&&sim.steps%2===0)trace.push(sim.snapshot());}
   return {metrics:sim.metrics(),pushPlan:sim.pushes.map(p=>({...p})),commandSchedule:sim.commandSchedule.map(p=>structuredClone(p)),trace,...(options.summaryOnly?{}:robotGeometry(sim)),obstacles:sim.obstacles,terrain:sim.terrain};
 }
-export function passedStage(metrics,stage){
-  if(metrics.terminationReason!=='duration'||!metrics.done||metrics.time+DT/2<STAGES[stage].duration)return false;
+export function passedStage(metrics,stage,requiredDuration=STAGES[stage].duration){
+  if(metrics.terminationReason!=='duration'||!metrics.done||metrics.time+DT/2<requiredDuration)return false;
   if(stage==='balance')return metrics.upright>.95&&metrics.falls===0&&Math.abs(metrics.distance)<1&&metrics.height>.75;
   if(stage==='recover')return metrics.recoveries>=1&&metrics.height>.75;
   if(stage==='walk')return metrics.distance>1.5&&metrics.upright>.6;
@@ -172,12 +173,12 @@ export const VALIDATION_CASES = [
  {id:'strong',label:'앞뒤 6 N·s',seed:4093,pushes:[{time:1.8,strength:6,direction:0,location:'shoulder'},{time:4.8,strength:6,direction:180,location:'torso'}]},
 ];
 export function evaluateAbility(weights,stage,environment={},validationCases=VALIDATION_CASES){
- const cases=validationCases.map(c=>{const metrics=episode(weights,stage,c.seed,{...environment,pushes:c.pushes,disturbances:false,summaryOnly:true}).metrics;return {id:c.id,label:c.label,passed:passedStage(metrics,stage),reward:metrics.reward,metrics};});
+ const cases=validationCases.map(c=>{const metrics=episode(weights,stage,c.seed,{...environment,observationSeconds:c.seconds??normalizeEvaluationSettings(environment).validationSeconds,pushes:c.pushes,disturbances:false,summaryOnly:true}).metrics;return {id:c.id,label:c.label,passed:passedStage(metrics,stage,c.seconds??normalizeEvaluationSettings(environment).validationSeconds),reward:metrics.reward,metrics};});
  return {meanReward:cases.reduce((s,c)=>s+c.reward,0)/cases.length,passRate:cases.filter(c=>c.passed).length/cases.length,cases};
 }
 export function evaluateAbilities(weights,environment={}){return Object.fromEntries(Object.keys(STAGES).map(stage=>[stage,evaluateAbility(weights,stage,environment)]));}
 
-export function evaluateCommands(weights,environment={}){return COMMAND_CASES.reduce((total,c)=>total+episode(weights,'walk',71,{...environment,observationSeconds:8,disturbances:false,pushes:[],command:null,commandSchedule:c.schedule,summaryOnly:true}).metrics.reward,0)/COMMAND_CASES.length;}
+export function evaluateCommands(weights,environment={}){return COMMAND_CASES.reduce((total,c)=>total+episode(weights,'walk',71,{...environment,observationSeconds:normalizeEvaluationSettings(environment).validationSeconds,disturbances:false,pushes:[],command:null,commandSchedule:c.schedule,summaryOnly:true}).metrics.reward,0)/COMMAND_CASES.length;}
 
 // Monitoring only: never used to select the integrated model.
-export const MONITOR_CASES=[{id:'unseen-left',label:'별도 시험 A',seed:700001,pushes:[{time:2,strength:2.5,direction:180,location:'torso'}]},{id:'unseen-right',label:'별도 시험 B',seed:700009,pushes:[{time:1.4,strength:5.5,direction:0,location:'pelvis'},{time:4.2,strength:3,direction:180,location:'shoulder'}]}];
+export const MONITOR_CASES=monitorCases();

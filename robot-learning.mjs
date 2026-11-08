@@ -1,9 +1,10 @@
-import {compareAbilities} from './robot-performance.mjs?v=robot30';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot30';
-import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot30';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot30';
-import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot30';
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,MONITOR_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot30';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot33';
+import {compareAbilities} from './robot-performance.mjs?v=robot33';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot33';
+import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot33';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot33';
+import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot33';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot33';
 export const MODEL_VERSION=5;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -64,20 +65,21 @@ export class RobotLearner {
  recoverPPOSearch(ability){if(this.algorithm!=='ppo'||!this.ppo||(compareAbilities(ability,this.abilities[this.focus],this.focus)>=0&&preservesAbility(this.abilities[this.focus],ability))||this.attempts-Math.max(this.modelAttempt,this.searchState.lastPPOReset??0)<2048)return false;
   const previous=this.ppo;this.searchArchive={...(this.searchArchive||{}),ppo:structuredClone(previous),at:this.attempts};const optimizer=new PPOOptimizer(this.weights,this.searchSeed);optimizer.critic=[...previous.critic];optimizer.criticAdam=structuredClone(previous.criticAdam);optimizer.updates=previous.updates;const restarts=this.searchState.ppoRestarts||0;optimizer.logStd.fill(Math.log([.05,.065,.08][restarts%3]));this.ppo=optimizer.snapshot();this.searchState.ppoRestarts=restarts+1;this.searchState.lastPPOReset=this.attempts;return true;
  }
- balanceHorizon(){const m=this.abilities.balance.cases[0]?.metrics,t=m?.longestUpright??0;return t<1.5?2:t<3.5?4:8;}
+ balanceHorizon(){const m=this.abilities.balance.cases[0]?.metrics,t=m?.longestUpright??0;return t<1.5?2:t<3.5?4:normalizeEvaluationSettings(this.environment).validationSeconds;}
  setCurriculum(enabled){this.trainingCurriculum=enabled!==false;}
  setTrainingPushSettings(settings){this.trainingPush=normalizePushSettings(settings);}
  setTrainingCommand(command){this.trainingCommand=command?normalizeCommand(command):null;}
  prepareTrial({record=false}={},offset=0){
+  const horizon=this.balanceHorizon(),fullHorizon=normalizeEvaluationSettings(this.environment).validationSeconds;
   const trialSlot=this.pending.length+offset,slot=this.algorithm==='cem'&&this.focus==='balance'?Math.floor(trialSlot/2):trialSlot;if(trialSlot===0)this.cohortStart=this.attempts;
   let weights;
   if(this.algorithm==='ppo'){if(!this.ppo)this.ppo=new PPOOptimizer(this.weights,this.searchSeed).snapshot();weights=[...this.ppo.actor];}
   else if(slot===0)weights=[...this.mean];else if(slot===1)weights=[...this.weights];else{const pair=Math.floor((slot-2)/2),random=seeded((this.cohortStart*7919+pair*104729+314159+this.searchSeed)>>>0),joint=(Math.floor(this.cohortStart/32)+this.searchSeed+pair*5)%16,hidden=(Math.floor(this.cohortStart/32)+pair)%12,sign=slot%2===0?1:-1;
-   weights=this.mean.map((m,i)=>{const noise=gaussian(random),neural=(this.focus!=='balance'||this.balanceHorizon()===8)&&pair%4===3,selected=neural?(i<564&&Math.floor(i/47)===hidden)||(i>=564&&i<576&&i-564===hidden)||(i>=576&&i<768&&(i-576)%12===hidden):pair%3===0?i>=768&&i<784:pair%3===1?(i>=784+joint*6&&i<784+(joint+1)*6)||i===768+joint:i>=784&&(i-784)%6===hidden%6,scale=pair%3===0?.4:pair%3===1?.4:.3;return clamp(m+(selected&&(i>=768||this.focus!=='balance'||this.balanceHorizon()>2)?sign*this.spread[i]*noise*scale:0),-4,4);});}
+   weights=this.mean.map((m,i)=>{const noise=gaussian(random),neural=(this.focus!=='balance'||horizon===fullHorizon)&&pair%4===3,selected=neural?(i<564&&Math.floor(i/47)===hidden)||(i>=564&&i<576&&i-564===hidden)||(i>=576&&i<768&&(i-576)%12===hidden):pair%3===0?i>=768&&i<784:pair%3===1?(i>=784+joint*6&&i<784+(joint+1)*6)||i===768+joint:i>=784&&(i-784)%6===hidden%6,scale=pair%3===0?.4:pair%3===1?.4:.3;return clamp(m+(selected&&(i>=768||this.focus!=='balance'||horizon>2)?sign*this.spread[i]*noise*scale:0),-4,4);});}
   const task=this.focus,index=this.attempts+offset,seed=(0x2468ace0+this.searchSeed+Math.imul(this.cohortStart,2654435761))>>>0,batch=Math.floor(this.cohortStart/32),schedule=this.trainingCurriculum&&Math.max(this.abilities[task].passRate,this.abilities.balance.passRate)<.5?[]:trainingCommands(task,batch);if((!this.trainingCurriculum||Math.max(this.abilities[task].passRate,this.abilities.balance.passRate)>=.5)&&batch%6===5&&this.trainingCommand)schedule.splice(0,schedule.length,{time:0,command:this.trainingCommand});
   if(task==='balance')schedule.splice(0,schedule.length,{time:0,command:{mode:'hold'}});
-  const push=normalizePushSettings(this.trainingPush),level=this.trainingCurriculum?this.curriculum[task]:1;push.pushMax=push.pushMin+(push.pushMax-push.pushMin)*level;if(task==='balance'&&this.trainingCurriculum&&this.balanceHorizon()<8)push.autoPush=false;
-  return {weights,task,index,seed,record,group:slot,reference:this.algorithm==='cem'&&slot===1,algorithm:this.algorithm,critic:this.algorithm==='ppo'?[...this.ppo.critic]:undefined,logStd:this.algorithm==='ppo'?[...this.ppo.logStd]:undefined,noiseSeed:(100003+index+this.searchSeed)>>>0,options:{...this.environment,...push,...(task==='balance'?{spawnTilt:(index%2?1:-1)*(this.trainingCurriculum?(this.balanceHorizon()===2?.004:this.balanceHorizon()===4?.008:.018):.025)}:{}),...(task==='balance'&&this.trainingCurriculum?{observationSeconds:this.balanceHorizon()}:{}),spawnRange:.025+(this.trainingCurriculum ? .075*level : 0),disturbances:true,commandSchedule:schedule,record,summaryOnly:!record,endOnFall:task==='balance'&&(this.algorithm!=='ppo'||index%8!==7)}};
+  const push=normalizePushSettings(this.trainingPush),level=this.trainingCurriculum?this.curriculum[task]:1;push.pushMax=push.pushMin+(push.pushMax-push.pushMin)*level;if(task==='balance'&&this.trainingCurriculum&&horizon<fullHorizon)push.autoPush=false;
+  return {weights,task,index,seed,record,group:slot,reference:this.algorithm==='cem'&&slot===1,algorithm:this.algorithm,critic:this.algorithm==='ppo'?[...this.ppo.critic]:undefined,logStd:this.algorithm==='ppo'?[...this.ppo.logStd]:undefined,noiseSeed:(100003+index+this.searchSeed)>>>0,options:{...this.environment,...push,...(task==='balance'?{spawnTilt:(index%2?1:-1)*(this.trainingCurriculum?(horizon===2?.004:horizon===4?.008:.018):.025)}:{}),...(task==='balance'?{observationSeconds:this.trainingCurriculum?horizon:fullHorizon}:{}),spawnRange:.025+(this.trainingCurriculum ? .075*level : 0),disturbances:true,commandSchedule:schedule,record,summaryOnly:!record,endOnFall:task==='balance'&&(this.algorithm!=='ppo'||index%8!==7)}};
  }
  completeTrial(prepared,trial){
   if(prepared.index!==this.attempts)throw Error('학습 결과의 순서가 일치하지 않습니다.');
@@ -113,7 +115,7 @@ export class RobotLearner {
   for(const task of stages.filter(s=>s!==bank.task)){if(!active())return null;abilities[task]=validation?await validation.ability(bank.weights,task,this.environment,active):evaluateAbility(bank.weights,task,this.environment);await yieldControl();if(!active()||!abilities[task])return null;if(!preservesAbility(this.abilities[task],abilities[task])){this.validationBank=null;this.lastFullValidationAttempt=this.attempts;this.revision++;this.record(this.bestReward,false,abilities,false);return false;}}
   const goalReward=validation?await validation.commands(bank.weights,this.environment,active):evaluateCommands(bank.weights,this.environment);if(!active()||goalReward===null)return null;
   this.validationBank=null;this.lastFullValidationAttempt=this.attempts;const accepted=this.adopt(bank.weights,abilities,goalReward);
-  if(accepted&&active()){const ability=validation?await validation.ability(bank.weights,this.focus,this.environment,active,MONITOR_CASES):evaluateAbility(bank.weights,this.focus,this.environment,MONITOR_CASES);if(ability)this.generalization={task:this.focus,attempts:this.attempts,rewardVersion:REWARD_VERSION,ability};}
+  if(accepted&&active()){const seconds=normalizeEvaluationSettings(this.environment).monitorSeconds,cases=monitorCases(seconds);const ability=validation?await validation.ability(bank.weights,this.focus,this.environment,active,cases):evaluateAbility(bank.weights,this.focus,this.environment,cases);if(ability)this.generalization={task:this.focus,attempts:this.attempts,rewardVersion:REWARD_VERSION,seconds,ability};}
   return accepted;
  }
  checkpoint(){if(!this.pending.length)return;const winner=this.candidate(true);if(!winner)return;this.adopt(winner.weights,evaluateAbilities(winner.weights,this.environment));this.updateDistribution();}

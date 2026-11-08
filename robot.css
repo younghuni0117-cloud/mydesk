@@ -160,3 +160,7 @@ body[data-page=robot] .robot-progress progress::-webkit-progress-value{transitio
 body[data-page=robot] .robot-controls{--robot-data-font-size:13px;--robot-data-line-height:20px}
 body[data-page=robot].robot-wide-fit .robot-controls{--robot-data-font-size:12px;--robot-data-line-height:16px}
 body[data-page=robot] .robot-controls :is(.robot-abilities th,.robot-abilities td,.robot-chart-heading,.robot-chart-x,.robot-chart-y){font-family:inherit;font-size:var(--robot-data-font-size);line-height:var(--robot-data-line-height);font-variant-numeric:tabular-nums}
+/* Scene measurements use the same proportional type and size as the data table. */
+body[data-page=robot]{--robot-data-font-size:13px;--robot-data-line-height:20px}
+body[data-page=robot].robot-wide-fit{--robot-data-font-size:12px;--robot-data-line-height:16px}
+body[data-page=robot] .robot-metrics :is(strong,small),body[data-page=robot].robot-wide-fit .robot-metrics :is(strong,small){font-family:inherit;font-size:var(--robot-data-font-size);line-height:var(--robot-data-line-height);font-weight:400;font-variant-numeric:tabular-nums}

@@ -1,7 +1,7 @@
-import {observationScene} from './robot-transfer.mjs?v=robot30';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot30';
-import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot30';
-import {STAGES} from './robot-core.mjs?v=robot30';
+import {observationScene} from './robot-transfer.mjs?v=robot33';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot33';
+import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot33';
+import {STAGES} from './robot-core.mjs?v=robot33';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null,rollouts=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
