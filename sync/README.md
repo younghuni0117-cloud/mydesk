@@ -13,3 +13,5 @@
 검증: `node --test tests/robot-shared-storage.test.mjs tests/robot-ui.test.mjs`와 `node scripts/verify-robot-sharing.cjs`. 브라우저 다중 기기 검사는 모델 API를 모두 가로채 격리된 저장소에서 실행하므로 실제 서버에 쓰지 않습니다. 실제 서버에서는 공개 키를 통한 브라우저 읽기·초기 등록과, ROLLBACK하는 익명 역할 트랜잭션에서 INSERT/UPDATE·변경 번호 증가를 검사했습니다. 보안 advisors의 경고는 0개였습니다.
 
 `schema.sql`은 폐기된 로그인 방식의 과거 설정 기록이며 현재 공유 방식에 사용하지 않습니다.
+
+robot34의 지형 센서 모델은 1,192개 가중치를 사용합니다. 저장 제약은 기존 880개와 새 1,192개 형식을 모두 허용하며 버전 5·8MiB 한도·RLS·권한은 유지합니다. 서버의 `allow_terrain_sensor_robot_policy` 이관은 CHECK 제약만 변경하고 기존 모델 행을 쓰거나 지우지 않습니다. 검증은 실제 CHECK 표현식을 880/1192/881 크기의 가짜 JSON에 평가해 두 지원 형식만 허용하는지 확인했고, 작업 전후 공용 모델의 변경 번호·학습 횟수·전체 내용 지문이 동일함을 확인했습니다.
