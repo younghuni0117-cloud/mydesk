@@ -15,6 +15,12 @@ export function timedLayout(events,day){
  let group=[],until=0;const finish=()=>{const lanes=[];for(const row of group){let lane=lanes.findIndex(end=>end<=row.start);if(lane<0)lane=lanes.length;lanes[lane]=Math.max(row.end,row.start+30);row.lane=lane;}for(const row of group)row.columns=lanes.length;};
  for(const row of rows){if(group.length&&row.start>=until){finish();group=[];}group.push(row);until=Math.max(group.length===1?0:until,row.end,row.start+30);}finish();return rows;
 }
+// Clip events to a displayed week and keep each multi-day event on one lane.
+export function weekEventSegments(events,days){
+ const rows=events.map(event=>{const covered=days.map((day,index)=>onDay(event,day)?index:-1).filter(index=>index>=0);if(!covered.length)return null;return {event,start:covered[0],end:covered.at(-1),continuesBefore:event.starts_on<days[0],continuesAfter:onDay(event,addDays(days.at(-1),1))};}).filter(Boolean);
+ rows.sort((a,b)=>Number(b.event.starts_on!==b.event.ends_on)-Number(a.event.starts_on!==a.event.ends_on)||a.start-b.start||(b.end-b.start)-(a.end-a.start)||sortEvents(a.event,b.event));
+ const lanes=[];for(const row of rows){let lane=lanes.findIndex(end=>end<row.start);if(lane<0)lane=lanes.length;lanes[lane]=row.end;row.lane=lane;}return rows;
+}
 export function validDate(s){return /^\d{4}-\d{2}-\d{2}$/.test(s)&&s>='1900-01-01'&&s<='2199-12-31'&&Number.isFinite(dateUTC(s).getTime())&&dateUTC(s).toISOString().slice(0,10)===s;}
 export function eventPayload(input){
  const out={id:input.id,title:String(input.title||'').trim(),person:String(input.person||'').trim(),category:input.category,starts_on:input.starts_on,ends_on:input.ends_on,all_day:input.all_day===true,start_time:input.all_day?null:input.start_time?.slice(0,5),end_time:input.all_day?null:input.end_time?.slice(0,5),location:String(input.location||'').trim(),notes:String(input.notes||'').trim()};
