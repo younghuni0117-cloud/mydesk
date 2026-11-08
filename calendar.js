@@ -75,7 +75,7 @@ function moveView(delta){if(['month','list'].includes(view))return moveMonth(del
 $('prev').onclick=()=>moveView(-1);$('next').onclick=()=>moveView(1);
 $('today').onclick=()=>{selected=today;month=monthStart(today);render();void loadEvents();};
 for(const key of ['month','week','day','list'])$(key+'-view').onclick=()=>{view=key;render();void loadEvents();};
-$('refresh').onclick=()=>void loadEvents(true);
+$('refresh').onclick=()=>location.reload();
 function openCalendarConnection(){const dialog=$('connect-dialog');if(!dialog)return;$('connect-error').textContent='';$('connect-link').value='';if(!dialog.open)dialog.showModal();$('connect-link').focus();}
 function navigateCalendar(next){if(next===family){$('connect-dialog').close();void loadEvents(true);return;}const target=new URL(location.href);target.hash='family='+next;location.assign(target.href);}
 if($('connect-dialog')){
