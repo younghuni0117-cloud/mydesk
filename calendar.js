@@ -1,12 +1,12 @@
-import {familyFromHash,parseFamilyLink,resolveFamily} from './calendar-identity.mjs?v=calendar6';
+import {familyFromHash,parseFamilyLink,resolveFamily} from './calendar-identity.mjs?v=calendar7';
 import {holidayNames,hasHolidayYear} from './data/korean-holidays.mjs?v=calendar3';
 import {CalendarStore,CATEGORIES,todaySeoul,dateUTC,addDays,monthStart,shiftMonth,monthDays,onDay,eventPayload,sortEvents} from './calendar-data.mjs?v=calendar3';
 const $=id=>document.getElementById('cal-'+id),node=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
 let savedFamily=null;try{savedFamily=localStorage.getItem('mydesk.calendar.family');}catch{}
-const family=resolveFamily(location.hash,savedFamily,()=>crypto.randomUUID());
-try{localStorage.setItem('mydesk.calendar.family',family);}catch{}
-history.replaceState(null,'','#family='+family);window.syncCalendarMenuLinks?.();
-const store=new CalendarStore({calendarId:family}),today=todaySeoul(),enabled=new Set(Object.keys(CATEGORIES));
+const family=resolveFamily(location.hash,savedFamily);
+if(family)try{localStorage.setItem('mydesk.calendar.family',family);}catch{}
+if(family)history.replaceState(null,'','#family='+family);window.syncCalendarMenuLinks?.();
+const store=family?new CalendarStore({calendarId:family}):null,today=todaySeoul(),enabled=new Set(Object.keys(CATEGORIES));
 let month=monthStart(today),selected=today,events=[],view='month',editing=null,draftId=null,loading=0,saving=false,lastOpener=null;
 const monthLabel=iso=>`${Number(iso.slice(0,4))}년 ${Number(iso.slice(5,7))}월`,dayLabel=iso=>`${Number(iso.slice(5,7))}월 ${Number(iso.slice(8,10))}일 ${'일월화수목금토'[dateUTC(iso).getUTCDay()]}요일`;
 const status=text=>{$('status').textContent=text;},filtered=()=>events.filter(e=>enabled.has(e.category));
@@ -37,9 +37,9 @@ function render(){
  if(!entries.length)empty(list,'이번 달의 일정이 비어 있어요.','새로운 가족 일정을 만들어 보세요.');else{let date='';for(const entry of entries){if(entry.day!==date){date=entry.day;const group=node('div','cal-agenda-group');group.append(node('h3','',dayLabel(date)));list.append(group);}list.lastElementChild.append(entry.holiday?holidayRow(entry.day):eventRow(entry.event));}}
  const people=$('people');people.replaceChildren();for(const name of [...new Set(events.map(e=>e.person).filter(Boolean))]){const option=node('option');option.value=name;people.append(option);}
 }
-async function loadEvents(manual=false){const token=++loading,days=monthDays(month);if(manual||!events.length)status('일정을 불러오고 있어요.');try{const incoming=await store.list(days[0],days[41]);if(token!==loading)return;events=incoming;render();status(manual?'최신 일정을 불러왔어요.':'');}catch(e){if(token===loading)status('일정을 불러오지 못했어요. 새로고침해 주세요.');}}
+async function loadEvents(manual=false){if(!store){status('휴대폰의 공유 링크로 기존 달력을 먼저 연결해 주세요.');return;}const token=++loading,days=monthDays(month);if(manual||!events.length)status('일정을 불러오고 있어요.');try{const incoming=await store.list(days[0],days[41]);if(token!==loading)return;events=incoming;render();status(events.length?(manual?'최신 일정을 불러왔어요.':''):'현재 달에 일정이 없습니다. 다른 기기의 달력은 공유 링크로 연결하세요.');}catch(e){if(token===loading)status('일정을 불러오지 못했어요. 새로고침해 주세요.');}}
 function moveMonth(delta){const next=shiftMonth(month,delta);if(next<'1900-01-01'||next>'2199-12-01')return;month=next;selected=month;events=[];render();void loadEvents();}
-function openEditor(event,opener,day=selected){if(saving)return;lastOpener=opener||document.activeElement;editing=event||null;draftId=event?.id||crypto.randomUUID();$('editor-title').textContent=event?'일정 수정':'새 일정';$('title').value=event?.title||'';$('start').value=event?.starts_on||day;$('end').value=event?.ends_on||day;$('all-day').checked=event?.all_day??false;$('start-time').value=event?.start_time||'09:00';$('end-time').value=event?.end_time||'10:00';$('person').value=event?.person||'';$('category').value=event?.category||'family';$('location').value=event?.location||'';$('notes').value=event?.notes||'';$('form-error').textContent='';$('delete').hidden=!event;toggleTimes();$('editor').showModal();$('title').focus();}
+function openEditor(event,opener,day=selected){if(!family){openCalendarConnection();return;}if(saving)return;lastOpener=opener||document.activeElement;editing=event||null;draftId=event?.id||crypto.randomUUID();$('editor-title').textContent=event?'일정 수정':'새 일정';$('title').value=event?.title||'';$('start').value=event?.starts_on||day;$('end').value=event?.ends_on||day;$('all-day').checked=event?.all_day??false;$('start-time').value=event?.start_time||'09:00';$('end-time').value=event?.end_time||'10:00';$('person').value=event?.person||'';$('category').value=event?.category||'family';$('location').value=event?.location||'';$('notes').value=event?.notes||'';$('form-error').textContent='';$('delete').hidden=!event;toggleTimes();$('editor').showModal();$('title').focus();}
 function closeEditor(){if(saving)return;$('editor').close();if(lastOpener?.isConnected)lastOpener.focus();}
 function toggleTimes(){const allDay=$('all-day').checked;$('times').hidden=false;for(const id of ['start-time','end-time']){$(id).disabled=allDay;$(id).required=!allDay;}}
 function setSaving(value){saving=value;for(const id of ['save','delete','cancel','close'])$(id).disabled=value;$('save').textContent=value?'저장 중…':'저장';}
@@ -48,12 +48,15 @@ $('form').onsubmit=async e=>{e.preventDefault();if(saving)return;let payload;try
 $('delete').onclick=async()=>{if(!editing||saving||!window.confirm(`‘${editing.title}’ 일정을 가족 달력에서 삭제할까요?`))return;setSaving(true);try{await store.remove(editing.id);events=events.filter(e=>e.id!==editing.id);setSaving(false);closeEditor();render();status('일정을 삭제했어요.');void loadEvents();}catch{setSaving(false);$('form-error').textContent='삭제하지 못했어요. 잠시 후 다시 시도해 주세요.';}};
 $('close').onclick=$('cancel').onclick=closeEditor;$('editor').addEventListener('cancel',e=>{if(saving)e.preventDefault();});$('all-day').onchange=toggleTimes;$('start').onchange=()=>{if($('end').value<$('start').value)$('end').value=$('start').value;};
 $('create').onclick=()=>openEditor(null,$('create'));$('add-day').onclick=()=>openEditor(null,$('add-day'));$('prev').onclick=$('mini-prev').onclick=()=>moveMonth(-1);$('next').onclick=$('mini-next').onclick=()=>moveMonth(1);$('today').onclick=()=>{selected=today;month=monthStart(today);events=[];render();void loadEvents();};$('month-view').onclick=()=>{view='month';render();};$('list-view').onclick=()=>{view='list';render();};$('refresh').onclick=()=>void loadEvents(true);
-$('share').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname+'#family='+family);status('가족에게 보낼 공유 링크를 복사했어요.');$('share').textContent='복사 완료';setTimeout(()=>{$('share').textContent='공유 링크';},2000);}catch{status('주소창의 링크를 복사해 가족에게 보내주세요.');}};
+$('share').onclick=async()=>{if(!family){openCalendarConnection();return;}try{await navigator.clipboard.writeText(location.origin+location.pathname+'#family='+family);status('가족에게 보낼 공유 링크를 복사했어요.');$('share').textContent='복사 완료';setTimeout(()=>{$('share').textContent='공유 링크';},2000);}catch{status('주소창의 링크를 복사해 가족에게 보내주세요.');}};
+function openCalendarConnection(){const dialog=$('connect-dialog');if(!dialog)return;$('connect-error').textContent='';$('connect-link').value='';if(!dialog.open)dialog.showModal();$('connect-link').focus();}
+function navigateCalendar(next){if(next===family){$('connect-dialog').close();void loadEvents(true);return;}const target=new URL(location.href);target.hash='family='+next;location.assign(target.href);}
 if($('connect')&&$('connect-dialog')){
  const dialog=$('connect-dialog');
- $('connect').onclick=()=>{$('connect-error').textContent='';$('connect-link').value='';dialog.showModal();$('connect-link').focus();};
+ $('connect').onclick=openCalendarConnection;
  $('connect-cancel').onclick=()=>dialog.close();
- $('connect-form').onsubmit=e=>{e.preventDefault();let next;try{next=parseFamilyLink($('connect-link').value,location.href);}catch(error){$('connect-error').textContent=error.message;return;}dialog.close();if(next===family){void loadEvents(true);return;}const target=new URL(location.href);target.hash='family='+next;location.assign(target.href);};
+ $('connect-form').onsubmit=e=>{e.preventDefault();let next;try{next=parseFamilyLink($('connect-link').value,location.href);}catch(error){$('connect-error').textContent=error.message;return;}dialog.close();navigateCalendar(next);};
+ if($('new-calendar'))$('new-calendar').onclick=()=>{if(family&&!window.confirm('현재 달력과 별개의 새 달력을 만들까요? 기존 일정은 그대로 보존됩니다.'))return;dialog.close();navigateCalendar(crypto.randomUUID());};
 }
 window.addEventListener('hashchange',()=>location.reload());document.addEventListener('visibilitychange',()=>{if(!document.hidden)void loadEvents();});const timer=setInterval(()=>{if(!document.hidden&&!saving)void loadEvents();},20000);timer.unref?.();
-render();void loadEvents();
+render();void loadEvents();if(!family)openCalendarConnection();
