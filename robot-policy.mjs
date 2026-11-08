@@ -1,13 +1,13 @@
 // A state-feedback neural policy. There are no gait clocks, target poses or reflex controllers.
-export const POLICY_KIND='direct-torque-goal-mlp-v2';
+export const POLICY_KIND='direct-torque-sensor-mlp-v3';
 export const POLICY_INPUTS=47,POLICY_HIDDEN=12,POLICY_OUTPUTS=16;
-export const POLICY_SIZE=POLICY_INPUTS*POLICY_HIDDEN+POLICY_HIDDEN+POLICY_HIDDEN*POLICY_OUTPUTS+POLICY_OUTPUTS;
+export const POLICY_SIZE=POLICY_INPUTS*POLICY_HIDDEN+POLICY_HIDDEN+POLICY_HIDDEN*POLICY_OUTPUTS+POLICY_OUTPUTS+POLICY_OUTPUTS*6;
 export function policyActions(weights,observations){
  const hidden=Array(POLICY_HIDDEN),actions=Array(POLICY_OUTPUTS);let cursor=0;
  for(let h=0;h<POLICY_HIDDEN;h++){let sum=0;for(let i=0;i<POLICY_INPUTS;i++)sum+=(weights[cursor++]||0)*(observations[i]||0);hidden[h]=sum;}
  for(let h=0;h<POLICY_HIDDEN;h++)hidden[h]=Math.tanh(hidden[h]+(weights[cursor++]||0));
  for(let o=0;o<POLICY_OUTPUTS;o++){let sum=0;for(let h=0;h<POLICY_HIDDEN;h++)sum+=(weights[cursor++]||0)*hidden[h];actions[o]=sum;}
- for(let o=0;o<POLICY_OUTPUTS;o++)actions[o]=Math.tanh(actions[o]+(weights[cursor++]||0));
+ for(let o=0;o<POLICY_OUTPUTS;o++){let value=actions[o]+(weights[cursor++]||0);const f=feedbackFeatures(observations,o);for(let j=0;j<6;j++)value+=(weights[784+o*6+j]||0)*f[j];actions[o]=Math.tanh(value);}
  return actions;
 }
 
@@ -17,3 +17,11 @@ export function extendV3Weights(old,spread=false){
  const next=[];for(let h=0;h<12;h++)next.push(...old.slice(h*44,(h+1)*44),...Array(3).fill(spread ? .3 : 0));
  next.push(...old.slice(44*12));return next;
 }
+
+export function initialPolicy(seed=42,outputs=POLICY_OUTPUTS){let n=seed>>>0;const random=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296;},I=POLICY_INPUTS,H=POLICY_HIDDEN,w=Array(I*H+H+H*outputs+outputs+(outputs===16?96:0)).fill(0),gain=i=>i===0?6:i===2?8:i===4||i===5?3:i>=12&&i<28?3:i>=28&&i<44?4:1;for(let h=0;h<H;h++){for(let i=0;i<I;i++)w[h*I+i]=(random()-.5)*.4*gain(i);w[I*H+h]=-w[h*I+1]-.85*w[h*I+3]-w[h*I+11]-.5*(w[h*I+7]+w[h*I+8]);}return w;}
+
+export function feedbackFeatures(obs,joint){return [(obs[12+joint]||0)*Math.PI,(obs[28+joint]||0)*8,(obs[0]||0)*4,(obs[2]||0)*8,(obs[4]||0)*3,(obs[6]||0)*2];}
+
+// Existing 784 learned coefficients stay byte-for-byte as the prefix. New paths
+// start at zero and therefore add no posture controller or initial movement.
+export function upgradePolicyWeights(old,spread=false){if(!Array.isArray(old)||old.length!==784||!old.every(Number.isFinite))return null;return [...old,...Array(96).fill(spread?.2:0)];}

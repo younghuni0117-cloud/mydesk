@@ -1,0 +1,258 @@
+{
+  "environment": "Node.js, flat meadow, actual Planck physics, fixed 8-second validation; auto-push setting true, 1–6 N·s, staged curriculum enabled",
+  "protocol": "32-trial CEM groups and 8-trial PPO checkpoints; final forced checkpoint; seeds 42 and 17; independent unforced holdouts are never used for model selection",
+  "limitations": [
+    "4096 trials do not establish convergence at 100000 trials",
+    "All reported fixed validation pass rates remain 0%",
+    "Physics and reward changed; compare observed standing seconds rather than reward magnitudes",
+    "Concurrent elapsed times are not comparable and are omitted",
+    "A separate seed and a PPO run are diagnostics, not proof of algorithm superiority"
+  ],
+  "results": [
+    {
+      "version": "v29",
+      "algorithm": "cem",
+      "seed": 42,
+      "attempts": 4096,
+      "physicsVersion": 3,
+      "rewardVersion": 4,
+      "policySize": 784,
+      "initialStandingSeconds": 0.38749999999999996,
+      "selection": {
+        "standingSeconds": [
+          0.8666666666666677,
+          1.1166666666666676,
+          1.35,
+          0.8000000000000008
+        ],
+        "meanStandingSeconds": 1.033333333333334,
+        "longestSeconds": [
+          0.8666666666666677,
+          1.1166666666666676,
+          1.35,
+          0.8000000000000008
+        ],
+        "passRate": 0,
+        "meanReward": -59.84847674445342
+      },
+      "heldOutWithoutPush": [
+        {
+          "seed": 700011,
+          "standingSeconds": 1.0000000000000013,
+          "longestSeconds": 1.0000000000000013
+        },
+        {
+          "seed": 700027,
+          "standingSeconds": 0.9833333333333347,
+          "longestSeconds": 0.9833333333333347
+        },
+        {
+          "seed": 700031,
+          "standingSeconds": 0.9833333333333347,
+          "longestSeconds": 0.9833333333333347
+        },
+        {
+          "seed": 700043,
+          "standingSeconds": 0.9833333333333347,
+          "longestSeconds": 0.9833333333333347
+        }
+      ],
+      "monitor": {
+        "standingSeconds": [
+          0.9833333333333347,
+          1.0000000000000013
+        ],
+        "passRate": 0
+      },
+      "policyVersion": 7,
+      "restarts": {
+        "lastResetAttempt": 4044,
+        "restarts": 54
+      }
+    },
+    {
+      "version": "v30",
+      "algorithm": "cem",
+      "seed": 42,
+      "attempts": 4096,
+      "physicsVersion": 4,
+      "rewardVersion": 5,
+      "policySize": 880,
+      "initialStandingSeconds": 0.38749999999999996,
+      "selection": {
+        "standingSeconds": [
+          2.449999999999996,
+          1.5166666666666662,
+          1.566666666666666,
+          1.4333333333333331
+        ],
+        "meanStandingSeconds": 1.7416666666666654,
+        "longestSeconds": [
+          2.449999999999996,
+          1.5166666666666662,
+          1.566666666666666,
+          1.4333333333333331
+        ],
+        "passRate": 0,
+        "meanReward": -32.12027979580231
+      },
+      "heldOutWithoutPush": [
+        {
+          "seed": 700011,
+          "standingSeconds": 1.6666666666666656,
+          "longestSeconds": 1.6666666666666656
+        },
+        {
+          "seed": 700027,
+          "standingSeconds": 1.5999999999999992,
+          "longestSeconds": 1.5999999999999992
+        },
+        {
+          "seed": 700031,
+          "standingSeconds": 1.5999999999999992,
+          "longestSeconds": 1.5999999999999992
+        },
+        {
+          "seed": 700043,
+          "standingSeconds": 1.5999999999999992,
+          "longestSeconds": 1.5999999999999992
+        }
+      ],
+      "monitor": {
+        "standingSeconds": [
+          1.6666666666666656,
+          1.733333333333332
+        ],
+        "passRate": 0
+      },
+      "policyVersion": 11,
+      "restarts": {
+        "lastResetAttempt": 3872,
+        "restarts": 0
+      }
+    },
+    {
+      "version": "v30",
+      "algorithm": "cem",
+      "seed": 17,
+      "attempts": 4096,
+      "physicsVersion": 4,
+      "rewardVersion": 5,
+      "policySize": 880,
+      "initialStandingSeconds": 0.38749999999999996,
+      "selection": {
+        "standingSeconds": [
+          1.6999999999999988,
+          1.4,
+          1.4999999999999996,
+          1.6833333333333322
+        ],
+        "meanStandingSeconds": 1.5708333333333324,
+        "longestSeconds": [
+          1.6999999999999988,
+          1.4,
+          1.4999999999999996,
+          1.6833333333333322
+        ],
+        "passRate": 0,
+        "meanReward": -44.00861173801761
+      },
+      "heldOutWithoutPush": [
+        {
+          "seed": 700011,
+          "standingSeconds": 1.5999999999999992,
+          "longestSeconds": 1.5999999999999992
+        },
+        {
+          "seed": 700027,
+          "standingSeconds": 1.649999999999999,
+          "longestSeconds": 1.649999999999999
+        },
+        {
+          "seed": 700031,
+          "standingSeconds": 1.649999999999999,
+          "longestSeconds": 1.649999999999999
+        },
+        {
+          "seed": 700043,
+          "standingSeconds": 1.6666666666666656,
+          "longestSeconds": 1.6666666666666656
+        }
+      ],
+      "monitor": {
+        "standingSeconds": [
+          1.5999999999999992,
+          1.5166666666666662
+        ],
+        "passRate": 0
+      },
+      "policyVersion": 9,
+      "restarts": {
+        "lastResetAttempt": 3360,
+        "restarts": 0
+      }
+    },
+    {
+      "version": "v30",
+      "algorithm": "ppo",
+      "seed": 42,
+      "attempts": 4096,
+      "physicsVersion": 4,
+      "rewardVersion": 5,
+      "policySize": 880,
+      "initialStandingSeconds": 0.38749999999999996,
+      "selection": {
+        "standingSeconds": [
+          1.8499999999999983,
+          1.9333333333333313,
+          1.566666666666666,
+          1.649999999999999
+        ],
+        "meanStandingSeconds": 1.7499999999999987,
+        "longestSeconds": [
+          1.8499999999999983,
+          1.9333333333333313,
+          1.566666666666666,
+          1.649999999999999
+        ],
+        "passRate": 0,
+        "meanReward": -40.60333106318319
+      },
+      "heldOutWithoutPush": [
+        {
+          "seed": 700011,
+          "standingSeconds": 1.5999999999999992,
+          "longestSeconds": 1.5999999999999992
+        },
+        {
+          "seed": 700027,
+          "standingSeconds": 1.566666666666666,
+          "longestSeconds": 1.566666666666666
+        },
+        {
+          "seed": 700031,
+          "standingSeconds": 1.566666666666666,
+          "longestSeconds": 1.566666666666666
+        },
+        {
+          "seed": 700043,
+          "standingSeconds": 1.5499999999999994,
+          "longestSeconds": 1.5499999999999994
+        }
+      ],
+      "monitor": {
+        "standingSeconds": [
+          1.733333333333332,
+          1.7499999999999987
+        ],
+        "passRate": 0
+      },
+      "policyVersion": 26,
+      "optimizerUpdates": 268,
+      "restarts": {
+        "lastResetAttempt": 4096,
+        "restarts": 0
+      }
+    }
+  ]
+}
