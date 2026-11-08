@@ -1,4 +1,4 @@
-import {TERRAIN_SENSOR_COUNT} from './robot-sensors.mjs?v=robot34';
+import {TERRAIN_SENSOR_COUNT} from './robot-sensors.mjs?v=robot35';
 // A state-feedback neural policy. There are no gait clocks, target poses or reflex controllers.
 export const POLICY_KIND='direct-torque-terrain-mlp-v4';
 export const POLICY_BODY_INPUTS=47,POLICY_INPUTS=47+TERRAIN_SENSOR_COUNT,POLICY_HIDDEN=12,POLICY_OUTPUTS=16;

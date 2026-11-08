@@ -1,10 +1,10 @@
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot34';
-import {compareAbilities} from './robot-performance.mjs?v=robot34';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot34';
-import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot34';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot34';
-import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot34';
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot34';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot35';
+import {compareAbilities} from './robot-performance.mjs?v=robot35';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot35';
+import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot35';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot35';
+import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot35';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot35';
 export const MODEL_VERSION=5;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -43,6 +43,7 @@ export class RobotLearner {
   if(saved?.validationBank&&vector(saved.validationBank.weights)&&stages.includes(saved.validationBank.task)&&Number.isFinite(saved.validationBank.ability?.meanReward)&&saved.validationBank.ability?.cases?.length===4)this.validationBank=structuredClone(saved.validationBank);
   if(Number.isSafeInteger(saved?.lastFullValidationAttempt)&&saved.lastFullValidationAttempt>=0&&saved.lastFullValidationAttempt<=this.attempts)this.lastFullValidationAttempt=saved.lastFullValidationAttempt;
   if(this.mean.slice(0,768).every(v=>v===0)){const tail=this.mean.slice(768);this.mean=initialPolicy(this.searchSeed);this.mean.splice(768,tail.length,...tail);}
+  const visionChanged=!!saved&&saved.environment?.visionVersion!==environment.visionVersion;if(visionChanged&&this.ppo)this.ppo.buffer=[];
   this.environmentChanged=!!saved&&JSON.stringify(saved.environment||{})!==JSON.stringify(environment);if(this.environmentChanged){this.generalization=null;this.validationBank=null;this.pending=[];this.cohortStart=this.attempts;}
   this.abilities=evaluateAbilities(this.weights,this.environment);this.goalReward=evaluateCommands(this.weights,this.environment);this.bestReward=modelScore(this);
   if(!this.history.length||this.environmentChanged||this.history.at(-1)?.rewardVersion!==REWARD_VERSION||!this.history.some(r=>r.rewards&&r.taskAttempts)){this.record(this.bestReward,false);this.history.at(-1).baseline=true;}
