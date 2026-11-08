@@ -1,10 +1,11 @@
+import {familyFromHash,parseFamilyLink,resolveFamily} from './calendar-identity.mjs?v=calendar6';
 import {holidayNames,hasHolidayYear} from './data/korean-holidays.mjs?v=calendar3';
 import {CalendarStore,CATEGORIES,todaySeoul,dateUTC,addDays,monthStart,shiftMonth,monthDays,onDay,eventPayload,sortEvents} from './calendar-data.mjs?v=calendar3';
 const $=id=>document.getElementById('cal-'+id),node=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-let family=new URLSearchParams(location.hash.slice(1)).get('family');
-try{if(!UUID.test(family||'')){family=localStorage.getItem('mydesk.calendar.family');}if(!UUID.test(family||''))family=crypto.randomUUID();localStorage.setItem('mydesk.calendar.family',family);}catch{if(!UUID.test(family||''))family=crypto.randomUUID();}
-history.replaceState(null,'','#family='+family);
+let savedFamily=null;try{savedFamily=localStorage.getItem('mydesk.calendar.family');}catch{}
+const family=resolveFamily(location.hash,savedFamily,()=>crypto.randomUUID());
+try{localStorage.setItem('mydesk.calendar.family',family);}catch{}
+history.replaceState(null,'','#family='+family);window.syncCalendarMenuLinks?.();
 const store=new CalendarStore({calendarId:family}),today=todaySeoul(),enabled=new Set(Object.keys(CATEGORIES));
 let month=monthStart(today),selected=today,events=[],view='month',editing=null,draftId=null,loading=0,saving=false,lastOpener=null;
 const monthLabel=iso=>`${Number(iso.slice(0,4))}년 ${Number(iso.slice(5,7))}월`,dayLabel=iso=>`${Number(iso.slice(5,7))}월 ${Number(iso.slice(8,10))}일 ${'일월화수목금토'[dateUTC(iso).getUTCDay()]}요일`;
@@ -48,5 +49,11 @@ $('delete').onclick=async()=>{if(!editing||saving||!window.confirm(`‘${editing
 $('close').onclick=$('cancel').onclick=closeEditor;$('editor').addEventListener('cancel',e=>{if(saving)e.preventDefault();});$('all-day').onchange=toggleTimes;$('start').onchange=()=>{if($('end').value<$('start').value)$('end').value=$('start').value;};
 $('create').onclick=()=>openEditor(null,$('create'));$('add-day').onclick=()=>openEditor(null,$('add-day'));$('prev').onclick=$('mini-prev').onclick=()=>moveMonth(-1);$('next').onclick=$('mini-next').onclick=()=>moveMonth(1);$('today').onclick=()=>{selected=today;month=monthStart(today);events=[];render();void loadEvents();};$('month-view').onclick=()=>{view='month';render();};$('list-view').onclick=()=>{view='list';render();};$('refresh').onclick=()=>void loadEvents(true);
 $('share').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname+'#family='+family);status('가족에게 보낼 공유 링크를 복사했어요.');$('share').textContent='복사 완료';setTimeout(()=>{$('share').textContent='공유 링크';},2000);}catch{status('주소창의 링크를 복사해 가족에게 보내주세요.');}};
+if($('connect')&&$('connect-dialog')){
+ const dialog=$('connect-dialog');
+ $('connect').onclick=()=>{$('connect-error').textContent='';$('connect-link').value='';dialog.showModal();$('connect-link').focus();};
+ $('connect-cancel').onclick=()=>dialog.close();
+ $('connect-form').onsubmit=e=>{e.preventDefault();let next;try{next=parseFamilyLink($('connect-link').value,location.href);}catch(error){$('connect-error').textContent=error.message;return;}dialog.close();if(next===family){void loadEvents(true);return;}const target=new URL(location.href);target.hash='family='+next;location.assign(target.href);};
+}
 window.addEventListener('hashchange',()=>location.reload());document.addEventListener('visibilitychange',()=>{if(!document.hidden)void loadEvents();});const timer=setInterval(()=>{if(!document.hidden&&!saving)void loadEvents();},20000);timer.unref?.();
 render();void loadEvents();

@@ -27,3 +27,12 @@ body[data-page=calendar] main{padding-top:18px}
 body[data-page=calendar] .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 #cal-form input[type=time]:disabled{background:#f0f2f5;color:#a1abba;border-color:#e3e7ed;cursor:not-allowed;opacity:1}
+
+#cal-connect-dialog{width:min(480px,calc(100% - 24px));max-height:90dvh;border:1px solid #dfe6ef;border-radius:13px;padding:24px;color:#526880;box-shadow:0 20px 80px #1c304a30}
+#cal-connect-dialog::backdrop{background:#293a5059}
+#cal-connect-dialog h2{font-size:19px;margin-bottom:13px}
+#cal-connect-dialog p{font-size:12px;line-height:1.8;color:#8292a6}
+#cal-connect-dialog label{display:block;font-size:12px;margin-bottom:7px}
+#cal-connect-link{width:100%;min-width:0;border:1px solid #dfe6ef;border-radius:6px;padding:10px;color:#536c88;background:#fbfcfe;font:inherit;font-size:16px}
+#cal-connect-dialog #cal-connect-error{color:#be7474;margin-top:8px}
+#cal-connect-dialog .cal-connect-note{font-size:11px}

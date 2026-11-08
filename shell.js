@@ -35,3 +35,11 @@ if (document.body.dataset.page === 'home') {
   redirectLegacy();
   window.addEventListener('hashchange', redirectLegacy);
 }
+
+// Keep a connected calendar explicit in menu/home links, including copied links.
+function syncCalendarMenuLinks(){
+ let saved=null;try{saved=localStorage.getItem('mydesk.calendar.family');}catch{}
+ const shared=new URLSearchParams(location.hash.slice(1)).get('family'),valid=id=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id||''),id=valid(shared)?shared:valid(saved)?saved:null;
+ if(id)for(const link of document.querySelectorAll('a[href^="calendar.html"]'))link.setAttribute('href','calendar.html#family='+id.toLowerCase());
+}
+syncCalendarMenuLinks();window.addEventListener('pageshow',syncCalendarMenuLinks);window.addEventListener('storage',e=>{if(e.key==='mydesk.calendar.family')syncCalendarMenuLinks();});
