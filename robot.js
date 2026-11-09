@@ -1,5 +1,5 @@
-import {drawRewardPopups} from './robot-reward-feedback.mjs?v=robot39';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot39';
+import {drawRewardPopups} from './robot-reward-feedback.mjs?v=robot40';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot40';
 import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot39';
 import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot39';
 import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot39';
