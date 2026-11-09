@@ -11,8 +11,13 @@ export function taskChartRows(model,task,rewardVersion=null,environment=null){co
 
 // Keep terminal feedback visible; the physics clock and learned reward stay unchanged.
 export const PREVIEW_RESULT_HOLD=.8;
-export function previewWindow(scene){return Math.min(1.2,Math.max(0,scene?.metrics?.time??scene?.trace?.at(-1)?.time??0)+PREVIEW_RESULT_HOLD);}
-export function playbackFrame(scene,elapsed){const frames=scene.trace,duration=Math.max(0,frames.at(-1)?.time??0),clock=Math.max(0,elapsed)%(duration+PREVIEW_RESULT_HOLD),frame=traceFrame(frames,Math.min(clock,duration));return {...frame,rewardTime:clock};}
+export function previewWindow(scene,stage){return Math.min(1.2,Math.max(0,scene?.metrics?.time??scene?.trace?.at(-1)?.time??0)+(stage==='balance'?0:PREVIEW_RESULT_HOLD));}
+export function playbackFrame(scene,elapsed,stage){
+ const frames=scene.trace,duration=Math.max(0,frames.at(-1)?.time??0),time=Math.max(0,elapsed);
+ if(stage==='balance'&&duration>0){const cycle=Math.floor(time/duration),clock=time%duration,frame=traceFrame(frames,clock),events=(frame.rewardEvents||[]).map(e=>({...e,time:e.time+cycle*duration}));if(cycle>0)for(const e of frames.at(-1).rewardEvents||[])if(time-(e.time+(cycle-1)*duration)<.8)events.push({...e,time:e.time+(cycle-1)*duration});return {...frame,rewardTime:time,rewardEvents:events};}
+ const clock=time%(duration+PREVIEW_RESULT_HOLD),frame=traceFrame(frames,Math.min(clock,duration));return {...frame,rewardTime:clock};
+}
+
 export function drawFurthestFlag(ctx,metrics,terrain,X,Y,offset=0){
  if(!Number.isFinite(metrics?.furthestX)||Math.abs(metrics.furthestDistance??0)<.03)return;
  const x=X(metrics.furthestX+offset),y=Y(terrain(metrics.furthestX));ctx.save();ctx.strokeStyle='#8b8061';ctx.fillStyle='#bba477';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-23);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y-23);ctx.lineTo(x+11,y-19);ctx.lineTo(x,y-15);ctx.closePath();ctx.fill();ctx.restore();
