@@ -267,3 +267,7 @@ PPO 240회 모델을 이어 304회까지 실행해 정체 복귀가 실제로 �
 ### PhysicsNeMo 자동차 충돌 예제 한국어 번역
 `구조해석 → PhysicsNeMo`에 `physicsnemo-crash-ko` 글을 추가했습니다. NVIDIA 저장소 커밋 `7d23f081f7e5ab88b83a1205e98ddade3a1a984b`의 crash README 전체 절을 한국어로 번역하고 코드 예제 30개, 비교표 7개, 그림 5개를 보존했습니다. 원문 설명과 실제 `post_processing/` 경로 등의 차이는 역자 주로 구분합니다. 성능표 수치는 원문 결과이며 새로운 학습 실험을 수행한 결과가 아닙니다.
 `content/physicsnemo-crash/`에 원문·번역 Markdown·HTML·초기 게시글 JSON·Apache 2.0 라이선스를 보관합니다. 실제 게시글은 기존 글과 같은 `blog_posts` 테이블에서 관리하며, 이 사본을 접속 시 자동으로 덮어쓰거나 재등록하지 않습니다. 이후 블로그에서 편집한 내용은 서버에 유지됩니다. 그림은 기준 커밋의 NVIDIA 원본 URL로 연결하고 접힌 상태에서 지연 로딩합니다. 허용된 http(s) 이미지에 한해 본문 표시를 지원하며 이벤트 속성·실행 URL·SVG image 임베드는 차단합니다. 모바일에서 코드와 넓은 표는 해당 영역 안에서 가로 스크롤됩니다.
+
+### PhysicsNeMo 메인 README 한국어 번역
+`구조해석 → PhysicsNeMo`에 `physicsnemo-main-ko` 글을 별도로 추가했습니다. 기준은 NVIDIA 저장소 커밋 `7d23f081f7e5ab88b83a1205e98ddade3a1a984b`의 메인 README이며, 12개 절, 활용 사례·그림 8개, 생태계·모델 표 4개, 원문 코드 블록 6개(설치 명령과 Mermaid)를 보존합니다. 상태 배지는 텍스트 링크로 바꾸고 의존성 구성도는 한국어 HTML로 재구성했습니다. Python·CUDA 조건은 같은 커밋의 `pyproject.toml`과 대조했으며, 실제 패키지 설치·GPU 실행을 수행한 것은 아닙니다.
+`content/physicsnemo-main/`에는 원문과 한국어 Markdown, HTML, 초기 게시글 JSON, Apache 2.0 라이선스를 보관합니다. 그림과 저장소 내부 링크는 기준 커밋을 가리키며 공식 최신 문서·외부 링크는 원문 목적지를 유지합니다. 기존 게시글은 수정하지 않으며, 게시 후 사용자 편집 내용을 정적 사본으로 자동 덮어쓰지 않습니다.
