@@ -1,10 +1,10 @@
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot42';
-import {compareAbilities} from './robot-performance.mjs?v=robot42';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot42';
-import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot42';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot42';
-import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot42';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot42';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot42a';
+import {compareAbilities} from './robot-performance.mjs?v=robot42a';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot42a';
+import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot42a';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot42a';
+import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot42a';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot42a';
 export const MODEL_VERSION=6;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());

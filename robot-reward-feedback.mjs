@@ -40,7 +40,7 @@ export function rewardPopupLayout(frame,X,Y,layout={},measure=text=>text.length*
  }
  return out;
 }
-export function rewardTotals(metrics){let positive=0,negative=0;for(const n of Object.values(metrics?.rewardTerms||{})){if(!Number.isFinite(n))continue;if(n>=0)positive+=n;else negative-=n;}const sum=positive+negative;return {positive,negative,positiveRatio:sum?positive/sum:0,negativeRatio:sum?negative/sum:0};}
+export function rewardTotals(metrics){let positive=0,negative=0;for(const n of Object.values(metrics?.rewardTerms||{})){if(!Number.isFinite(n))continue;if(n>=0)positive+=n;else negative-=n;}if(Number.isFinite(metrics?.positiveRewardTotal)&&Number.isFinite(metrics?.negativeRewardTotal)){positive=Math.max(0,metrics.positiveRewardTotal);negative=Math.max(0,metrics.negativeRewardTotal);}const sum=positive+negative;return {positive,negative,positiveRatio:sum?positive/sum:0,negativeRatio:sum?negative/sum:0};}
 export function drawRewardPopups(ctx,frame,X,Y,layout={}){
  ctx.save();ctx.font='600 11px "Noto Sans KR", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
  for(const e of rewardPopupLayout(frame,X,Y,layout,text=>ctx.measureText(text).width)){ctx.globalAlpha=e.opacity;ctx.lineWidth=2.5;ctx.strokeStyle='#ffffffdf';ctx.strokeText(e.text,e.x,e.y);ctx.fillStyle=e.value>0?'#2e8b57':'#cb4850';ctx.fillText(e.text,e.x,e.y);}
