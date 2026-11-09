@@ -28,8 +28,8 @@ export function renderNavigation(){
   const active=m.kind==='folder'?document.body.dataset.page==='blog'&&selected===m.id:!href.startsWith('https://')&&href.split(/[?#]/)[0]===currentFile;
   if(m.kind==='folder'&&menus.some(c=>c.parent_id===m.id)){
    const d=document.createElement('details');d.className='nav-group';d.dataset.menuId=m.id;d.open=open.has(m.id)||ancestors.has(m.id)||['learning','experiments'].includes(m.id);
-   const summary=document.createElement('summary');summary.textContent=m.label;d.append(summary);
-   const children=document.createElement('div');children.className='nav-submenu';children.append(makeLink('전체 글',href,active),build(m.id));d.append(children);fragment.append(d);
+   const summary=document.createElement('summary'),label=document.createElement('a');label.className='nav-folder-link';label.textContent=m.label;label.href=href;if(active)label.setAttribute('aria-current','page');summary.append(label);d.append(summary);
+   const children=document.createElement('div');children.className='nav-submenu';children.append(build(m.id));d.append(children);fragment.append(d);
   }else{const a=makeLink(m.label,href,active);a.dataset.menuId=m.id;fragment.append(a);}
  }return fragment;}
  nav.replaceChildren(build(null));window.syncCalendarMenuLinks?.();

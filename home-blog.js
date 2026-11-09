@@ -1,4 +1,4 @@
-import {loadNavigation,navigationState} from './site-navigation.mjs?v=menus1';
+import {loadNavigation,navigationState} from './site-navigation.mjs?v=menus2';
 import {postMenuId} from './navigation-data.mjs?v=menus1';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 const list=document.querySelector('.resource-list');

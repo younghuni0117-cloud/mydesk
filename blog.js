@@ -1,12 +1,11 @@
 import {BlogManagement} from './blog-auth.mjs?v=menus1';
-import {loadNavigation,navigationState,selectNavigationMenu} from './site-navigation.mjs?v=menus1';
-import {menuPath,folderOptions,descendantIds,legacyMenuId,postMenuId,locationFields} from './navigation-data.mjs?v=menus1';
+import {loadNavigation,navigationState,selectNavigationMenu} from './site-navigation.mjs?v=menus2';
+import {folderOptions,descendantIds,legacyMenuId,postMenuId,locationFields} from './navigation-data.mjs?v=menus1';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 import {sanitizeHTML,textHTML as esc,displayDate,safeURL} from './blog-content.mjs?v=crash1';
 const $=id=>document.getElementById(id),endpoint=SHARED_MODEL_URL.replace(/robot_shared_model$/,'blog_posts');
 const query=new URLSearchParams(location.search),postId=query.get('post');
 let menus=navigationState().menus,selectedMenu=legacyMenuId(query,menus),moving=null;
-function pathLabel(id){return menuPath(menus,id).map(m=>m.label).join(' / ');}
 function menuSelect(element,selected){element.replaceChildren(...folderOptions(menus).map(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.label;return o;}));if(selected&&menus.some(m=>m.id===selected&&m.kind==='folder'))element.value=selected;}
 
 let managementKey='',posts=[],editing=null,dirty=false,busy=false,offline=false;
@@ -17,14 +16,14 @@ async function api(path='',options={}){
  if(!result.ok){if([401,403].includes(result.status))throw Error('관리 권한을 확인해 주세요. 글 관리에서 비밀번호로 다시 연결할 수 있습니다.');throw Error('서버에 연결하지 못했습니다. 작성 내용은 유지됩니다. 잠시 후 다시 시도해 주세요.');}
  return result.status===204?[]:result.json();
 }
-function dates(post){return `<time datetime="${esc(post.created_at)}">등록 ${displayDate(post.created_at)}</time>${post.revision>0?` · <time datetime="${esc(post.updated_at)}">수정 ${displayDate(post.updated_at)}</time>`:''}`;}
+function dates(post){return `<time datetime="${esc(post.created_at)}">등록 ${displayDate(post.created_at)}</time>`;}
 function controls(post){return managementKey?`<div class="blog-actions"><button data-edit="${esc(post.id)}">수정</button><button data-move="${esc(post.id)}">이동</button><button data-delete="${esc(post.id)}">삭제</button></div>`:'';}
 function render(){
  adminUI();
  const chosen=postId?posts.find(p=>p.id===postId):null,id=chosen?postMenuId(chosen):selectedMenu,menu=menus.find(m=>m.id===id);
  $('blog-heading').textContent=menu?.label||'학습정보';
- $('blog-breadcrumb').textContent=menu?pathLabel(id):'학습정보';
- $('blog-description').textContent=chosen?pathLabel(id):'관심 있는 자료와 배움의 기록을 메뉴별로 모읍니다.';
+ $('blog-breadcrumb').textContent=menu?.label||'학습정보';
+ $('blog-description').textContent=chosen?'':'관심 있는 자료와 배움의 기록을 메뉴별로 모읍니다.';$('blog-description').hidden=!!chosen;
  document.title=(chosen?.title||menu?.label||'학습정보')+' | My Desk';
  selectNavigationMenu(id);
  if(postId&&!chosen){$('blog-content').innerHTML='<p class="blog-empty">삭제되었거나 존재하지 않는 글입니다. <a href="blog.html">전체 글 보기</a></p>';return;}
@@ -35,7 +34,7 @@ function render(){
   if(id&&!menu){$('blog-content').innerHTML='<p class="blog-empty">이 메뉴는 이동하거나 삭제되었습니다. <a href="blog.html">전체 글 보기</a></p>';return;}
   const allowed=id?descendantIds(menus,id):null,visible=posts.filter(p=>!allowed||allowed.has(postMenuId(p))),children=menus.filter(m=>m.parent_id===id);
   const submenus=children.length?`<nav class="blog-submenus" aria-label="하위 메뉴">${children.map(m=>`<a href="${m.kind==='folder'?'blog.html?menu='+encodeURIComponent(m.id):esc(m.href)}"${m.href?.startsWith('https://')?' target="_blank" rel="noopener noreferrer"':''}>${esc(m.label)}</a>`).join('')}</nav>`:'';
-  $('blog-content').innerHTML=submenus+(visible.length?`<div class="blog-grid">${visible.map(p=>`<article class="blog-card"><div class="blog-category">${esc(pathLabel(postMenuId(p)))}</div><a href="blog.html?post=${encodeURIComponent(p.id)}"><h2>${esc(p.title)}</h2></a><p>${esc(p.summary)}</p><div class="blog-date">${dates(p)}</div>${controls(p)}</article>`).join('')}</div>`:'<p class="blog-empty">아직 등록된 글이 없습니다.</p>');
+  $('blog-content').innerHTML=submenus+(visible.length?`<div class="blog-grid">${visible.map(p=>`<article class="blog-card"><a href="blog.html?post=${encodeURIComponent(p.id)}"><h2>${esc(p.title)}</h2></a><p>${esc(p.summary)}</p><div class="blog-date">${dates(p)}</div>${controls(p)}</article>`).join('')}</div>`:'<p class="blog-empty">아직 등록된 글이 없습니다.</p>');
  }
 }
 async function load(){
