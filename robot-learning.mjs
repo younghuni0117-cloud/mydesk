@@ -1,11 +1,11 @@
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=robot45';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot45';
-import {compareAbilities} from './robot-performance.mjs?v=robot45';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot45';
-import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot45';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot45';
-import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot45';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot45';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=robot46';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot46';
+import {compareAbilities} from './robot-performance.mjs?v=robot46';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot46';
+import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot46';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot46';
+import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot46';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot46';
 export const MODEL_VERSION=6;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -81,7 +81,7 @@ export class RobotLearner {
   if(prepared.index!==this.attempts)throw Error('학습 결과의 순서가 일치하지 않습니다.');
   const {weights,task,seed,record}=prepared,result=trial.metrics;this.attempts++;this.taskAttempts[task]++;this.algorithmAttempts[this.algorithm]++;this.pending.push({weights,score:task==='balance'?(result.done&&result.terminationReason==='duration'&&result.falls===0?Math.max(0,20*result.upright*result.time+2*(result.longestUpright||0)+.01*result.reward):Math.min(-REWARDS.balanceFall,result.reward)):result.reward,task,reference:prepared.reference,group:prepared.group});if(this.algorithm==='ppo')this.ppo.buffer.push(...trial.experience);
 
-  this.travelRecord=nextTravelRecord(this.travelRecord,result,{attempt:this.attempts,task,terrain:this.environment.terrain||'meadow'});
+  this.travelRecord=nextTravelRecord(this.travelRecord,result,{attempt:this.attempts,task,terrain:result.forwardContact?.terrain||this.environment.terrain||'meadow'});
   return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,spawnRange:prepared.options.spawnRange,endOnFall:prepared.options.endOnFall,spawnTilt:prepared.options.spawnTilt,trainingSeconds:prepared.options.observationSeconds,terrainVariant:prepared.options.terrainVariant,scene:record?trial:null};
  }
  trainOne(options={}){const prepared=this.prepareTrial(options);return this.completeTrial(prepared,prepared.algorithm==='ppo'?ppoEpisode(prepared):episode(prepared.weights,prepared.task,prepared.seed,prepared.options));}

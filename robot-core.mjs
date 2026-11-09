@@ -1,16 +1,16 @@
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot45';
-import {distalActivity} from './robot-attention.mjs?v=robot45';
-import {sampleEnvironment} from './robot-sensors.mjs?v=robot45';
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot45';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot45';
-import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot45';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot45';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot46';
+import {distalActivity} from './robot-attention.mjs?v=robot46';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot46';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot46';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot46';
+import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot46';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot46';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot45';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot46';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot45';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot45';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot45';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot46';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot46';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot46';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
@@ -44,7 +44,7 @@ export class RobotWorld {
     const lying=this.stage==='recover' && options.startStanding!==true;
     this.spawnAngle=lying?(this.random()<.5?Math.PI/2:-Math.PI/2):(Number.isFinite(options.spawnTilt)?clamp(options.spawnTilt,-.12,.12):(this.random()-.5)*(options.spawnRange??.025));
     this.spawnY=(lying?.34:1.03)+this.groundHeight(0);
-    this.makeRobot();this.motors.sort((a,b)=>JOINTS.indexOf(a.name)-JOINTS.indexOf(b.name));this.initialX=this.parts.pelvis.getPosition().x;this.lastX=this.initialX;this.furthestX=this.initialX;this.lastHeight=this.parts.pelvis.getPosition().y;
+    this.makeRobot();this.motors.sort((a,b)=>JOINTS.indexOf(a.name)-JOINTS.indexOf(b.name));this.initialX=this.parts.pelvis.getPosition().x;this.lastX=this.initialX;this.furthestX=this.initialX;this.forwardContact=null;this.lastHeight=this.parts.pelvis.getPosition().y;
     this.lastRelativeHeight=this.parts.pelvis.getPosition().y-this.groundHeight(this.parts.pelvis.getPosition().x);this.lastPosture=Math.max(0,Math.cos(this.parts.torso.getAngle()));this.command=null;this.commandAnchor=this.initialX;this.commandSchedule=(options.commandSchedule||[]).map(s=>({time:s.time,command:normalizeCommand(s.command)}));this.nextCommand=0;if(options.command)this.setCommand(options.command);
     this.actions=Array(JOINTS.length).fill(0);this.activeTorques=Array(JOINTS.length).fill(0);this.rewardTerms={};this.positiveRewardTotal=0;this.negativeRewardTotal=0;if(lying)this.isDown=true;
     this.pushes = options.pushes ? options.pushes.map(p=>({...p})) : [];
@@ -60,6 +60,12 @@ export class RobotWorld {
       if(typeof name==='string')this.contacts.set(name,Math.max(0,(this.contacts.get(name)||0)+amount));
     };
     this.world.on('begin-contact',c=>contact(c,1));this.world.on('end-contact',c=>contact(c,-1));
+    // Track actual upward-facing support contacts, including hands/body and obstacle tops.
+    this.world.on('post-solve',contact=>{
+      const a=contact.getFixtureA().getBody().getUserData(),b=contact.getFixtureB().getBody().getUserData(),staticA=a==='ground'||a==='obstacle',staticB=b==='ground'||b==='obstacle';
+      if(staticA===staticB)return;const wm=contact.getWorldManifold();if(!wm?.pointCount||(staticA?wm.normal.y:-wm.normal.y)<.2)return;
+      for(let i=0;i<wm.pointCount;i++){const p=wm.points[i];if(Number.isFinite(p.x)&&p.x>this.initialX&&p.x>(this.forwardContact?.x??this.initialX))this.forwardContact={x:p.x,y:p.y,distance:p.x-this.initialX,body:staticA?b:a,basis:'forward-contact-v1',terrain:this.terrain.kind,variant:this.terrain.variant};}
+    });
     const impactTimes=new WeakMap();
     this.world.on('pre-solve',(contact,old)=>{
       const a=contact.getFixtureA().getBody(),b=contact.getFixtureB().getBody(),an=a.getUserData(),bn=b.getUserData();
@@ -167,7 +173,7 @@ export class RobotWorld {
     if(this.rewardFeedback)this.rewardFeedback.collect(this.time,terms,term=>rewardLocations(this,term,distal),this.done||newFall||recovered||passed>0||this.impactCost>0);
     return report?this.metrics():undefined;
   }
-  metrics(){const p=this.parts.pelvis.getPosition(),goal=this.goalState();return {walkingTime:this.walkingTime,supportedDistance:this.supportedDistance,finalUpright:this.finalUpright,stableTime:this.stableStandingTime,motionQuality:this.qualityTime/Math.max(this.time,DT),longestUpright:this.longestUpright,plannedDuration:this.duration,terminationReason:this.terminationReason,time:this.time,reward:this.reward,rewardTerms:{...this.rewardTerms},positiveRewardTotal:this.positiveRewardTotal,negativeRewardTotal:this.negativeRewardTotal,furthestX:this.furthestX,furthestDistance:this.furthestX-this.initialX,distance:p.x-this.initialX,speed:(p.x-this.initialX)/Math.max(this.time,DT),height:p.y-this.groundHeight(p.x),falls:this.falls,recoveries:this.recoveries,passed:this.passed.size,upright:this.uprightTime/Math.max(this.time,DT),energy:this.energy,pushes:this.pushesApplied,pushResistance:this.pushRecoveryTime,done:!!this.done,recovering:this.isDown,targetSpeed:goal.target,goalDistance:goal.error,command:this.command?{...this.command}:null};}
+  metrics(){const p=this.parts.pelvis.getPosition(),goal=this.goalState();return {forwardContact:this.forwardContact?{...this.forwardContact}:null,walkingTime:this.walkingTime,supportedDistance:this.supportedDistance,finalUpright:this.finalUpright,stableTime:this.stableStandingTime,motionQuality:this.qualityTime/Math.max(this.time,DT),longestUpright:this.longestUpright,plannedDuration:this.duration,terminationReason:this.terminationReason,time:this.time,reward:this.reward,rewardTerms:{...this.rewardTerms},positiveRewardTotal:this.positiveRewardTotal,negativeRewardTotal:this.negativeRewardTotal,furthestX:this.furthestX,furthestDistance:this.furthestX-this.initialX,distance:p.x-this.initialX,speed:(p.x-this.initialX)/Math.max(this.time,DT),height:p.y-this.groundHeight(p.x),falls:this.falls,recoveries:this.recoveries,passed:this.passed.size,upright:this.uprightTime/Math.max(this.time,DT),energy:this.energy,pushes:this.pushesApplied,pushResistance:this.pushRecoveryTime,done:!!this.done,recovering:this.isDown,targetSpeed:goal.target,goalDistance:goal.error,command:this.command?{...this.command}:null};}
   snapshot(){return {time:this.time,...(this.rewardFeedback?{rewardEvents:this.rewardFeedback.snapshot()}:{}),hits:this.impactEvents.filter(h=>this.time-h.time<.7).map(h=>({...h,point:[...h.point]})),parts:this.bodies.map(p=>{const v=p.body.getPosition();return [v.x,v.y,p.body.getAngle()]}),metrics:this.metrics()};}
 }
 export function robotGeometry(sim){

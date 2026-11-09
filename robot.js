@@ -1,23 +1,24 @@
-import {createStudyLog,hitDescription,trialDescription,readTravelRecord} from './robot-study.mjs?v=robot45';
-import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=robot45';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot45';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot45';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot45';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot45';
-import {abilitySummary} from './robot-performance.mjs?v=robot45';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot45';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot45';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot45';
-import {rewardHelp} from './robot-rewards.mjs?v=robot45';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot45';
-import {RobotTeam} from './robot-team.mjs?v=robot45';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot45';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot45';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow,drawFurthestFlag} from './robot-view.mjs?v=robot45';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot45';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot45';
+import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=robot46';
+import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=robot46';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot46';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot46';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot46';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot46';
+import {abilitySummary} from './robot-performance.mjs?v=robot46';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot46';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot46';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot46';
+import {rewardHelp} from './robot-rewards.mjs?v=robot46';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot46';
+import {RobotTeam} from './robot-team.mjs?v=robot46';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot46';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot46';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow,drawFurthestFlag} from './robot-view.mjs?v=robot46';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot46';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot46';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
-const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;
+let cachedTravel=null;try{const cached=JSON.parse(localStorage.getItem('mydesk.robot.v6')||'null')?.model;cachedTravel=cached?{id:cached.id,record:readTravelRecord(cached.travelRecord)}:null;}catch{}
+const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=mergeTravelRecord(model?.travelRecord,cachedTravel?.id===model?.id?cachedTravel.record:null),recordDirty=false;if(model)model.travelRecord=knownTravel;
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
 let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,interval:20,...normalizePushSettings()};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:o.terrain==='rockyhills'?'desert':TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1,observationSeconds:Number.isInteger(o.observationSeconds)&&o.observationSeconds>=1&&o.observationSeconds<=3600?o.observationSeconds:30,interval:[10,20,50,100].includes(o.interval)?o.interval:20,...normalizePushSettings(o)};}catch{}
 Object.assign(options,normalizeEvaluationSettings(model?.environment));try{const raw=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');Object.assign(options,normalizeEvaluationSettings({...options,...raw}));}catch{}
@@ -38,7 +39,7 @@ function sharedStatus(){const text={connecting:'공용 모델 연결 중',empty:
 storage.onstate=sharedStatus;
 function persist(){if(!model||recoveryBlocked)return;return storage.save(model);}
 let resolveReady=null,syncBusy=false,trainingStartAttempt=0;
-async function useShared(next){model=next;recoveryBlocked=false;renderModel();return configure(model);}
+async function useShared(next){knownTravel=next.id===model?.id?mergeTravelRecord(knownTravel,next.travelRecord):readTravelRecord(next.travelRecord);next.travelRecord=knownTravel;model=next;recoveryBlocked=false;renderModel();return configure(model);}
 async function refreshShared(){if(syncBusy||training||initializing||document.hidden)return;syncBusy=true;controls();try{if(storage.pendingModel||storage.needsSeed){const result=await storage.retry();if(result.model&&result.model.id!==model?.id)await useShared(result.model);}if(!storage.pendingModel){const result=await storage.refresh();if(result.changed)await useShared(result.model);}}catch{storage.setState('offline');}finally{syncBusy=false;controls();}}
 
 let lastRequest={completed:0,target:0},lastProgressText=0,lastRemainingText=0;
@@ -58,7 +59,7 @@ function previousChart(){const current=JSON.stringify(model.environment),last=mo
 function renderChart(){if(!model)return;const old=options.graphVersion==='previous'?previousChart():null,source=old||model,version=old?(old.rewardVersion??Math.max(...old.history.map(r=>r.rewardVersion??1))):REWARD_VERSION,end=source.taskAttempts[stage],window=options.graphRange==='all'?end:options.graphRange==='custom'?options.graphCustom:Number(options.graphRange),start=Math.max(0,end-window),rows=taskChartRows(source,stage,version,old?null:JSON.stringify(source.environment)).filter(r=>r.attempts>=start);
  const current=source.abilities[stage].meanReward,values=[...rows,{overall:current,candidate:current}],[min,max]=chartDomain(values),Y=v=>95-(v-min)/(max-min)*90,X=n=>end>start?(n-start)/(end-start)*300:0;
  for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']]){let connected=false;get(id).setAttribute('d',rows.map(r=>{if(!Number.isFinite(r[k])){connected=false;return '';}const point=`${connected?'L':'M'}${X(r.attempts)} ${Y(r[k])}`;connected=true;return point;}).join(' '));}
- get('chart-dot').setAttribute('cx',X(end));get('chart-dot').setAttribute('cy',Y(current));get('chart-title').textContent=STAGES[stage].label+' · 평균 보상'+(old?' · 이전 기준':'');get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('chart-range').textContent=`${start.toLocaleString()}~${end.toLocaleString()}회`;get('x-min').textContent=start.toLocaleString();get('x-mid').textContent=Math.round((start+end)/2).toLocaleString();get('x-max').textContent=end.toLocaleString()+'회';get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} ${old?'이전':'현재'} 보상 ${current.toFixed(1)}점. 학습 ${start}~${end}회. 보상 기준이 다른 기록은 구분합니다.`);
+ get('chart-dot').setAttribute('cx',X(end));get('chart-dot').setAttribute('cy',Y(current));get('chart-title').textContent=STAGES[stage].label+' · 평균 보상'+(old?' · 이전 기준':'');get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('x-min').textContent=start.toLocaleString();get('x-mid').textContent=Math.round((start+end)/2).toLocaleString();get('x-max').textContent=end.toLocaleString()+'회';get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} ${old?'이전':'현재'} 보상 ${current.toFixed(1)}점. 학습 ${start}~${end}회. 보상 기준이 다른 기록은 구분합니다.`);
 }
 get('graph-range').onchange=()=>{options.graphRange=get('graph-range').value;get('graph-custom-row').hidden=options.graphRange!=='custom';saveOptions();renderChart();};
 get('graph-custom').onchange=()=>{const input=get('graph-custom'),value=Number(input.value);if(!Number.isSafeInteger(value)||value<1||value>1e9){input.setCustomValidity('1~1,000,000,000 사이의 정수를 입력하세요.');input.reportValidity();return;}input.setCustomValidity('');options.graphCustom=value;saveOptions();renderChart();};
@@ -72,12 +73,12 @@ const worker=new RobotTeam();
 function configure(saved=model){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;carryRewardEvents=[];traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};resolveReady?.(false);const ready=new Promise(resolve=>{resolveReady=resolve;});controls();worker.postMessage({type:'init',stage,focus:stage,saved,environment:{terrain:options.terrain,courseVersion:10,visionVersion:VISION_VERSION,bodyVersion:6,...normalizeEvaluationSettings(options)},robotCount:options.robots});return ready;}
 function settings(){worker.postMessage({type:'settings',interval:options.interval});}
 worker.onmessage=async({data})=>{
- if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;if(model.policyVersion>lastModelVersion){writeLog(`통합 모델 갱신 · v${model.policyVersion} · 검증을 거친 후보 채택`);lastModelVersion=model.policyVersion;}renderModel();persist();if(training&&model.attempts>trainingStartAttempt)void storage.publish(model);progress(lastRequest.completed,lastRequest.target,'학습');return;}
+ if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}knownTravel=data.model.id===model?.id?mergeTravelRecord(knownTravel,data.model.travelRecord):readTravelRecord(data.model.travelRecord);model=data.model;model.travelRecord=knownTravel;if(model.policyVersion>lastModelVersion){writeLog(`통합 모델 갱신 · v${model.policyVersion} · 검증을 거친 후보 채택`);lastModelVersion=model.policyVersion;}renderModel();persist();if(training&&model.attempts>trainingStartAttempt)void storage.publish(model);progress(lastRequest.completed,lastRequest.target,'학습');return;}
  if(data.type==='ready'){const wasReset=resetPending;if(storage.needsSeed&&model?.attempts>0){const result=await storage.seed(model);if(result.model&&(result.model.id!==model.id||result.model.attempts!==model.attempts)){void useShared(result.model);return;}}if(resetPending){await storage.publish(model,{force:true});resetPending=false;status('공용 로봇 학습 데이터 초기화 완료');}else status(`${TERRAINS[options.terrain]} · 준비 완료`);initializing=false;if(!live)startLive();controls();status(wasReset?'공용 로봇 학습 데이터 초기화 완료':`${TERRAINS[options.terrain]} · 준비 완료`);sharedStatus();resolveReady?.(true);resolveReady=null;return;}
  if(data.type==='training'){training=data.active;controls();return;}
  if(data.type==='goal'){if(!training){if(!live)startLive();controls();status(`${TERRAINS[options.terrain]} · 준비 완료`);}return;}
  if(data.type==='phase'){const text={validation:'학습 묶음 비교 · 후보 평가 또는 정책 갱신 준비','candidate-validation':`후보 검증 · ${data.seconds}초씩 같은 조건에서 성능 비교`,'full-validation':`전체 운동 능력 검증 · 기존 능력이 유지되는지 확인 · 조건별 ${data.seconds}초`,monitor:`개선된 통합 모델 추가 시험 · ${data.seconds}초 · 여러 방향의 밀기에 대응하는지 확인`}[data.phase];if(text)writeLog(text,'phase-'+data.phase,3000);return;}
- if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(data.algorithmAttempts)model.algorithmAttempts=data.algorithmAttempts;if(Date.now()-lastProgressHud>1000){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();renderChart();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}if(data.summary)writeLog(trialDescription(data.summary,STAGES[data.task].label));const record=readTravelRecord(data.travelRecord);if(record&&model){model.travelRecord=record;if(record.attempt!==lastRecordAttempt){writeLog(`누적 최대 이동 기록 · ${Math.abs(record.distance).toFixed(2)}m · 위치 ${record.x.toFixed(2)}m에 파란 깃발 고정`,'record',1000);lastRecordAttempt=record.attempt;}}return;}
+ if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(data.algorithmAttempts)model.algorithmAttempts=data.algorithmAttempts;if(Date.now()-lastProgressHud>1000){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();renderChart();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}if(data.summary)writeLog(trialDescription(data.summary,STAGES[data.task].label));const record=mergeTravelRecord(knownTravel,data.travelRecord);if(record&&model){knownTravel=record;model.travelRecord=record;if(record.attempt!==lastRecordAttempt){writeLog(`최대 전진 접점 · +${record.x.toFixed(2)}m · 빨간 깃발 고정`,'record',1000);lastRecordAttempt=record.attempt;}}return;}
  if(data.type==='preview'){if(data.stage!==stage)return;latestPreview=data;if(viewSource==='candidate'&&(!viewPaused||live?.done))showRecent();return;}
  if(data.type==='done'){const finishedId=model?.id;await persist();const shared=await storage.publish(model,{force:true});if(model?.id!==finishedId)return;progress(data.completed,data.target,data.cancelled?'중지':'완료',model?.attempts||0,true);training=false;if(viewSource==='candidate'&&mode==='trace'&&latestPreview)showRecent();controls();if(recoveryBlocked){status('공용 모델을 읽을 수 없습니다.');return;}status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · ${shared.ok?'공용 모델 저장 완료':'공용 저장 연결 대기'}`);return;}
  if(data.type==='error'){resolveReady?.(false);resolveReady=null;training=false;initializing=false;controls();status(data.message);}
@@ -101,7 +102,7 @@ get('observation-seconds').onchange=()=>{const input=get('observation-seconds'),
 function startLive(weights=model?.weights||Array(POLICY_SIZE).fill(0),source='best',attempt=model?.attempts||0,version=model?.policyVersion||0,trial=null){pendingScene=null;carryRewardEvents=[];viewLog={key:null};liveTrial=trial;liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,rewardEffects:true,seed:trial?.seed??31+i*101,disturbances:false,pushes:trial?.pushPlan||[],terrainVariant:trial?.terrainVariant??0,spawnRange:trial?.spawnRange,spawnTilt:trial?.spawnTilt,command:source==='best'?command:null,commandSchedule:source==='candidate'?trial?.commandSchedule||[]:[]}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=[...weights];liveSource=source;liveAttempt=attempt;liveVersion=version;geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;if(!training)status(`${source==='candidate'?'최근 모델':'통합 모델'} v${version} · ${STAGES[stage].label} · ${options.observationSeconds}초 관찰`);if(source==='best')writeLog('실행 목표 · '+commandLabel(command));controls();}
 function syncCommandControls(){
  get('command-mode').value=command.mode;get('command-direction').value=String(command.direction);get('command-speed').value=String(command.speed);get('command-speed-value').textContent=command.speed.toFixed(2)+'m/s';get('command-position').value=String(command.position);get('command-posture').value=command.posture;
- get('command-direction-row').hidden=command.mode!=='move';get('command-speed-row').hidden=command.mode==='hold';get('command-position-row').hidden=command.mode!=='position';get('pick-target').hidden=command.mode!=='position';get('command-summary').textContent=commandLabel(command);if(command.mode!=='position')setPicking(false);
+ get('command-direction-row').hidden=command.mode!=='move';get('command-speed-row').hidden=command.mode==='hold';get('command-position-row').hidden=command.mode!=='position';get('pick-target').hidden=command.mode!=='position';if(command.mode!=='position')setPicking(false);
 }
 function setPicking(on){pickingTarget=on;get('pick-target').textContent=on?'목표 선택 취소':'지형에서 목표 선택';get('pick-target').setAttribute('aria-pressed',String(on));canvas.style.cursor=on?'crosshair':'';}
 function applyCommand(next){command=normalizeCommand(next);syncCommandControls();saveOptions();if(mode==='live'&&liveSource==='best'&&live&&!live.done){for(const w of liveRobots)w.setCommand(command);status('목표 변경 · '+commandLabel(command));}else if(!initializing)status('다음 통합 모델 실행 · '+commandLabel(command));}
@@ -144,7 +145,7 @@ function draw(data){
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
  drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:meta.terrain,obstacles:meta.obstacles||[],X,Y});
  if(liveSource==='best'&&command.mode==='position'){const x=X(command.position),y=Y(terrainHeight(meta.terrain.segments,command.position));ctx.strokeStyle='#527aa4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-36);ctx.lineTo(x+14,y-30);ctx.lineTo(x,y-24);ctx.stroke();ctx.fillStyle='#466989';ctx.font='10px sans-serif';ctx.fillText(command.position.toFixed(1)+'m',x+4,y-40);}
- for(const actor of actors)drawFurthestFlag(ctx,model?.travelRecord?{furthestX:model.travelRecord.x,furthestDistance:model.travelRecord.distance}:null,x=>terrainHeight(actor.meta.terrain.segments,x),X,Y,actor.offset);
+ for(const actor of actors){const r=knownTravel;drawFurthestFlag(ctx,r?{furthestX:r.x,furthestDistance:r.distance,contactY:r.terrain===actor.meta.terrain.kind&&r.variant===actor.meta.terrain.variant?r.y:undefined}:null,x=>terrainHeight(actor.meta.terrain.segments,x),X,Y,actor.offset);}
  for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,Xlocal,Y,scale);}for(const effect of hammerEffects(actor.frame,actor.meta))drawHammer(ctx,effect,Xlocal,Y,scale);drawRewardPopups(ctx,actor.frame,Xlocal,Y,{parts:actor.meta.parts,width:W,height:H,skin});}
  if(pushArrow){const a=pushArrow,dx=Math.cos(a.angle)*(.3+a.strength/25)*scale,dy=-Math.sin(a.angle)*(.3+a.strength/25)*scale,x=X(a.x),y=Y(a.y);ctx.strokeStyle='#bf875c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y+dy);ctx.stroke();ctx.beginPath();const angle=Math.atan2(dy,dx);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle-.45),y+dy-10*Math.sin(angle-.45));ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle+.45),y+dy-10*Math.sin(angle+.45));ctx.stroke();}
  if(drag&&drag.mode==='push'){ctx.strokeStyle='#b38d68';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(drag.x-rect.left,drag.y-rect.top);ctx.lineTo(drag.endX-rect.left,drag.endY-rect.top);ctx.stroke();}
@@ -169,12 +170,12 @@ function animate(time){
  lastDraw=time;
  const dt=lastTime?Math.min(.05,(time-lastTime)/1000):0;lastTime=time;
  if(!viewPaused){if(mode==='live'&&live&&!liveRobots.every(w=>w.done)){accumulator+=dt;while(accumulator>=DT){previousFrames=currentFrames;for(const w of liveRobots)if(!w.done)w.step(liveWeights,false);currentFrames=liveRobots.map(w=>w.snapshot());accumulator-=DT;}if(liveRobots.every(w=>w.done)){viewPaused=true;controls();if(!training)status('관찰 종료 · 중간 관찰 또는 통합 모델 실행으로 다시 시작하세요.');}}else if(mode==='trace'){traceTime+=dt;if(pendingScene&&traceTime>=previewWindow(scene,stage))showRecent(pendingScene,true);}if(pushArrow){pushArrow.remaining-=dt;if(pushArrow.remaining<=0)pushArrow=null;}}
- const data=sourceFrame();draw(data);if(time-lastHud>140){hud(data);lastHud=time;}
+ const data=sourceFrame();if(data&&model&&!initializing){const record=nextTravelRecord(knownTravel,data.frame.metrics,{attempt:model.attempts,task:stage,terrain:data.meta.terrain.kind});if(record&&record.x>(knownTravel?.x??0)+1e-5){knownTravel=record;model.travelRecord=record;recordDirty=true;writeLog(`최대 전진 접점 · +${record.x.toFixed(2)}m · 실제 지면 접촉 · 빨간 깃발 고정`,'contact-record',2000);}}draw(data);if(time-lastHud>140){hud(data);lastHud=time;}
  frame=requestAnimationFrame(animate);
 }
 frame=requestAnimationFrame(animate);
 
-get('reset').onclick=async()=>{if(initializing||!window.confirm('모든 기기가 공유하는 로봇의 학습 데이터와 그래프를 초기화할까요?'))return;worker.terminate();model=null;recoveryBlocked=false;latestPreview=null;liveTrial=null;pushArrow=null;resetPending=true;progress(0,0,'초기화',0);configure(null);status('공용 로봇의 새 모델을 준비합니다.');};
+get('reset').onclick=async()=>{if(initializing||!window.confirm('모든 기기가 공유하는 로봇의 학습 데이터와 그래프를 초기화할까요?'))return;worker.terminate();knownTravel=null;recordDirty=false;model=null;recoveryBlocked=false;latestPreview=null;liveTrial=null;pushArrow=null;resetPending=true;progress(0,0,'초기화',0);configure(null);status('공용 로봇의 새 모델을 준비합니다.');};
 
 document.addEventListener('visibilitychange',()=>{if(document.hidden){worker.postMessage({type:'stop'});viewPaused=true;controls();}else void refreshShared();});
 document.addEventListener('game:help-open',()=>{viewPaused=true;controls();});
@@ -191,3 +192,5 @@ sharedStatus();syncCommandControls();settings();if(recoveryBlocked){initializing
 const sharedTimer=setInterval(()=>void refreshShared(),15000);sharedTimer.unref?.();
 // The old login is retired; the public model never signs users in.
 try{localStorage.removeItem('mydesk.robot.auth');}catch{}
+
+const contactSaveTimer=setInterval(()=>{if(!recordDirty||!model||initializing)return;recordDirty=false;void persist();},1000);contactSaveTimer.unref?.();
