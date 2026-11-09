@@ -24,6 +24,9 @@ const seed=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'../bl
  // Sanitizer must neutralize HTML, SVG and URL attacks before any content is attached.
  const safe=await p.evaluate(async()=>{const {sanitizeHTML}=await import('./blog-content.mjs');return sanitizeHTML('<img src=x onerror=alert(1)><script>alert(2)</script><a href="javascript:alert(3)" onclick="alert(4)">bad</a><svg><foreignObject><iframe srcdoc="bad"></iframe></foreignObject><path onload="alert(5)" fill="url(https://bad.test)"></path></svg>');});
  assert.ok(!/javascript:|onerror|onclick|onload|<script|<iframe|foreignobject|url\(/i.test(safe));
+ const images=await p.evaluate(async()=>{const {sanitizeHTML}=await import('./blog-content.mjs?v=crash1');return sanitizeHTML('<img src="https://example.com/chart.png" alt="비교 그래프" onerror="alert(1)"><img src="javascript:alert(1)"><img src="data:image/svg+xml,bad"><svg><image href="https://bad.test/a.svg"></image></svg>');});
+ assert.equal((images.match(/<img /g)||[]).length,1);assert.match(images,/loading="lazy"/);assert.match(images,/referrerpolicy="no-referrer"/);assert.ok(!/javascript:|data:|onerror|<image[ >]/i.test(images));
+
  await p.goto(base+'/blog.html?category=ai#manage='+'A'.repeat(43));await p.locator('#blog-new').waitFor({state:'visible'});assert.ok(!p.url().includes('manage='));
  await p.locator('#blog-new').click();await p.locator('#post-topic').fill('새 주제');await p.locator('#post-title').fill('새 테스트 글');await p.locator('#post-summary').fill('새 소개');await p.locator('#post-body').fill('직접 작성한 본문');await p.locator('#post-save').click();await p.locator('.blog-post-heading').waitFor();assert.equal(writes.at(-1),'POST');assert.match(await p.locator('.blog-article').textContent(),/직접 작성/);
  await p.reload();await p.locator('.blog-post-heading').waitFor();assert.match(await p.locator('.blog-post-heading').textContent(),/새 테스트 글/);

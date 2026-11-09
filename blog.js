@@ -1,6 +1,6 @@
 import {BlogManagement} from './blog-auth.mjs?v=password1';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
-import {sanitizeHTML,textHTML as esc,displayDate,safeURL} from './blog-content.mjs';
+import {sanitizeHTML,textHTML as esc,displayDate,safeURL} from './blog-content.mjs?v=crash1';
 const $=id=>document.getElementById(id),endpoint=SHARED_MODEL_URL.replace(/robot_shared_model$/,'blog_posts');
 const query=new URLSearchParams(location.search),category=['ai','structural'].includes(query.get('category'))?query.get('category'):null,topic=query.get('topic'),postId=query.get('post');
 const names={ai:'AI',structural:'구조해석'};
