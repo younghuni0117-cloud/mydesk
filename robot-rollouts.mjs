@@ -1,13 +1,13 @@
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot37';
-import {packRollout} from './robot-transfer.mjs?v=robot37';
-import {episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=robot37';
-import {COMMAND_CASES} from './robot-goals.mjs?v=robot37';
-import {ppoEpisode} from './robot-ppo.mjs?v=robot37';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot38';
+import {packRollout} from './robot-transfer.mjs?v=robot38';
+import {episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=robot38';
+import {COMMAND_CASES} from './robot-goals.mjs?v=robot38';
+import {ppoEpisode} from './robot-ppo.mjs?v=robot38';
 export const executeTrial=p=>packRollout(p.algorithm==='ppo'?ppoEpisode(p):episode(p.weights,p.task,p.seed,p.options),p);
 // One extra physics worker at most: the existing learner computes the other trial.
 // The learner alone owns sampling, order, counters and all model updates.
 export class ParallelRollouts {
- constructor({enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=robot37',import.meta.url),{type:'module'})}={}){
+ constructor({enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=robot38',import.meta.url),{type:'module'})}={}){
   this.worker=null;this.ready=false;this.pending=null;this.nextId=0;this.waitingReady=new Promise(resolve=>this.resolveReady=resolve);
   if(!enabled){this.resolveReady(false);return;}
   try{this.worker=factory();this.worker.onmessage=({data})=>{if(!this.worker)return;if(data.type==='ready'){this.ready=true;this.resolveReady(true);return;}if(!this.pending||data.id!==this.pending.id)return;const pending=this.pending;this.pending=null;if(data.type==='result')pending.resolve(data.trial);else{this.disable();pending.resolve(executeTrial(pending.prepared));}};this.worker.onerror=event=>{event.preventDefault?.();this.disable();};this.worker.onmessageerror=()=>this.disable();}

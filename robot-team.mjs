@@ -1,7 +1,7 @@
-import {STAGES} from './robot-core.mjs?v=robot37';
-import {modelScore,preservesAbilities,compactHistory} from './robot-learning.mjs?v=robot37';
+import {STAGES} from './robot-core.mjs?v=robot38';
+import {modelScore,preservesAbilities,compactHistory} from './robot-learning.mjs?v=robot38';
 export class RobotTeam {
- constructor(factory=()=>new Worker(new URL('./robot-worker.mjs?v=robot37',import.meta.url),{type:'module'})){this.factory=factory;this.lanes=[];this.generation=0;this.model=null;this.settings={};this.running=false;}
+ constructor(factory=()=>new Worker(new URL('./robot-worker.mjs?v=robot38',import.meta.url),{type:'module'})){this.factory=factory;this.lanes=[];this.generation=0;this.model=null;this.settings={};this.running=false;}
  emit(data){this.onmessage?.({data});}
  terminate(){this.generation++;for(const l of this.lanes)l.worker.terminate();this.lanes=[];}
  counts(){const completed=this.lanes.reduce((n,l)=>n+l.completed,0),taskAttempts={...this.base.taskAttempts};if(this.running||this.job)taskAttempts[this.focus]+=completed;this.model.attempts=this.base.attempts+completed;this.model.taskAttempts=taskAttempts;return completed;}

@@ -1,4 +1,4 @@
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot37';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot38';
 // Evaluation lengths are independent of replay/observation time.
 export function normalizeEvaluationSettings(raw={}){
  const validationSeconds=Number.isInteger(raw.validationSeconds)&&raw.validationSeconds>=6&&raw.validationSeconds<=120?raw.validationSeconds:10;

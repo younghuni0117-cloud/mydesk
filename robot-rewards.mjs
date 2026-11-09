@@ -1,6 +1,6 @@
-import {walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot37';
-export const REWARD_VERSION=7;
-export const REWARDS=Object.freeze({walkUpright:.5,walkQuality:1,walkSpeed:4,walkForward:8,walkFall:30,walkDown:8,upright:2,balanceUpright:10,balanceUnstable:2,balanceFall:30,balanceDown:8,balanceQuality:8,motionQuality:4,lowQuality:4,remainingFailure:6,alive:.1,speed:2,speedVariance:.3,tilt:1.2,lowHeight:.8,heightReference:.9,drift:.8,forward:5,crawl:.1,maxStepDistance:.08,rise:2,recovery:8,fall:12,pushStanding:1.5,pushDown:.5,pushWindow:1.5,impact:.5,impactImpulse:.06,impactCap:4,effort:.003,obstacle:10,obstacleClearance:.2,arrival:2,posture:2,lowPostureHeight:.62,impactSpeed:.6,impactEnergy:.06,recoveryProgress:6,postureProgress:2});
+import {walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot38';
+export const REWARD_VERSION=8;
+export const REWARDS=Object.freeze({gaze:.3,distalMotion:.35,distalChange:.06,walkUpright:.5,walkQuality:1,walkSpeed:4,walkForward:8,walkFall:30,walkDown:8,upright:2,balanceUpright:10,balanceUnstable:2,balanceFall:30,balanceDown:8,balanceQuality:8,motionQuality:4,lowQuality:4,remainingFailure:6,alive:.1,speed:2,speedVariance:.3,tilt:1.2,lowHeight:.8,heightReference:.9,drift:.8,forward:5,crawl:.1,maxStepDistance:.08,rise:2,recovery:8,fall:12,pushStanding:1.5,pushDown:.5,pushWindow:1.5,impact:.5,impactImpulse:.06,impactCap:4,effort:.003,obstacle:10,obstacleClearance:.2,arrival:2,posture:2,lowPostureHeight:.62,impactSpeed:.6,impactEnergy:.06,recoveryProgress:6,postureProgress:2});
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export function rewardBreakdown(stage,s){const c=REWARDS,moving=Math.abs(s.target)>0,walk=stage==='walk',walkMoving=walk&&moving,support=walkingSupport(s),forward=walk?c.walkForward:c.forward,progress=p=>forward*(walk&&p>0?p*support:p);const terms={
  support:s.dt*((stage==='balance'?c.balanceQuality:walkMoving?c.walkQuality:c.motionQuality)*(s.motionQuality??(s.upright?1:0))**2-c.lowQuality*(1-(s.motionQuality??(s.upright?1:0)))),
@@ -12,6 +12,9 @@ export function rewardBreakdown(stage,s){const c=REWARDS,moving=Math.abs(s.targe
  overspeed:-s.dt*(8*Math.max(0,Math.abs(s.speed)-Math.abs(s.target)-.05)+2*Math.max(0,Math.abs(s.speed)-Math.abs(s.target)-.05)**2),
  torque:-.05*(s.torqueLoad??0),
  smoothness:-.02*(s.actionChange??0),
+ gaze:s.dt*c.gaze*clamp(s.visionCoverage??0,0,1)*clamp(s.motionQuality??0,0,1),
+ distalMotion:-s.dt*c.distalMotion*(s.distalMotion??0)*((s.down||s.afterPush)? .25:1),
+ distalChange:-c.distalChange*(s.distalChange??0)*((s.down||s.afterPush)? .25:1),
  rise:stage==='recover'?c.recoveryProgress*(s.heightProgress??0)+c.postureProgress*(s.postureProgress??0):0,
  fall:s.newFall?-(stage==='balance'?c.balanceFall:walk?c.walkFall:c.fall):0,
  down:s.down&&(stage==='balance'||walk)?-s.dt*(walk?c.walkDown:c.balanceDown):0,
@@ -28,9 +31,10 @@ export function rewardBreakdown(stage,s){const c=REWARDS,moving=Math.abs(s.targe
  return terms;
 }
 export function rewardHelp(stages){const c=REWARDS;return {
+ attention:`실제로 눈 센서가 감지한 발밑·가까운 전방·먼 전방의 지형 구간을 중복 없이 평가합니다. 동굴에서는 실제 천장 감지도 일부 반영합니다. 관측 범위 점수와 자세 품질을 곱해 초당 최대 +${c.gaze}점을 주며, 하늘이나 가려진 지형에는 점수를 주지 않습니다. 머리 각도·동작은 지정하지 않고 CEM/PPO 경험으로 유용한 관찰 방향을 배웁니다. 관절을 고정하지 않으며 목·손목·발끝의 과도한 속도와 명령의 급변에 작은 비용을 적용합니다.`,
  standing:`발이 지면에 닿고, 골반 높이가 지면 위 0.75m 초과이며 상체 기울기가 약 29° 미만이면 ‘서 있음’입니다. 발 지지·골반 높이·몸통 방향·몸통의 바닥 접촉을 함께 반영한 자세 품질 q(0~1)에 균형은 초당 8q²−4(1−q)점, 이동 목표가 있는 걷기는 q²−4(1−q)점, 나머지는 4q²−4(1−q)점을 더합니다. 낮은 자세 명령은 목표 높이를 낮춰 평가합니다. 서 있으면 균형은 초당 +${c.balanceUpright}점, 이동 목표가 있는 걷기는 +${c.walkUpright}점, 나머지는 +${c.upright}점입니다. 서 있지 않으면 균형은 초당 −${c.balanceUnstable}점, 다른 과제는 +${c.alive}점입니다.`,
  speed:`목표 속도에 가까울수록 초당 걷기는 최대 +${c.walkSpeed}점, 다른 과제는 최대 +${c.speed}점입니다. 정확히 일치하고 서 있는 자세의 질이 높을 때 최대입니다. 골반 높이·상체 방향·발 지지 상태에 따른 0~1 계수를 곱합니다. 기본 계산식은 과제별 최대점 × exp(−(현재 속도−목표 속도)²/${c.speedVariance})입니다.`,
- penalties:`상체 기울기²에 초당 −${c.tilt}점(각도는 라디안), 골반 높이가 ${c.heightReference}m보다 부족한 만큼 초당 −${c.lowHeight}점/m, 새로 넘어질 때 일어서기·달리기·장애물 과제에는 −${c.fall}점, 걷기는 −${c.walkFall}점과 쓰러져 있거나 회복 중인 동안 초당 −${c.walkDown}점입니다. 균형잡기는 넘어질 때마다 −${c.balanceFall}점, 쓰러져 있거나 회복 중인 동안 초당 −${c.balanceDown}점입니다. 처음 넘어질 때 그 시도에서 쌓인 양의 누적 점수도 회수합니다. 한 번 실패한 균형 시도에는 이후 서 있기·속도·밀기·회복 등의 가점을 주지 않습니다. 일어서기와 이동 과제의 회복 보상은 유지합니다. 머리·몸통·골반이 초속 ${c.impactSpeed}m보다 빠르게 새로 충돌할 때 초과 충격 에너지 1J당 −${c.impactEnergy}점입니다. 가만히 닿아 몸을 지탱하는 접촉력에는 충격 벌점이 없습니다. 관절 모터가 쓴 기계적 일에는 −${c.effort}점/J입니다. 정규화한 토크 제곱에 초당 최대 −0.05점, 출력 변화 제곱 평균에 −0.02점을 적용합니다. 목표 속도 절댓값을 0.05m/s 넘긴 초과 속도 e에는 초당 −(8e+2e²)점입니다. 조기 이탈·수치 오류는 검증 실패이며 총 보상을 −20−8×예정 시간 이하로 제한합니다.`,
+ penalties:`상체 기울기²에 초당 −${c.tilt}점(각도는 라디안), 골반 높이가 ${c.heightReference}m보다 부족한 만큼 초당 −${c.lowHeight}점/m, 새로 넘어질 때 일어서기·달리기·장애물 과제에는 −${c.fall}점, 걷기는 −${c.walkFall}점과 쓰러져 있거나 회복 중인 동안 초당 −${c.walkDown}점입니다. 균형잡기는 넘어질 때마다 −${c.balanceFall}점, 쓰러져 있거나 회복 중인 동안 초당 −${c.balanceDown}점입니다. 처음 넘어질 때 그 시도에서 쌓인 양의 누적 점수도 회수합니다. 한 번 실패한 균형 시도에는 이후 서 있기·속도·밀기·회복 등의 가점을 주지 않습니다. 일어서기와 이동 과제의 회복 보상은 유지합니다. 머리·몸통·골반이 초속 ${c.impactSpeed}m보다 빠르게 새로 충돌할 때 초과 충격 에너지 1J당 −${c.impactEnergy}점입니다. 가만히 닿아 몸을 지탱하는 접촉력에는 충격 벌점이 없습니다. 관절 모터가 쓴 기계적 일에는 −${c.effort}점/J입니다. 정규화한 토크 제곱에 초당 최대 −0.05점, 출력 변화 제곱 평균에 −0.02점을 적용합니다. 목·양 손목·양 발끝에는 빠른 흔들림(목 2.5rad/s, 손목·발끝 4rad/s 초과)의 정규화 제곱 평균에 초당 −${c.distalMotion}점, 행동 출력 변화 제곱 평균에 −${c.distalChange}점을 추가합니다. 넘어짐·외력 대응 중에는 이 추가 비용을 1/4로 줄여 필요한 빠른 대응을 허용합니다. 목표 속도 절댓값을 0.05m/s 넘긴 초과 속도 e에는 초당 −(8e+2e²)점입니다. 조기 이탈·수치 오류는 검증 실패이며 총 보상을 −20−8×예정 시간 이하로 제한합니다.`,
  push:`밀린 뒤 ${c.pushWindow}초 동안 서 있으면 초당 +${c.pushStanding}점, 그렇지 않으면 초당 −${c.pushDown}점입니다. 자동 밀기를 꺼도 검증의 외력 조건은 동일합니다.`,
  commands:`목표 방향으로 1m 진행하면 걷기는 최대 +${c.walkForward}점, 다른 과제는 +${c.forward}점이며 반대 방향이면 감점합니다. 걷기의 양의 진행·속도 보상에는 발 지지·몸 높이·상체 방향의 품질 계수를 곱하고 쓰러짐·몸통 접촉 중에는 주지 않습니다. 뒤로 밀리거나 되돌아간 거리의 벌점은 줄이지 않습니다. 위치 목표·제자리 유지는 목표에서 떨어진 거리 1m당 초당 −${c.drift}점이며, 목표 ±0.15m 안에서 속도 0.15m/s 미만으로 서 있으면 초당 +${c.arrival}점입니다. 목표에 가까워질수록 목표 속도가 줄어듭니다. 낮은 자세는 골반 높이 ${c.lowPostureHeight}m에 가까울수록 초당 최대 +${c.posture}점이며 낮은 높이에 맞춰 서 있기 판정과 높이 벌점도 조정합니다. 목표는 관절 자세나 움직임을 지정하지 않습니다. 균형 학습만 시작 0.2초 이후 서 있기 기준에서 0.2초 넘게 벗어나면 시도를 마치고 남은 예정 시간에 초당 −6점을 적용합니다. 이 균형 상실 중단도 누적 가점을 회수하고 −${c.balanceFall}점 이하로 평가합니다. 일어서기 학습과 관찰·검증은 끝까지 계속합니다.`,
  tasks:Object.entries(stages).map(([id,task])=>({id,label:task.label,duration:task.duration,target:task.speed,
