@@ -1,0 +1,29 @@
+// Fully mocked API: no password changes or writes are sent to the real server.
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const seed=JSON.parse(fs.readFileSync(path.join(__dirname,'../blog-seed.json'))).map(p=>({...p,created_at:'2026-11-09T00:00:00Z',updated_at:'2026-11-09T00:00:00Z',revision:0}));
+(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{
+ const key='A'.repeat(43),errors=[],tokens=new Set();let password=null,serial=0,changes=0;
+ const contexts=[];
+ async function page(){const ctx=await browser.newContext({viewport:{width:390,height:844}});contexts.push(ctx);await ctx.route('**/rest/v1/**',async route=>{
+  const req=route.request(),url=new URL(req.url()),token=(req.headers()['x-client-info']||'').replace('mydesk-blog/',''),connected=(!password&&token===key)||tokens.has(token),args=req.method()==='POST'?req.postDataJSON():{};
+  if(url.pathname.endsWith('/blog_management_status'))return route.fulfill({json:{connected,password_set:!!password}});
+  if(url.pathname.endsWith('/blog_management_login')){if(password&&args.password===password){const token='session-'+(++serial);tokens.add(token);return route.fulfill({json:{ok:true,token}});}return route.fulfill({json:{ok:false,message:'비밀번호가 맞지 않습니다.'}});}
+  if(url.pathname.endsWith('/blog_management_set_password')){assert.ok(connected);changes++;password=args.new_password;tokens.clear();const token='session-'+(++serial);tokens.add(token);return route.fulfill({json:{ok:true,token}});}
+  if(url.pathname.endsWith('/blog_management_logout')){tokens.delete(token);return route.fulfill({json:true});}
+  assert.ok(url.pathname.endsWith('/blog_posts'),'Unexpected service access');assert.equal(req.method(),'GET');return route.fulfill({json:seed});
+ });const p=await ctx.newPage();p.on('pageerror',e=>errors.push(e.message));return p;}
+ const base=process.env.PAGE_BASE||'http://127.0.0.1:8000';
+ const p=await page();await p.goto(base+'/blog.html#manage='+key);await p.locator('#blog-new').waitFor({state:'visible'});assert.ok(!p.url().includes('manage='));
+ await p.locator('#blog-manage').click();await p.locator('#manage-settings').waitFor({state:'visible'});await p.locator('#manage-password-open').click();
+ await p.locator('#manage-new-password').fill('Easy-test-pass1');await p.locator('#manage-confirm-password').fill('different-test-pass');await p.locator('#manage-password-save').click();await p.waitForFunction(()=>document.getElementById('manage-error').textContent.includes('일치'));assert.equal(changes,0);
+ await p.locator('#manage-confirm-password').fill('Easy-test-pass1');await p.locator('#manage-password-save').click();await p.waitForFunction(()=>document.getElementById('manage-error').textContent.includes('저장했습니다'));assert.equal(changes,1);assert.equal(await p.locator('#manage-new-password').inputValue(),'');assert.equal(await p.locator('#manage-password-open').textContent(),'비밀번호 변경');
+ assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await p.screenshot({path:'/tmp/blog-password-mobile.png'});await p.locator('#manage-close').click();
+ let stored=await p.evaluate(()=>localStorage.getItem('mydesk.blog.management'));assert.ok(stored.startsWith('session-'));assert.notEqual(stored,password);
+ const second=await page();await second.goto(base+'/blog.html');await second.locator('.blog-card').first().waitFor();assert.equal(await second.locator('#blog-new').isVisible(),false);await second.locator('#blog-manage').click();await second.locator('#manage-password').fill('wrong-password');await second.locator('#manage-connect').click();await second.waitForFunction(()=>document.getElementById('manage-error').textContent.includes('맞지'));
+ await second.locator('#manage-password').fill('Easy-test-pass1');await second.locator('#manage-connect').click();await second.locator('#manage-dialog').waitFor({state:'hidden'});assert.ok(await second.locator('#blog-new').isVisible());
+ await p.locator('#blog-manage').click();await p.locator('#manage-password-open').click();await p.locator('#manage-new-password').fill('Changed-test-pass2');await p.locator('#manage-confirm-password').fill('Changed-test-pass2');await p.locator('#manage-password-save').click();await p.waitForFunction(()=>document.getElementById('manage-error').textContent.includes('저장했습니다'));assert.equal(changes,2);await p.locator('#manage-close').click();
+ await second.reload();await second.locator('.blog-card').first().waitFor();assert.equal(await second.locator('#blog-new').isVisible(),false);
+ await second.locator('#blog-manage').click();await second.locator('#manage-password').fill('Changed-test-pass2');await second.locator('#manage-connect').click();await second.locator('#manage-dialog').waitFor({state:'hidden'});await second.locator('#blog-manage').click();await second.locator('#manage-disconnect').click();await second.locator('#manage-login-form').waitFor({state:'visible'});assert.equal(await second.evaluate(()=>localStorage.getItem('mydesk.blog.management')),null);
+ const third=await page();await third.goto(base+'/blog.html#manage='+key);await third.locator('.blog-card').first().waitFor();assert.equal(await third.locator('#blog-new').isVisible(),false);await third.locator('#blog-manage').click();await third.locator('#manage-legacy summary').click();await third.locator('#manage-key').fill(key);await third.locator('#manage-key-connect').click();await third.waitForFunction(()=>document.getElementById('manage-error').textContent.includes('해제'));
+ assert.deepEqual(errors,[]);console.log('PASS: first setup, confirmation mismatch, password-only login in separate browser, wrong password, rotation, revoked old key/sessions, logout, no plaintext password persistence, mobile layout.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

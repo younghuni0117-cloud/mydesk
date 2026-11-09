@@ -1,20 +1,15 @@
+import {BlogManagement} from './blog-auth.mjs?v=password1';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 import {sanitizeHTML,textHTML as esc,displayDate,safeURL} from './blog-content.mjs';
 const $=id=>document.getElementById(id),endpoint=SHARED_MODEL_URL.replace(/robot_shared_model$/,'blog_posts');
 const query=new URLSearchParams(location.search),category=['ai','structural'].includes(query.get('category'))?query.get('category'):null,topic=query.get('topic'),postId=query.get('post');
-const names={ai:'AI',structural:'구조해석'},storageKey='mydesk.blog.management';
+const names={ai:'AI',structural:'구조해석'};
 let managementKey='',posts=[],editing=null,dirty=false,busy=false,offline=false;
-try{managementKey=localStorage.getItem(storageKey)||'';}catch{}
-const fragment=new URLSearchParams(location.hash.slice(1)),incoming=fragment.get('manage');
-if(incoming&&/^[A-Za-z0-9_-]{43}$/.test(incoming)){
- managementKey=incoming;try{localStorage.setItem(storageKey,incoming);}catch{}
- fragment.delete('manage');history.replaceState(null,'',location.pathname+location.search+(fragment.size?'#'+fragment:''));
-}
 function status(text,error=false){$('blog-status').textContent=text;$('blog-status').classList.toggle('is-error',error);}
-function adminUI(){ $('blog-new').hidden=!managementKey;$('blog-manage').textContent=managementKey?'관리 연결됨':'글 관리';}
+function adminUI(){ $('blog-new').hidden=!managementKey||!$('blog-editor').hidden;$('blog-manage').textContent=managementKey?'글 관리 설정':'글 관리';}
 async function api(path='',options={}){
  const result=await fetch(endpoint+path,{...options,headers:{apikey:SHARED_MODEL_KEY,'Content-Type':'application/json','x-client-info':managementKey?'mydesk-blog/'+managementKey:'mydesk-blog-reader',Prefer:'return=representation',...options.headers}});
- if(!result.ok){if([401,403].includes(result.status))throw Error('관리 권한을 확인해 주세요. 전용 관리 링크로 다시 연결할 수 있습니다.');throw Error('서버에 연결하지 못했습니다. 작성 내용은 유지됩니다. 잠시 후 다시 시도해 주세요.');}
+ if(!result.ok){if([401,403].includes(result.status))throw Error('관리 권한을 확인해 주세요. 글 관리에서 비밀번호로 다시 연결할 수 있습니다.');throw Error('서버에 연결하지 못했습니다. 작성 내용은 유지됩니다. 잠시 후 다시 시도해 주세요.');}
  return result.status===204?[]:result.json();
 }
 function dates(post){return `<time datetime="${esc(post.created_at)}">등록 ${displayDate(post.created_at)}</time>${post.revision>0?` · <time datetime="${esc(post.updated_at)}">수정 ${displayDate(post.updated_at)}</time>`:''}`;}
@@ -96,13 +91,8 @@ $('blog-content').addEventListener('click',async event=>{
  try{const rows=await api(`?id=eq.${encodeURIComponent(post.id)}&revision=eq.${post.revision}`,{method:'DELETE'});if(!rows.length)throw Error('다른 기기에서 글이 변경되었거나 관리 권한이 없습니다. 새로고침 후 확인해 주세요.');if(postId)location.assign('blog.html?'+new URLSearchParams({category:post.category,topic:post.topic}));else{posts=posts.filter(p=>p.id!==post.id);render();status('글을 삭제했습니다.');}}
  catch(error){status(error.message,true);del.disabled=false;}finally{busy=false;}
 });
-$('blog-manage').onclick=()=>{
- if(managementKey){if(confirm('이 기기의 글 관리 연결을 해제할까요? 다시 연결하려면 관리 링크가 필요합니다.')){managementKey='';try{localStorage.removeItem(storageKey);}catch{};if(!$('blog-editor').hidden){$('blog-editor').hidden=true;$('blog-content').hidden=false;dirty=false;}render();}return;}
- $('manage-dialog').showModal();
-};
-$('manage-connect').onclick=()=>{
- let value=$('manage-key').value.trim();try{value=new URLSearchParams(new URL(value).hash.slice(1)).get('manage')||value;}catch{}
- if(!/^[A-Za-z0-9_-]{43}$/.test(value)){$('manage-error').textContent='올바른 관리 링크 또는 관리 키를 입력해 주세요.';return;}
- managementKey=value;try{localStorage.setItem(storageKey,value);}catch{};$('manage-key').value='';$('manage-dialog').close();render();
-};
-adminUI();load();
+const management=new BlogManagement({onChange:token=>{managementKey=token;adminUI();if(posts.length||!$('blog-content').textContent)render();},canDisconnect:()=>!dirty||confirm('작성 중인 내용이 있습니다. 연결을 해제하면 저장하기 전에 다시 연결해야 합니다. 계속할까요?')});
+$('blog-manage').onclick=()=>management.open();
+adminUI();
+await management.init();
+load();

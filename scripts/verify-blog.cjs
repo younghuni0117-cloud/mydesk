@@ -4,7 +4,7 @@ const fs=require('fs'),assert=require('node:assert/strict');
 const seed=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'../blog-seed.json'))).map(p=>({...p,created_at:'2026-11-09T00:00:00Z',updated_at:'2026-11-09T00:00:00Z',revision:0}));
 (async()=>{const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{
  const errors=[];const ctx=await b.newContext();let rows=structuredClone(seed),writes=[],mode='normal';
- await ctx.route('**/rest/v1/**',async route=>{const req=route.request();assert.ok(req.url().includes('/blog_posts'),'must not access existing user data');
+ await ctx.route('**/rest/v1/**',async route=>{const req=route.request();if(req.url().includes('/rpc/blog_management_status'))return route.fulfill({json:{connected:req.headers()['x-client-info']==='mydesk-blog/'+'A'.repeat(43),password_set:false}});assert.ok(req.url().includes('/blog_posts'),'must not access existing user data');
   if(mode==='offline')return route.fulfill({status:503,body:'unavailable'});
   const url=new URL(req.url()),id=url.searchParams.get('id')?.slice(3),revision=Number(url.searchParams.get('revision')?.slice(3));
   if(req.method()==='GET')return route.fulfill({json:rows});
