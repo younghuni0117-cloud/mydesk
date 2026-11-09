@@ -36,6 +36,6 @@ const seed=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'../bl
  await p.goto(base+'/physicsnemo.html#structural');await p.locator('#structural-title').waitFor();assert.match(p.url(),/blog.html\?post=physicsnemo#structural/);assert.ok(await p.locator('[data-edit]').isVisible());
  mode='offline';await p.reload();await p.locator('.guide-section').first().waitFor();assert.match(await p.locator('#blog-status').textContent(),/既存|기존/);await p.locator('[data-edit]').click();assert.equal(await p.locator('#blog-editor').isVisible(),false);mode='normal';
  await p.goto(base+'/blog.html?category=ai');await p.locator('.blog-card').first().waitFor();await p.screenshot({path:'/tmp/blog-mobile.png',fullPage:true});
- await p.goto(base+'/index.html');await p.waitForFunction(()=>document.querySelector('.resource-list .row-category')?.textContent==='강화학습');assert.equal(await p.locator('.resource-list>a').count(),3);
+ await p.goto(base+'/index.html');await p.waitForFunction(()=>document.querySelector('.resource-list .row-category')?.textContent==='PhysicsNeMo');assert.equal(await p.locator('.resource-list>a').count(),3);
  assert.deepEqual(errors,[]);console.log('PASS: category, article, dates, responsive widths, mobile menu, sanitizer, CRUD, persistence, conflict, delete confirmation, legacy links, offline, no robot/calendar API calls');
 }finally{await b.close();}})().catch(e=>{console.error(e);process.exit(1)});
