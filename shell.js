@@ -45,4 +45,4 @@ function syncCalendarMenuLinks(){
 syncCalendarMenuLinks();window.addEventListener('pageshow',syncCalendarMenuLinks);window.addEventListener('storage',e=>{if(e.key==='mydesk.calendar.family')syncCalendarMenuLinks();});
 
 // Navigation is shared by all pages and refreshed from the server.
-import('./site-navigation.mjs?v=menus2').then(module=>module.loadNavigation()).catch(()=>{});
+import('./site-navigation.mjs?v=career1').then(module=>module.loadNavigation()).catch(()=>{});

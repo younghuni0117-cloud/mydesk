@@ -1,6 +1,8 @@
 export const DEFAULT_MENUS=[
  {id:'home',parent_id:null,label:'홈',kind:'link',href:'index.html'},
  {id:'calendar',parent_id:null,label:'가족 달력',kind:'link',href:'calendar.html'},
+ {id:'career',parent_id:null,label:'커리어',kind:'folder',href:null},
+ {id:'experienced-jobs',parent_id:'career',label:'경력직 공고',kind:'folder',href:null},
  {id:'learning',parent_id:null,label:'학습정보',kind:'folder',href:null},
  {id:'ai',parent_id:'learning',label:'AI',kind:'folder',href:null},
  {id:'reinforcement-learning',parent_id:'ai',label:'강화학습',kind:'folder',href:null},

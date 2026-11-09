@@ -1,5 +1,5 @@
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
-import {DEFAULT_MENUS,validateMenus,menuPath,legacyMenuId,safeMenuHref} from './navigation-data.mjs?v=menus1';
+import {DEFAULT_MENUS,validateMenus,menuPath,legacyMenuId,safeMenuHref} from './navigation-data.mjs?v=career1';
 const endpoint=SHARED_MODEL_URL.replace(/robot_shared_model$/,'site_navigation'),key='mydesk.navigation.v1';
 let state={id:'main',menus:structuredClone(DEFAULT_MENUS),revision:0,online:false},loading=null,selection;
 try{const cached=JSON.parse(localStorage.getItem(key)||'null');if(cached){validateMenus(cached.menus);state={...cached,online:false};}}catch{}

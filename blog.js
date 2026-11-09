@@ -1,6 +1,6 @@
 import {BlogManagement} from './blog-auth.mjs?v=menus1';
-import {loadNavigation,navigationState,selectNavigationMenu} from './site-navigation.mjs?v=menus2';
-import {folderOptions,descendantIds,legacyMenuId,postMenuId,locationFields} from './navigation-data.mjs?v=menus1';
+import {loadNavigation,navigationState,selectNavigationMenu} from './site-navigation.mjs?v=career1';
+import {folderOptions,descendantIds,legacyMenuId,postMenuId,locationFields} from './navigation-data.mjs?v=career1';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 import {sanitizeHTML,textHTML as esc,displayDate,safeURL} from './blog-content.mjs?v=crash1';
 const $=id=>document.getElementById(id),endpoint=SHARED_MODEL_URL.replace(/robot_shared_model$/,'blog_posts');

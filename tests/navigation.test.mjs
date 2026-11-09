@@ -1,9 +1,9 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {DEFAULT_MENUS,validateMenus,menuPath,descendantIds,folderOptions,legacyMenuId,postMenuId,reorderMenu,removeMenu,safeMenuHref} from '../navigation-data.mjs';
 test('default hierarchy and old blog links resolve to the same articles',()=>{
- assert.equal(validateMenus(DEFAULT_MENUS),DEFAULT_MENUS);assert.deepEqual(menuPath(DEFAULT_MENUS,'physicsnemo').map(m=>m.label),['학습정보','Simulation','PhysicsNeMo']);
+ assert.equal(validateMenus(DEFAULT_MENUS),DEFAULT_MENUS);assert.deepEqual(menuPath(DEFAULT_MENUS,'experienced-jobs').map(m=>m.label),['커리어','경력직 공고']);assert.deepEqual(menuPath(DEFAULT_MENUS,'physicsnemo').map(m=>m.label),['학습정보','Simulation','PhysicsNeMo']);
  assert.equal(legacyMenuId(new URLSearchParams('category=structural&topic=PhysicsNeMo'),DEFAULT_MENUS),'physicsnemo');assert.equal(postMenuId({category:'ai'}),'reinforcement-learning');
- assert.ok(descendantIds(DEFAULT_MENUS,'learning').has('physicsnemo'));assert.equal(folderOptions(DEFAULT_MENUS).length,6);
+ assert.ok(descendantIds(DEFAULT_MENUS,'learning').has('physicsnemo'));assert.equal(folderOptions(DEFAULT_MENUS).length,8);
 });
 test('reject cyclic menus, missing parents, link parents and executable URLs',()=>{
  const cycle=structuredClone(DEFAULT_MENUS);cycle.find(m=>m.id==='learning').parent_id='physicsnemo';assert.throws(()=>validateMenus(cycle),/자기 자신/);

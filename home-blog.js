@@ -1,11 +1,11 @@
-import {loadNavigation,navigationState} from './site-navigation.mjs?v=menus2';
-import {postMenuId} from './navigation-data.mjs?v=menus1';
+import {loadNavigation,navigationState} from './site-navigation.mjs?v=career1';
+import {postMenuId} from './navigation-data.mjs?v=career1';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 const list=document.querySelector('.resource-list');
 if(list){
  try{
   await loadNavigation();
-  const response=await fetch(SHARED_MODEL_URL.replace(/robot_shared_model$/,'blog_posts')+'?select=id,title,summary,category,topic&order=created_at.desc,id.asc',{headers:{apikey:SHARED_MODEL_KEY}});
+  const response=await fetch(SHARED_MODEL_URL.replace(/robot_shared_model$/,'blog_posts')+'?select=id,title,summary,category,topic,menu_id&order=created_at.desc,id.asc',{headers:{apikey:SHARED_MODEL_KEY}});
   if(!response.ok)throw Error('Unavailable');
   const posts=await response.json();
   const template=list.querySelector('a')?.cloneNode(true);
