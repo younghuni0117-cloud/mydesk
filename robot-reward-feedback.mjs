@@ -6,7 +6,7 @@ export class RewardFeedback {
   for(const [term,value] of Object.entries(terms)){if(!Number.isFinite(value)||value===0)continue;const points=locate(term),total=points.reduce((sum,p)=>sum+p.weight,0)||1;
    for(const p of points){const amount=value*p.weight/total;if(!amount)continue;const key=group(p.body)+':'+Math.sign(amount),weight=Math.abs(amount),row=this.pending.get(key)||{value:0,x:0,y:0,weight:0,body:group(p.body)};row.value+=amount;row.x+=p.point[0]*weight;row.y+=p.point[1]*weight;row.weight+=weight;this.pending.set(key,row);}
   }
-  if(immediate||time-this.lastFlush>=REWARD_FEEDBACK_INTERVAL-1e-8){for(const p of this.pending.values())this.events.push({id:++this.sequence,time,value:p.value,point:[p.x/p.weight,p.y/p.weight],body:p.body});this.pending.clear();this.lastFlush=time;}
+  if(immediate||time-this.lastFlush>=(this.sequence===0?.2:REWARD_FEEDBACK_INTERVAL)-1e-8){for(const p of this.pending.values())this.events.push({id:++this.sequence,time,value:p.value,point:[p.x/p.weight,p.y/p.weight],body:p.body});this.pending.clear();this.lastFlush=time;}
   this.events=this.events.filter(e=>time-e.time<=REWARD_FEEDBACK_LIFETIME+1e-8);
  }
  snapshot(){return this.events.map(e=>({...e,point:[...e.point]}));}
@@ -22,7 +22,7 @@ export function rewardLocations(world,term,distal){
  if(term==='distalMotion'||term==='distalChange'){const key=term==='distalMotion'?'motion':'change',rows=distal.parts?.filter(p=>p[key]>0).map(p=>at(p.body,p[key]));if(rows?.length)return rows;}
  return [at('torso')];
 }
-export function rewardPopups(frame){return (frame.rewardEvents||[]).filter(e=>Math.abs(e.value)>=1&&frame.time>=e.time&&frame.time-e.time<REWARD_FEEDBACK_LIFETIME).map(e=>{const age=(frame.time-e.time)/REWARD_FEEDBACK_LIFETIME;return {...e,opacity:Math.min(1,(1-age)*3),rise:age*26};});}
+export function rewardPopups(frame){const time=frame.rewardTime??frame.time;return (frame.rewardEvents||[]).filter(e=>Math.abs(e.value)>=1&&time>=e.time&&time-e.time<REWARD_FEEDBACK_LIFETIME).map(e=>{const age=(time-e.time)/REWARD_FEEDBACK_LIFETIME;return {...e,opacity:Math.min(1,(1-age)*3),rise:age*26};});}
 export function rewardText(value){const n=Math.abs(value);return n?(value>0?'+':'−')+(n>=10?Number(n.toFixed(0)):Number(n.toPrecision(2))):'';}
 export function robotPartBounds(frame,parts,X,Y,skin='explorer'){
  const scale=Math.abs(X(1)-X(0)),out=[];

@@ -1,4 +1,4 @@
-import {terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot42a';
+import {terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot43';
 export const TERRAIN_SENSOR_COUNT=26;
 const clamp=(v,a=-1,b=1)=>Math.max(a,Math.min(b,v));
 // Geometry measurements only: this module never issues a motor command.

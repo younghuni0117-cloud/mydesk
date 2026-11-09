@@ -8,3 +8,12 @@ export function traceFrame(frames,time){
 export function chartDomain(rows){const values=rows.flatMap(r=>[r.overall,r.candidate]).filter(Number.isFinite);const low=Math.min(...values),high=Math.max(...values);if(!values.length)return[-100,100];const span=Math.max(4,high-low),mid=(low+high)/2;return [mid-span*.65,mid+span*.65];}
 
 export function taskChartRows(model,task,rewardVersion=null,environment=null){const end=model.taskAttempts[task],trained=Object.keys(model.taskAttempts).filter(k=>model.taskAttempts[k]>0),singleTask=trained.length===1&&trained[0]===task,points=new Map();for(const r of model.history){if(environment!==null&&r.environment!==environment)continue;if(rewardVersion!==null&&(r.rewardVersion??1)!==rewardVersion)continue;if(!Number.isFinite(r.rewards?.[task]))continue;let count=r.taskAttempts?.[task];if(!Number.isSafeInteger(count)){if(singleTask)count=r.attempts;else if(r.attempts===model.attempts)count=end;else continue;}if(count<0||count>end)continue;const candidate=r.candidateRewards?.[task]??r.partialCandidateRewards?.[task];points.set(count,{attempts:count,overall:r.rewards[task],candidate:Number.isFinite(candidate)?candidate:r.validationComplete===false?null:r.rewards[task]});}return [...points.values()].sort((a,b)=>a.attempts-b.attempts);}
+
+// Keep terminal feedback visible; the physics clock and learned reward stay unchanged.
+export const PREVIEW_RESULT_HOLD=.8;
+export function previewWindow(scene){return Math.min(1.2,Math.max(0,scene?.metrics?.time??scene?.trace?.at(-1)?.time??0)+PREVIEW_RESULT_HOLD);}
+export function playbackFrame(scene,elapsed){const frames=scene.trace,duration=Math.max(0,frames.at(-1)?.time??0),clock=Math.max(0,elapsed)%(duration+PREVIEW_RESULT_HOLD),frame=traceFrame(frames,Math.min(clock,duration));return {...frame,rewardTime:clock};}
+export function drawFurthestFlag(ctx,metrics,terrain,X,Y,offset=0){
+ if(!Number.isFinite(metrics?.furthestX)||Math.abs(metrics.furthestDistance??0)<.03)return;
+ const x=X(metrics.furthestX+offset),y=Y(terrain(metrics.furthestX));ctx.save();ctx.strokeStyle='#8b8061';ctx.fillStyle='#bba477';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-23);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y-23);ctx.lineTo(x+11,y-19);ctx.lineTo(x,y-15);ctx.closePath();ctx.fill();ctx.restore();
+}
