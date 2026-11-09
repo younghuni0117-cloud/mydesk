@@ -3,6 +3,7 @@ const $=id=>document.getElementById(id),storageKey='mydesk.blog.management';
 const rpcBase=SHARED_MODEL_URL.replace(/robot_shared_model$/,'rpc/');
 export class BlogManagement {
  constructor({onChange,canDisconnect=()=>true}){
+  $('manage-title').textContent='글·메뉴 관리';
   this.onChange=onChange;this.canDisconnect=canDisconnect;this.token='';this.connected=false;this.passwordSet=false;this.busy=false;
   $('manage-login-form').addEventListener('submit',e=>{e.preventDefault();this.login();});
   $('manage-key-connect').onclick=()=>this.connectLegacy();
@@ -12,13 +13,14 @@ export class BlogManagement {
   $('manage-close').onclick=()=>{if(!this.busy)$('manage-dialog').close();};
   $('manage-dialog').addEventListener('cancel',e=>{if(this.busy)e.preventDefault();});
   $('manage-dialog').addEventListener('close',()=>this.clearFields());
+  window.addEventListener('hashchange',()=>{if(new URLSearchParams(location.hash.slice(1)).has('manage'))this.init();});
  }
  message(text,success=false){$('manage-error').textContent=text;$('manage-error').classList.toggle('is-success',success);}
  clearFields(){for(const id of ['manage-password','manage-key','manage-new-password','manage-confirm-password'])$(id).value='';}
  updateUI(){
   $('manage-login-form').hidden=this.connected;$('manage-settings').hidden=!this.connected;
   $('manage-password-open').textContent=this.passwordSet?'비밀번호 변경':'비밀번호 설정';
-  $('manage-connected-text').textContent=this.passwordSet?'이 브라우저에서 글을 관리할 수 있습니다.':'기존 관리 키로 연결되었습니다. 기억하기 쉬운 비밀번호를 설정해 주세요.';
+  $('manage-connected-text').textContent=this.passwordSet?'이 브라우저에서 글과 메뉴를 관리할 수 있습니다.':'기존 관리 키로 연결되었습니다. 기억하기 쉬운 비밀번호를 설정해 주세요.';
   $('manage-legacy').open=!this.passwordSet;
   this.onChange(this.connected?this.token:'');
  }

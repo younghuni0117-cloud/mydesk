@@ -1,11 +1,12 @@
 // Fully mocked API: no password changes or writes are sent to the real server.
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const seed=JSON.parse(fs.readFileSync(path.join(__dirname,'../blog-seed.json'))).map(p=>({...p,created_at:'2026-11-09T00:00:00Z',updated_at:'2026-11-09T00:00:00Z',revision:0}));
-(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{
+(async()=>{const {DEFAULT_MENUS}=await import('../navigation-data.mjs');const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{
  const key='A'.repeat(43),errors=[],tokens=new Set();let password=null,serial=0,changes=0;
  const contexts=[];
  async function page(){const ctx=await browser.newContext({viewport:{width:390,height:844}});contexts.push(ctx);await ctx.route('**/rest/v1/**',async route=>{
   const req=route.request(),url=new URL(req.url()),token=(req.headers()['x-client-info']||'').replace('mydesk-blog/',''),connected=(!password&&token===key)||tokens.has(token),args=req.method()==='POST'?req.postDataJSON():{};
+  if(url.pathname.endsWith('/site_navigation'))return route.fulfill({json:[{id:'main',menus:DEFAULT_MENUS,revision:0}]});
   if(url.pathname.endsWith('/blog_management_status'))return route.fulfill({json:{connected,password_set:!!password}});
   if(url.pathname.endsWith('/blog_management_login')){if(password&&args.password===password){const token='session-'+(++serial);tokens.add(token);return route.fulfill({json:{ok:true,token}});}return route.fulfill({json:{ok:false,message:'비밀번호가 맞지 않습니다.'}});}
   if(url.pathname.endsWith('/blog_management_set_password')){assert.ok(connected);changes++;password=args.new_password;tokens.clear();const token='session-'+(++serial);tokens.add(token);return route.fulfill({json:{ok:true,token}});}

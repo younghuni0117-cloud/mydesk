@@ -20,7 +20,7 @@ document.addEventListener('keydown', event => {
   if (menuToggle.getAttribute('aria-expanded') !== 'true') return;
   if (event.key === 'Escape') { event.preventDefault(); setMenu(false, true); }
   if (event.key === 'Tab') {
-    const items = [menuToggle, ...[...sidebar.querySelectorAll('a[href], summary')].filter(el=>!el.closest('details')||el.tagName==='SUMMARY'||el.closest('details').open)];
+    const items = [menuToggle, ...[...sidebar.querySelectorAll('a[href], summary')].filter(el=>el.getClientRects().length>0)];
     const index = items.indexOf(document.activeElement);
     const next = event.shiftKey ? (index - 1 + items.length) % items.length : (index + 1) % items.length;
     event.preventDefault(); items[next].focus();
@@ -44,23 +44,5 @@ function syncCalendarMenuLinks(){
 }
 syncCalendarMenuLinks();window.addEventListener('pageshow',syncCalendarMenuLinks);window.addEventListener('storage',e=>{if(e.key==='mydesk.calendar.family')syncCalendarMenuLinks();});
 
-// Blog categories are nested links; keep the active category open.
-function updateBlogNavigation(topics=[]){
- const query=new URLSearchParams(location.search), category=query.get('category'), topic=query.get('topic'), post=query.get('post');
- for(const group of sidebar.querySelectorAll('.nav-group')){
-  const cat=group.dataset.category;
-  for(const name of topics.filter(t=>t.category===cat).map(t=>t.topic)){
-   if([...group.querySelectorAll('a')].some(a=>new URL(a.href).searchParams.get('topic')===name))continue;
-   const a=document.createElement('a');a.className='nav-item';a.textContent=name;a.href='blog.html?'+new URLSearchParams({category:cat,topic:name});group.querySelector('.nav-submenu').append(a);
-  }
-  if(document.body.dataset.page==='blog'){
-   group.open=cat===(category||(post==='physicsnemo'?'structural':post?'ai':null));
-   for(const a of group.querySelectorAll('a')){
-    const url=new URL(a.href),active=cat===category&&(url.searchParams.get('topic')||'')===(topic||'');
-    a.classList.toggle('is-current',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
-   }
-  }
- }
-}
-try{updateBlogNavigation(JSON.parse(localStorage.getItem('mydesk.blog.topics')||'[]'));}catch{updateBlogNavigation();}
-window.addEventListener('blog-topics',e=>updateBlogNavigation(e.detail));
+// Navigation is shared by all pages and refreshed from the server.
+import('./site-navigation.mjs?v=menus1').then(module=>module.loadNavigation()).catch(()=>{});
