@@ -1,19 +1,20 @@
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot38';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot38';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot38';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot38';
-import {abilitySummary} from './robot-performance.mjs?v=robot38';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot38';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot38';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot38';
-import {rewardHelp} from './robot-rewards.mjs?v=robot38';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot38';
-import {RobotTeam} from './robot-team.mjs?v=robot38';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot38';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot38';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot38';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot38';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot38';
+import {drawRewardPopups} from './robot-reward-feedback.mjs?v=robot39';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot39';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot39';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot39';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot39';
+import {abilitySummary} from './robot-performance.mjs?v=robot39';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot39';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot39';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot39';
+import {rewardHelp} from './robot-rewards.mjs?v=robot39';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot39';
+import {RobotTeam} from './robot-team.mjs?v=robot39';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot39';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot39';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot39';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot39';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot39';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -95,7 +96,7 @@ function updateEvaluationOptions(report=false){
 }
 for(const key of ['validation','monitor'])get(key+'-seconds').onchange=()=>{if(training||initializing||!updateEvaluationOptions(true))return;configure(model);};
 get('observation-seconds').onchange=()=>{const input=get('observation-seconds'),seconds=Number(input.value);if(!Number.isInteger(seconds)||seconds<1||seconds>3600){input.setCustomValidity('1~3600초 사이의 정수를 입력하세요.');input.reportValidity();return;}input.setCustomValidity('');options.observationSeconds=seconds;saveOptions();if(live)startLive(liveWeights,liveSource,liveAttempt,liveVersion,liveTrial);};
-function startLive(weights=model?.weights||Array(POLICY_SIZE).fill(0),source='best',attempt=model?.attempts||0,version=model?.policyVersion||0,trial=null){liveTrial=trial;liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,seed:trial?.seed??31+i*101,disturbances:false,pushes:trial?.pushPlan||[],terrainVariant:trial?.terrainVariant??0,spawnRange:trial?.spawnRange,spawnTilt:trial?.spawnTilt,command:source==='best'?command:null,commandSchedule:source==='candidate'?trial?.commandSchedule||[]:[]}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=[...weights];liveSource=source;liveAttempt=attempt;liveVersion=version;geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;if(!training)status(`${source==='candidate'?'최근 모델':'통합 모델'} v${version} · ${STAGES[stage].label} · ${options.observationSeconds}초 관찰`);controls();}
+function startLive(weights=model?.weights||Array(POLICY_SIZE).fill(0),source='best',attempt=model?.attempts||0,version=model?.policyVersion||0,trial=null){liveTrial=trial;liveRobots=Array.from({length:options.robots},(_,i)=>new RobotWorld(stage,{...options,rewardEffects:true,seed:trial?.seed??31+i*101,disturbances:false,pushes:trial?.pushPlan||[],terrainVariant:trial?.terrainVariant??0,spawnRange:trial?.spawnRange,spawnTilt:trial?.spawnTilt,command:source==='best'?command:null,commandSchedule:source==='candidate'?trial?.commandSchedule||[]:[]}));live=liveRobots[0];previousFrames=currentFrames=liveRobots.map(w=>w.snapshot());previousLive=currentLive=currentFrames[0];liveWeights=[...weights];liveSource=source;liveAttempt=attempt;liveVersion=version;geometry=robotGeometry(live);mode='live';viewPaused=false;accumulator=0;if(!training)status(`${source==='candidate'?'최근 모델':'통합 모델'} v${version} · ${STAGES[stage].label} · ${options.observationSeconds}초 관찰`);controls();}
 function syncCommandControls(){
  get('command-mode').value=command.mode;get('command-direction').value=String(command.direction);get('command-speed').value=String(command.speed);get('command-speed-value').textContent=command.speed.toFixed(2)+'m/s';get('command-position').value=String(command.position);get('command-posture').value=command.posture;
  get('command-direction-row').hidden=command.mode!=='move';get('command-speed-row').hidden=command.mode==='hold';get('command-position-row').hidden=command.mode!=='position';get('pick-target').hidden=command.mode!=='position';get('command-summary').textContent=commandLabel(command);if(command.mode!=='position')setPicking(false);
@@ -141,7 +142,7 @@ function draw(data){
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
  drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:meta.terrain,obstacles:meta.obstacles||[],X,Y});
  if(liveSource==='best'&&command.mode==='position'){const x=X(command.position),y=Y(terrainHeight(meta.terrain.segments,command.position));ctx.strokeStyle='#527aa4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-36);ctx.lineTo(x+14,y-30);ctx.lineTo(x,y-24);ctx.stroke();ctx.fillStyle='#466989';ctx.font='10px sans-serif';ctx.fillText(command.position.toFixed(1)+'m',x+4,y-40);}
- for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,Xlocal,Y,scale);}for(const effect of hammerEffects(actor.frame,actor.meta))drawHammer(ctx,effect,Xlocal,Y,scale);}
+ for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,Xlocal,Y,scale);}for(const effect of hammerEffects(actor.frame,actor.meta))drawHammer(ctx,effect,Xlocal,Y,scale);drawRewardPopups(ctx,actor.frame,Xlocal,Y);}
  if(pushArrow){const a=pushArrow,dx=Math.cos(a.angle)*(.3+a.strength/25)*scale,dy=-Math.sin(a.angle)*(.3+a.strength/25)*scale,x=X(a.x),y=Y(a.y);ctx.strokeStyle='#bf875c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y+dy);ctx.stroke();ctx.beginPath();const angle=Math.atan2(dy,dx);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle-.45),y+dy-10*Math.sin(angle-.45));ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle+.45),y+dy-10*Math.sin(angle+.45));ctx.stroke();}
  if(drag&&drag.mode==='push'){ctx.strokeStyle='#b38d68';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(drag.x-rect.left,drag.y-rect.top);ctx.lineTo(drag.endX-rect.left,drag.endY-rect.top);ctx.stroke();}
 }

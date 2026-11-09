@@ -1,10 +1,10 @@
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot38';
-import {compareAbilities} from './robot-performance.mjs?v=robot38';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot38';
-import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot38';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot38';
-import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot38';
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot38';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot39';
+import {compareAbilities} from './robot-performance.mjs?v=robot39';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot39';
+import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot39';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot39';
+import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot39';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot39';
 export const MODEL_VERSION=5;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
