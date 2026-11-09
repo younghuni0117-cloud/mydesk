@@ -1,18 +1,18 @@
-import {sampleEnvironment} from './robot-sensors.mjs?v=robot36';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot36';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot36';
-import {abilitySummary} from './robot-performance.mjs?v=robot36';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot36';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot36';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot36';
-import {rewardHelp} from './robot-rewards.mjs?v=robot36';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot36';
-import {RobotTeam} from './robot-team.mjs?v=robot36';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot36';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot36';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot36';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot36';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot36';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot37';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot37';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot37';
+import {abilitySummary} from './robot-performance.mjs?v=robot37';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot37';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot37';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot37';
+import {rewardHelp} from './robot-rewards.mjs?v=robot37';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot37';
+import {RobotTeam} from './robot-team.mjs?v=robot37';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot37';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot37';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot37';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot37';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot37';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -42,7 +42,7 @@ function progress(completed,target,label,total=model?.attempts||0,force=false){l
 
 function controls(){get('train').disabled=initializing||recoveryBlocked||syncBusy;get('algorithm').disabled=initializing||training||recoveryBlocked;get('curriculum').disabled=initializing||training;get('reset').disabled=initializing;get('run').disabled=initializing||recoveryBlocked;for(const id of ['command-mode','command-direction','command-speed','command-position','command-posture','pick-target'])get(id).disabled=initializing||recoveryBlocked;for(const id of ['terrain','validation-seconds','monitor-seconds'])get(id).disabled=initializing||training||recoveryBlocked;get('preview').disabled=initializing||recoveryBlocked;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing||recoveryBlocked;get('focus').disabled=training||initializing||recoveryBlocked;get('auto-push').disabled=training||initializing;for(const id of ['push-min','push-max','push-frequency'])get(id).disabled=training||initializing||!options.autoPush;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
 for(const id of ['focus'])for(const [value,s]of Object.entries(STAGES)){const o=document.createElement('option');o.value=value;o.textContent=s.label;get(id).append(o);}
-for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}
+for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}get('count').value='10000';
 const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('넘어졌다 ','').replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
 function renderModel(){if(!model)return;for(const [key,a]of Object.entries(model.abilities)){cells[key][0].textContent=model.taskAttempts[key].toLocaleString();cells[key][1].textContent=signed(a.meanReward);cells[key][2].textContent=Math.round(a.passRate*100)+'%';cells[key][2].title=a.cases.map(c=>c.label+': '+(c.passed?'통과':'미통과')).join('\n');}
  if(get('balance-plan')){const longest=model.abilities.balance.cases[0]?.metrics?.longestUpright||0;get('balance-plan').textContent=stage==='balance'?`균형 학습 · ${options.curriculum?(longest<1.5?'2초 기초 · 외력 대기':longest<3.5?'4초 유지 · 외력 대기':options.validationSeconds+'초 외력 적응'):options.validationSeconds+'초 전체 조건'} · 검증 ${options.validationSeconds}초`:'';}
