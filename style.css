@@ -7,3 +7,5 @@
 
 .topbar{position:sticky;top:0;z-index:15}
 @media(max-width:760px){.sidebar{top:62px;overflow-y:auto}.sidebar-backdrop{top:62px}.menu-open .topbar{z-index:40}}
+/* Topic groups in the shared sidebar. */
+.nav-group{margin:3px 0;color:#66788e}.nav-group>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;font-size:13px;font-weight:600;border-radius:6px}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary:after{content:'›';transform:rotate(0deg);font-size:17px}.nav-group[open]>summary:after{transform:rotate(90deg)}.nav-group>summary:hover{background:#f0f3f8}.nav-submenu{margin:0 0 9px 22px;border-left:1px solid #dde4ed;padding-left:6px}.nav-submenu .nav-item{min-height:36px;padding:9px 14px;font-size:12px}.sidebar nav{min-height:0}.sidebar{overflow-y:auto}.nav-group a{overflow-wrap:anywhere}
