@@ -1,7 +1,7 @@
-import {observationScene} from './robot-transfer.mjs?v=robot46';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot46';
-import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot46';
-import {STAGES} from './robot-core.mjs?v=robot46';
+import {observationScene} from './robot-transfer.mjs?v=robot47';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot47';
+import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot47';
+import {STAGES} from './robot-core.mjs?v=robot47';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null,rollouts=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
@@ -19,7 +19,7 @@ self.onmessage=async({data})=>{
   if(data.type==='preview'){if(learner)preview();return;}
   if(data.type!=='train'||!learner||job)return;
   const target=Number(data.count);if(!(ALLOWED_ATTEMPTS.includes(target)||(data.internalTeam&&Number.isInteger(target)&&target>0&&target<=100000)))throw Error('지원하는 시도 횟수를 선택해 주세요.');
-  focus=STAGES[data.focus]?data.focus:focus;learner.setFocus(focus);learner.setAlgorithm(data.algorithm||learner.algorithm);learner.setCurriculum(data.curriculum);learner.setTrainingPushSettings(data.trainingPush);learner.setTrainingCommand(data.trainingCommand);sendModel();const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
+  focus=STAGES[data.focus]?data.focus:focus;learner.setFocus(focus);learner.setAlgorithm(data.algorithm||learner.algorithm);learner.setCurriculum(data.curriculum);learner.setBalanceTrainingSettings(data.balanceTraining);learner.setTrainingPushSettings(data.trainingPush);learner.setTrainingCommand(data.trainingCommand);sendModel();const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
   while(completed<target&&job===current&&!current.cancelled){
    // Never prepare beyond a CEM update boundary: both trial policies must use
    // exactly the same distribution as their sequential counterparts.

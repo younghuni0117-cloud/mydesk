@@ -1,16 +1,16 @@
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot46';
-import {distalActivity} from './robot-attention.mjs?v=robot46';
-import {sampleEnvironment} from './robot-sensors.mjs?v=robot46';
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot46';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot46';
-import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot46';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot46';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot47';
+import {distalActivity} from './robot-attention.mjs?v=robot47';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot47';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot47';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot47';
+import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot47';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot47';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot46';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot47';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot46';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot46';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot46';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot47';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot47';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot47';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },

@@ -1,4 +1,4 @@
-import {terrainHeight,rockVertices,TERRAINS} from './robot-terrain.mjs?v=robot46';
+import {terrainHeight,rockVertices,TERRAINS} from './robot-terrain.mjs?v=robot47';
 let atlas=null,caveAtlas=null;
 function loadArt(file,set){return new Promise(resolve=>{const image=new Image();set(image);image.onload=()=>resolve(true);image.onerror=()=>resolve(false);image.src=new URL(file,import.meta.url).href;});}
 export const terrainArtReady=typeof Image==='undefined'?Promise.resolve(false):Promise.all([loadArt('./assets/terrain-atlas.webp',i=>atlas=i),loadArt('./assets/terrain-atlas-v9.webp',i=>caveAtlas=i)]).then(r=>r.every(Boolean));

@@ -1,4 +1,4 @@
-import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot46';
+import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot47';
 
 const CACHE_KEY='mydesk.robot.v6',MAX_BYTES=8*1024*1024;
 class InvalidSharedModel extends Error {}

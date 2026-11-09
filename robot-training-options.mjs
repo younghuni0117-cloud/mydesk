@@ -1,0 +1,3 @@
+export function normalizeBalanceTraining(raw={}){const every=Number(raw?.balanceFullEvery);return {balanceEarlyStop:raw?.balanceEarlyStop!==false,balanceFullTrials:raw?.balanceFullTrials!==false,balanceFullEvery:Number.isInteger(every)&&every>=1&&every<=10000?every:8};}
+// CEM compares each policy under paired left/right starts. Keep the pair's stopping rule identical.
+export function endBalanceTrialEarly(raw,algorithm,balanceTrialIndex){const s=normalizeBalanceTraining(raw);if(!s.balanceEarlyStop)return false;if(!s.balanceFullTrials)return true;const unit=algorithm==='cem'?Math.floor(balanceTrialIndex/2):balanceTrialIndex;return (unit+1)%s.balanceFullEvery!==0;}
