@@ -1,10 +1,10 @@
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot35';
-import {compareAbilities} from './robot-performance.mjs?v=robot35';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot35';
-import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot35';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot35';
-import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot35';
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot35';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot36';
+import {compareAbilities} from './robot-performance.mjs?v=robot36';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot36';
+import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot36';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot36';
+import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot36';
+import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot36';
 export const MODEL_VERSION=5;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -14,6 +14,12 @@ export const overallScore=abilities=>stages.reduce((sum,s)=>sum+Math.tanh(abilit
 export const modelScore=model=>overallScore(model.abilities)+20*Math.tanh((model.goalReward||0)/40);
 export function migrateModel(raw){
  if(RobotLearner.valid(raw))return raw;
+ if(raw?.version===5&&raw.physicsVersion===4&&[2,3,4,5].includes(raw.rewardVersion)){
+  const next=structuredClone(raw);next.rewardVersion=REWARD_VERSION;next.pending=[];next.cohortStart=raw.attempts;next.validationBank=null;next.generalization=null;
+  if(next.ppo)next.ppo.buffer=[];if(next.searchArchive?.ppo)next.searchArchive.ppo.buffer=[];
+  next.history=next.history?.map(r=>({...r,rewardVersion:r.rewardVersion??raw.rewardVersion}));
+  return migrateModel(next);
+ }
  if(raw?.version===5&&raw.physicsVersion===4&&raw.policyKind==='direct-torque-sensor-mlp-v3'){
  const next=structuredClone(raw);next.policyKind=POLICY_KIND;for(const key of ['weights','mean','spread'])next[key]=upgradePolicyWeights(raw[key],key==='spread');if(raw.ppo){next.ppo=upgradePPO(raw.ppo);if(!next.ppo)return null;}
  if(raw.pending)next.pending=raw.pending.map(r=>({...r,weights:upgradePolicyWeights(r.weights)}));if(raw.validationBank)next.validationBank={...raw.validationBank,weights:upgradePolicyWeights(raw.validationBank.weights)};
@@ -89,7 +95,7 @@ export class RobotLearner {
  }
  completeTrial(prepared,trial){
   if(prepared.index!==this.attempts)throw Error('학습 결과의 순서가 일치하지 않습니다.');
-  const {weights,task,seed,record}=prepared,result=trial.metrics;this.attempts++;this.taskAttempts[task]++;this.algorithmAttempts[this.algorithm]++;this.pending.push({weights,score:task==='balance'?20*result.upright*result.time+2*(result.longestUpright||0)+.01*result.reward:result.reward,task,reference:prepared.reference,group:prepared.group});if(this.algorithm==='ppo')this.ppo.buffer.push(...trial.experience);
+  const {weights,task,seed,record}=prepared,result=trial.metrics;this.attempts++;this.taskAttempts[task]++;this.algorithmAttempts[this.algorithm]++;this.pending.push({weights,score:task==='balance'?(result.done&&result.terminationReason==='duration'&&result.falls===0?Math.max(0,20*result.upright*result.time+2*(result.longestUpright||0)+.01*result.reward):Math.min(-REWARDS.balanceFall,result.reward)):result.reward,task,reference:prepared.reference,group:prepared.group});if(this.algorithm==='ppo')this.ppo.buffer.push(...trial.experience);
 
   return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,spawnRange:prepared.options.spawnRange,endOnFall:prepared.options.endOnFall,spawnTilt:prepared.options.spawnTilt,trainingSeconds:prepared.options.observationSeconds,terrainVariant:prepared.options.terrainVariant,scene:record?trial:null};
  }

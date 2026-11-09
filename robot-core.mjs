@@ -1,14 +1,14 @@
-import {sampleEnvironment} from './robot-sensors.mjs?v=robot35';
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot35';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot35';
-import {motionQuality} from './robot-performance.mjs?v=robot35';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot35';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot36';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot36';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot36';
+import {motionQuality} from './robot-performance.mjs?v=robot36';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot36';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot35';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot36';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot35';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot35';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot35';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot36';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot36';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot36';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
@@ -142,11 +142,12 @@ export class RobotWorld {
     if(this.isDown&&this.stableTime>.8){this.isDown=false;this.recoveries++;recovered=true;}
     let passed=0;for(const [i,o]of this.obstacles.entries())if(o.x>this.initialX+.3&&!this.passed.has(i)&&pos.x>o.x+o.width/2+REWARDS.obstacleClearance&&upright){this.passed.add(i);passed++;}
     const progressLimit=Math.max(.15,Math.abs(goal.target)*this.duration),anchor=this.command?this.commandAnchor:this.initialX,progressPotential=x=>clamp(Math.sign(goal.target)*(x-anchor),-progressLimit,progressLimit);
-    const terms=rewardBreakdown(this.stage,{dt:DT,upright,quality,motionQuality:motion,torqueLoad:this.torqueLoad,actionChange,boundedProgress:progressPotential(pos.x)-progressPotential(this.lastX),heightProgress:relativeHeight-this.lastRelativeHeight,postureProgress:posture-this.lastPosture,speed:velocity.x,target:goal.target,angle,height:relativeHeight,distance:goal.distance,dx:pos.x-this.lastX,commanded:!!this.command,goalProgress:goal.positioned?Math.abs(this.lastGoalError??goal.error)-Math.abs(goal.error):0,goalError:goal.error,positioned:goal.positioned,lowPosture:goal.low,dy:pos.y-this.lastHeight,newFall,recovered,afterPush:this.time-this.lastPushAt<REWARDS.pushWindow,impactCost:this.impactCost,work,passed});
+    const terms=rewardBreakdown(this.stage,{dt:DT,upright,quality,motionQuality:motion,torqueLoad:this.torqueLoad,actionChange,boundedProgress:progressPotential(pos.x)-progressPotential(this.lastX),heightProgress:relativeHeight-this.lastRelativeHeight,postureProgress:posture-this.lastPosture,speed:velocity.x,target:goal.target,angle,height:relativeHeight,distance:goal.distance,dx:pos.x-this.lastX,commanded:!!this.command,goalProgress:goal.positioned?Math.abs(this.lastGoalError??goal.error)-Math.abs(goal.error):0,goalError:goal.error,positioned:goal.positioned,lowPosture:goal.low,dy:pos.y-this.lastHeight,newFall,recovered,down:this.isDown,failedBalance:this.falls>0,afterPush:this.time-this.lastPushAt<REWARDS.pushWindow,impactCost:this.impactCost,work,passed});
+    if(this.stage==='balance'&&newFall)terms.forfeiture=-Math.max(0,this.reward);
     const numerical=![pos.x,pos.y,velocity.x,...Object.values(terms)].every(Number.isFinite);
     for(const key in terms){const value=terms[key];if(Number.isFinite(value)){this.reward+=value;this.rewardTerms[key]=(this.rewardTerms[key]||0)+value;}}
     this.terminationReason=numerical?'numerical':Math.abs(pos.x)>40||pos.y<-.8?'bounds':this.steps>=Math.round(this.duration/DT)?'duration':this.endOnFall&&this.balanceLostTime>.2?'fall':null;
-    if(this.terminationReason==='fall'){const penalty=-REWARDS.remainingFailure*Math.max(0,this.duration-this.time);this.reward+=penalty;this.rewardTerms.failure=(this.rewardTerms.failure||0)+penalty;}
+    if(this.terminationReason==='fall'){const penalty=-REWARDS.remainingFailure*Math.max(0,this.duration-this.time)-(this.falls===0?REWARDS.balanceFall+Math.max(0,this.reward):0);this.reward+=penalty;this.rewardTerms.failure=(this.rewardTerms.failure||0)+penalty;}
     else if(this.terminationReason&&this.terminationReason!=='duration'){const penalty=Math.min(0,-20-8*this.duration-this.reward);this.reward+=penalty;this.rewardTerms.failure=(this.rewardTerms.failure||0)+penalty;}
     this.lastRelativeHeight=relativeHeight;this.lastPosture=posture;this.lastX=pos.x;this.lastHeight=pos.y;this.lastGoalError=goal.error;
     this.done=!!this.terminationReason;
