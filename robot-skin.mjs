@@ -115,7 +115,7 @@ export function drawRobotSkin(ctx,parts,poses,X,Y,scale,skin='explorer'){
  for(const {part,i}of parts.map((part,i)=>({part,i})).sort((a,b)=>layer(a.part.name)-layer(b.part.name))){
   if(!waistDrawn&&layer(part.name)>=1){drawMesh(ctx,waistOutline(poses[indices.pelvis],poses[indices.torso]),X,Y,style.waist,scale);waistDrawn=true;}
   if(part.name.includes('ToePart'))continue;
-  if(part.name.endsWith('Foot')){const toe=poses[indices[part.name.replace('Foot','ToePart')]];drawShoe(ctx,poses[i],toe,X,Y,scale,skin,part.name.startsWith('left'));continue;}
-  const p=poses[i],art=sprite(part,skin),s=scale/art.unit;ctx.save();ctx.translate(X(p[0])+(part.name.startsWith('left')?-scale*.012:0),Y(p[1]));ctx.rotate(-p[2]);ctx.drawImage(art.canvas,-art.canvas.width/2*s,-art.canvas.height/2*s,art.canvas.width*s,art.canvas.height*s);ctx.restore();
+  if(part.name.endsWith('Foot')){const toe=[...posePoint(poses[i],.165,-.015),poses[i][2]];drawShoe(ctx,poses[i],toe,X,Y,scale,skin,part.name.startsWith('left'));continue;}
+  const p=poses[i],art=sprite(part,skin),s=scale/art.unit;ctx.save();ctx.translate(X(p[0])+(part.name.startsWith('left')?-scale*.012:0),Y(p[1]));ctx.rotate(-p[2]);ctx.drawImage(art.canvas,-art.canvas.width/2*s,-art.canvas.height/2*s,art.canvas.width*s,art.canvas.height*s);ctx.restore();if(part.name.endsWith('Forearm')){const hand={name:part.name.replace('Forearm','Hand'),w:.09,h:.13},hp=posePoint(p,0,-.2),art=sprite(hand,skin),hs=scale/art.unit;ctx.save();ctx.translate(X(hp[0]),Y(hp[1]));ctx.rotate(-p[2]);ctx.drawImage(art.canvas,-art.canvas.width/2*hs,-art.canvas.height/2*hs,art.canvas.width*hs,art.canvas.height*hs);ctx.restore();}
  }
 }

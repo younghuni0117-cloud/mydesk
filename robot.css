@@ -164,3 +164,5 @@ body[data-page=robot] .robot-controls :is(.robot-abilities th,.robot-abilities t
 body[data-page=robot]{--robot-data-font-size:13px;--robot-data-line-height:20px}
 body[data-page=robot].robot-wide-fit{--robot-data-font-size:12px;--robot-data-line-height:16px}
 body[data-page=robot] .robot-metrics :is(strong,small),body[data-page=robot].robot-wide-fit .robot-metrics :is(strong,small){font-family:inherit;font-size:var(--robot-data-font-size);line-height:var(--robot-data-line-height);font-weight:400;font-variant-numeric:tabular-nums}
+
+.robot-score-balance{padding:6px 10px;font-size:11px;flex-shrink:0}.robot-score-balance>div:first-child{display:flex;justify-content:space-between;gap:8px;align-items:center}.robot-score-balance span:first-child{color:#2e8b57}.robot-score-balance span:last-child{color:#cb4850}.robot-score-balance small{font-size:9px;color:#8794a3}.robot-score-track{height:7px;display:flex;background:#e1e7ed;border-radius:4px;overflow:hidden;margin-top:4px}.robot-score-track i{height:100%;width:0}.robot-score-track i:first-child{background:#2e8b57}.robot-score-track i:last-child{background:#cb4850}

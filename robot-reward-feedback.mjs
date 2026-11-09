@@ -24,22 +24,23 @@ export function rewardLocations(world,term,distal){
 }
 export function rewardPopups(frame){return (frame.rewardEvents||[]).filter(e=>Math.abs(e.value)>=1&&frame.time>=e.time&&frame.time-e.time<REWARD_FEEDBACK_LIFETIME).map(e=>{const age=(frame.time-e.time)/REWARD_FEEDBACK_LIFETIME;return {...e,opacity:Math.min(1,(1-age)*3),rise:age*26};});}
 export function rewardText(value){const n=Math.abs(value);return n?(value>0?'+':'−')+(n>=10?Number(n.toFixed(0)):Number(n.toPrecision(2))):'';}
-export function robotScreenBounds(frame,parts,X,Y){
- if(!parts?.length)return null;let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
- parts.forEach((part,i)=>{const p=frame.parts?.[i];if(!p)return;const c=Math.abs(Math.cos(p[2])),s=Math.abs(Math.sin(p[2])),rx=part.circle?part.w:(c*part.w+s*part.h)/2,ry=part.circle?part.w:(s*part.w+c*part.h)/2;left=Math.min(left,X(p[0]-rx));right=Math.max(right,X(p[0]+rx));top=Math.min(top,Y(p[1]+ry));bottom=Math.max(bottom,Y(p[1]-ry));});
- const padding=Math.max(10,Math.min(32,Math.abs(X(1)-X(0))*.2));return Number.isFinite(left)?{left:left-padding,right:right+padding,top:top-padding,bottom:bottom+padding}:null;
+export function robotPartBounds(frame,parts,X,Y,skin='explorer'){
+ const scale=Math.abs(X(1)-X(0)),out=[];
+ for(let i=0;i<(parts?.length||0);i++){const part=parts[i],p=frame.parts?.[i];if(!p)continue;const shapes=[{...part,x:0,y:0},...(part.attachments||[])];for(const shape of shapes){const c=Math.cos(p[2]),s=Math.sin(p[2]),x=p[0]+c*shape.x-s*shape.y,y=p[1]+s*shape.x+c*shape.y,w=shape.w*(skin==='hiker'?(shape.name.includes('Thigh')?2:shape.name.includes('Shin')?1.8:shape.name.includes('UpperArm')?1.65:shape.name.includes('Forearm')?1.6:1):1),rx=shape.circle?w:(Math.abs(c)*w+Math.abs(s)*shape.h)/2,ry=shape.circle?w:(Math.abs(s)*w+Math.abs(c)*shape.h)/2,pad=4;out.push({body:shape.name,left:X(x-rx)-pad-(shape.name==='torso'&&['hiker','explorer'].includes(skin)?scale*.16:0),right:X(x+rx)+pad,top:Y(y+ry)-pad,bottom:Y(y-ry)+pad});}}
+ return out;
 }
+export function robotScreenBounds(frame,parts,X,Y){const boxes=robotPartBounds(frame,parts,X,Y);return boxes.length?{left:Math.min(...boxes.map(b=>b.left)),right:Math.max(...boxes.map(b=>b.right)),top:Math.min(...boxes.map(b=>b.top)),bottom:Math.max(...boxes.map(b=>b.bottom))}:null;}
 const intersects=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
 export function rewardPopupLayout(frame,X,Y,layout={},measure=text=>text.length*7){
- const occupied=[],bounds=robotScreenBounds(frame,layout.parts,X,Y),out=[],W=layout.width??Infinity,H=layout.height??Infinity;
- for(const e of rewardPopups(frame)){const text=rewardText(e.value),width=measure(text)+7,sourceX=X(e.point[0]),sourceY=Y(e.point[1])-10-e.rise,preferred=e.value>0?-1:1;
-  const left=bounds?bounds.left-width/2-6:sourceX-24,right=bounds?bounds.right+width/2+6:sourceX+24,centerX=Math.max(width/2+4,Math.min(W-width/2-4,sourceX));
-  const candidates=[[preferred<0?left:right,sourceY],[preferred<0?right:left,sourceY],...(bounds?[[centerX,bounds.top-14-e.rise],[centerX,bounds.bottom+14]]:[])];let chosen=null;
-  for(const [x,y0]of candidates){for(let i=0;i<17;i++){const offset=i===0?0:Math.ceil(i/2)*18*(i%2?-1:1),y=y0+offset,box={left:x-width/2,right:x+width/2,top:y-8,bottom:y+8};if(box.left<2||box.right>W-2||box.top<2||box.bottom>H-2||(bounds&&intersects(box,bounds))||occupied.some(b=>intersects(box,b)))continue;chosen={...e,text,x,y,box};break;}if(chosen)break;}
-  if(chosen){occupied.push(chosen.box);out.push(chosen);}
+ const occupied=[],silhouette=robotPartBounds(frame,layout.parts,X,Y,layout.skin),out=[],W=layout.width??Infinity,H=layout.height??Infinity;
+ for(const e of rewardPopups(frame)){const text=rewardText(e.value),width=measure(text)+5,sx=X(e.point[0]),sy=Y(e.point[1])-e.rise*.45,nearest=silhouette.find(b=>b.body===e.body)||[...silhouette].sort((a,b)=>Math.hypot((a.left+a.right)/2-sx,(a.top+a.bottom)/2-sy)-Math.hypot((b.left+b.right)/2-sx,(b.top+b.bottom)/2-sy))[0],b=nearest||{left:sx-8,right:sx+8,top:sy-8,bottom:sy+8},candidates=[];
+  for(const dy of [0,-14,14,-28,28,-42,42])candidates.push([b.left-width/2-3,sy+dy],[b.right+width/2+3,sy+dy]);for(const dx of [0,-14,14,-28,28])candidates.push([sx+dx,b.top-11-e.rise*.3],[sx+dx,b.bottom+11]);
+  candidates.sort((a,b)=>Math.hypot(a[0]-sx,a[1]-sy)-Math.hypot(b[0]-sx,b[1]-sy));
+  for(const [x,y]of candidates){const box={left:x-width/2,right:x+width/2,top:y-7,bottom:y+7};if(box.left<2||box.right>W-2||box.top<2||box.bottom>H-2||silhouette.some(b=>intersects(box,b))||occupied.some(b=>intersects(box,b)))continue;occupied.push(box);out.push({...e,text,x,y,box});break;}
  }
  return out;
 }
+export function rewardTotals(metrics){let positive=0,negative=0;for(const n of Object.values(metrics?.rewardTerms||{})){if(!Number.isFinite(n))continue;if(n>=0)positive+=n;else negative-=n;}const sum=positive+negative;return {positive,negative,positiveRatio:sum?positive/sum:0,negativeRatio:sum?negative/sum:0};}
 export function drawRewardPopups(ctx,frame,X,Y,layout={}){
  ctx.save();ctx.font='600 11px "Noto Sans KR", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
  for(const e of rewardPopupLayout(frame,X,Y,layout,text=>ctx.measureText(text).width)){ctx.globalAlpha=e.opacity;ctx.lineWidth=2.5;ctx.strokeStyle='#ffffffdf';ctx.strokeText(e.text,e.x,e.y);ctx.fillStyle=e.value>0?'#2e8b57':'#cb4850';ctx.fillText(e.text,e.x,e.y);}

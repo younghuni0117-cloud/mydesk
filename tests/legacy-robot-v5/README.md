@@ -1,0 +1,1 @@
+Historical v5 fixtures for the retired 16-output/1192-weight model. These tests describe the old architecture and migration promises and are retained for reference; run them at commit d36eafb in their original paths. The current v6 reset/reduced-body tests are tests/robot-v6.test.mjs.
