@@ -1,0 +1,15 @@
+{
+  "source": "사용자 제공 PDF: NVIDIA PhysicsNeMo 교육 내용 통합 정리",
+  "sourceDate": "2026-11-09",
+  "pages": 6,
+  "sections": 17,
+  "tables": 6,
+  "formulas": 3,
+  "sha256": "c768d7c2e73ac78aae858ce29a7445a13a909adf4bb9a02cb0084f23ac801afa",
+  "editorialChanges": [
+    "읽기용 목차와 강조 추가",
+    "페이지에 걸쳐 나뉜 표와 문장 연결",
+    "반복 꼬리말 및 쪽번호 제외",
+    "Z-score 수식의 누락된 빼기 기호를 보완하고 보완 사실 명시"
+  ]
+}
