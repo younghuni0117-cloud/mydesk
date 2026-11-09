@@ -1,20 +1,20 @@
-import {drawRewardPopups} from './robot-reward-feedback.mjs?v=robot40';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot40';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot39';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot39';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot39';
-import {abilitySummary} from './robot-performance.mjs?v=robot39';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot39';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot39';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot39';
-import {rewardHelp} from './robot-rewards.mjs?v=robot39';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot39';
-import {RobotTeam} from './robot-team.mjs?v=robot39';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot39';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot39';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot39';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot39';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot39';
+import {drawRewardPopups} from './robot-reward-feedback.mjs?v=robot41';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot41';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot41';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot41';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot41';
+import {abilitySummary} from './robot-performance.mjs?v=robot41';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot41';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot41';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot41';
+import {rewardHelp} from './robot-rewards.mjs?v=robot41';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot41';
+import {RobotTeam} from './robot-team.mjs?v=robot41';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot41';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot41';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows} from './robot-view.mjs?v=robot41';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot41';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot41';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -67,7 +67,7 @@ get('curriculum').onchange=()=>{options.curriculum=get('curriculum').checked;sav
 get('reward-commands').textContent=rewardHelp(STAGES).commands;
 const rewardDetails={};const rewardInfo=rewardHelp(STAGES);for(const key of ['standing','speed','penalties','push','attention']){const p=document.createElement('p');p.textContent=rewardInfo[key];get('reward-common').append(p);}for(const task of rewardInfo.tasks){const details=document.createElement('details'),summary=document.createElement('summary');details.open=task.id===stage;summary.textContent=`${task.label} · 1회 ${task.duration}초 · 목표 ${task.target}m/s`;details.append(summary);for(const [label,key]of [['상점','positive'],['벌점','negative'],['검증 통과 기준','validation']]){const p=document.createElement('p');p.textContent=label+': '+task[key];details.append(p);}get('reward-tasks').append(details);rewardDetails[task.id]=details;}
 const worker=new RobotTeam();
-function configure(saved=model){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};resolveReady?.(false);const ready=new Promise(resolve=>{resolveReady=resolve;});controls();worker.postMessage({type:'init',stage,focus:stage,saved,environment:{terrain:options.terrain,courseVersion:10,visionVersion:VISION_VERSION,...normalizeEvaluationSettings(options)},robotCount:options.robots});return ready;}
+function configure(saved=model){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};resolveReady?.(false);const ready=new Promise(resolve=>{resolveReady=resolve;});controls();worker.postMessage({type:'init',stage,focus:stage,saved,environment:{terrain:options.terrain,courseVersion:10,visionVersion:VISION_VERSION,distalLocked:true,...normalizeEvaluationSettings(options)},robotCount:options.robots});return ready;}
 function settings(){worker.postMessage({type:'settings',interval:options.interval});}
 worker.onmessage=async({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}model=data.model;renderModel();persist();if(training&&model.attempts>trainingStartAttempt)void storage.publish(model);progress(lastRequest.completed,lastRequest.target,'학습');return;}
@@ -142,7 +142,7 @@ function draw(data){
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
  drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:meta.terrain,obstacles:meta.obstacles||[],X,Y});
  if(liveSource==='best'&&command.mode==='position'){const x=X(command.position),y=Y(terrainHeight(meta.terrain.segments,command.position));ctx.strokeStyle='#527aa4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-36);ctx.lineTo(x+14,y-30);ctx.lineTo(x,y-24);ctx.stroke();ctx.fillStyle='#466989';ctx.font='10px sans-serif';ctx.fillText(command.position.toFixed(1)+'m',x+4,y-40);}
- for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,Xlocal,Y,scale);}for(const effect of hammerEffects(actor.frame,actor.meta))drawHammer(ctx,effect,Xlocal,Y,scale);drawRewardPopups(ctx,actor.frame,Xlocal,Y);}
+ for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,Xlocal,Y,scale);}for(const effect of hammerEffects(actor.frame,actor.meta))drawHammer(ctx,effect,Xlocal,Y,scale);drawRewardPopups(ctx,actor.frame,Xlocal,Y,{parts:actor.meta.parts,width:W,height:H});}
  if(pushArrow){const a=pushArrow,dx=Math.cos(a.angle)*(.3+a.strength/25)*scale,dy=-Math.sin(a.angle)*(.3+a.strength/25)*scale,x=X(a.x),y=Y(a.y);ctx.strokeStyle='#bf875c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y+dy);ctx.stroke();ctx.beginPath();const angle=Math.atan2(dy,dx);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle-.45),y+dy-10*Math.sin(angle-.45));ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle+.45),y+dy-10*Math.sin(angle+.45));ctx.stroke();}
  if(drag&&drag.mode==='push'){ctx.strokeStyle='#b38d68';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(drag.x-rect.left,drag.y-rect.top);ctx.lineTo(drag.endX-rect.left,drag.endY-rect.top);ctx.stroke();}
 }

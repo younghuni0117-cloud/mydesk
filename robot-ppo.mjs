@@ -1,6 +1,6 @@
-import {TERRAIN_SENSOR_COUNT as S} from './robot-sensors.mjs?v=robot39';
-import {RobotWorld,DT,robotGeometry,seeded,clamp} from './robot-core.mjs?v=robot39';
-import {POLICY_INPUTS as I,POLICY_BODY_INPUTS as B,POLICY_HIDDEN as H,POLICY_OUTPUTS as O,POLICY_SIZE,initialPolicy,feedbackFeatures,upgradePolicyWeights} from './robot-policy.mjs?v=robot39';
+import {TERRAIN_SENSOR_COUNT as S} from './robot-sensors.mjs?v=robot41';
+import {RobotWorld,DT,robotGeometry,seeded,clamp} from './robot-core.mjs?v=robot41';
+import {POLICY_INPUTS as I,POLICY_BODY_INPUTS as B,POLICY_HIDDEN as H,POLICY_OUTPUTS as O,POLICY_SIZE,initialPolicy,feedbackFeatures,upgradePolicyWeights} from './robot-policy.mjs?v=robot41';
 export const PPO_CONFIG=Object.freeze({gamma:.99,lambda:.95,clip:.2,epochs:4,minibatch:64,actorRate:.0003,valueRate:.001,entropy:.005,maxKL:.04});
 const baseSize=outputs=>B*H+H+H*outputs+outputs+(outputs===O?96:0),size=outputs=>baseSize(outputs)+H*S,normal=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
 export function networkForward(weights,obs,outputs=O,workspace=null){const h=workspace?.h??Array(H),z=workspace?.z??Array(outputs);let k=0;for(let j=0;j<H;j++){let v=0;for(let i=0;i<B;i++)v+=weights[k++]*(obs[i]||0);h[j]=v;}for(let j=0;j<H;j++)for(let s=0;s<S;s++)h[j]+=(weights[baseSize(outputs)+j*S+s]||0)*(obs[B+s]||0);for(let j=0;j<H;j++)h[j]=Math.tanh(h[j]+weights[k++]);for(let o=0;o<outputs;o++){let v=0;for(let j=0;j<H;j++)v+=weights[k++]*h[j];z[o]=v;}for(let o=0;o<outputs;o++)z[o]+=weights[k++];if(outputs===O&&weights.length>=880)for(let o=0;o<O;o++){const f=feedbackFeatures(obs,o);for(let j=0;j<6;j++)z[o]+=weights[784+o*6+j]*f[j];}return {h,z};}

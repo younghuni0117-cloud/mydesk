@@ -1,4 +1,4 @@
-export const REWARD_FEEDBACK_INTERVAL=.5,REWARD_FEEDBACK_LIFETIME=.8;
+export const REWARD_FEEDBACK_INTERVAL=1,REWARD_FEEDBACK_LIFETIME=.8;
 const group=body=>body.includes('Toe')?body.startsWith('left')?'leftFoot':'rightFoot':body;
 export class RewardFeedback {
  constructor(){this.pending=new Map();this.events=[];this.sequence=0;this.lastFlush=0;}
@@ -24,8 +24,24 @@ export function rewardLocations(world,term,distal){
 }
 export function rewardPopups(frame){return (frame.rewardEvents||[]).filter(e=>Math.abs(e.value)>=1&&frame.time>=e.time&&frame.time-e.time<REWARD_FEEDBACK_LIFETIME).map(e=>{const age=(frame.time-e.time)/REWARD_FEEDBACK_LIFETIME;return {...e,opacity:Math.min(1,(1-age)*3),rise:age*26};});}
 export function rewardText(value){const n=Math.abs(value);return n?(value>0?'+':'−')+(n>=10?Number(n.toFixed(0)):Number(n.toPrecision(2))):'';}
-export function drawRewardPopups(ctx,frame,X,Y){
- const occupied=[];ctx.save();ctx.font='600 11px "Noto Sans KR", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
- for(const e of rewardPopups(frame)){const text=rewardText(e.value),width=ctx.measureText(text).width+5,x=X(e.point[0])+(e.value>0?-10:10);let y=Y(e.point[1])-10-e.rise;for(let tries=0;tries<6&&occupied.some(b=>Math.abs(x-b.x)<(width+b.width)/2&&Math.abs(y-b.y)<13);tries++)y-=14;occupied.push({x,y,width});ctx.globalAlpha=e.opacity;ctx.lineWidth=2.5;ctx.strokeStyle='#ffffffdf';ctx.strokeText(text,x,y);ctx.fillStyle=e.value>0?'#2873c2':'#cb4850';ctx.fillText(text,x,y);}
+export function robotScreenBounds(frame,parts,X,Y){
+ if(!parts?.length)return null;let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
+ parts.forEach((part,i)=>{const p=frame.parts?.[i];if(!p)return;const c=Math.abs(Math.cos(p[2])),s=Math.abs(Math.sin(p[2])),rx=part.circle?part.w:(c*part.w+s*part.h)/2,ry=part.circle?part.w:(s*part.w+c*part.h)/2;left=Math.min(left,X(p[0]-rx));right=Math.max(right,X(p[0]+rx));top=Math.min(top,Y(p[1]+ry));bottom=Math.max(bottom,Y(p[1]-ry));});
+ const padding=Math.max(10,Math.min(32,Math.abs(X(1)-X(0))*.2));return Number.isFinite(left)?{left:left-padding,right:right+padding,top:top-padding,bottom:bottom+padding}:null;
+}
+const intersects=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
+export function rewardPopupLayout(frame,X,Y,layout={},measure=text=>text.length*7){
+ const occupied=[],bounds=robotScreenBounds(frame,layout.parts,X,Y),out=[],W=layout.width??Infinity,H=layout.height??Infinity;
+ for(const e of rewardPopups(frame)){const text=rewardText(e.value),width=measure(text)+7,sourceX=X(e.point[0]),sourceY=Y(e.point[1])-10-e.rise,preferred=e.value>0?-1:1;
+  const left=bounds?bounds.left-width/2-6:sourceX-24,right=bounds?bounds.right+width/2+6:sourceX+24,centerX=Math.max(width/2+4,Math.min(W-width/2-4,sourceX));
+  const candidates=[[preferred<0?left:right,sourceY],[preferred<0?right:left,sourceY],...(bounds?[[centerX,bounds.top-14-e.rise],[centerX,bounds.bottom+14]]:[])];let chosen=null;
+  for(const [x,y0]of candidates){for(let i=0;i<17;i++){const offset=i===0?0:Math.ceil(i/2)*18*(i%2?-1:1),y=y0+offset,box={left:x-width/2,right:x+width/2,top:y-8,bottom:y+8};if(box.left<2||box.right>W-2||box.top<2||box.bottom>H-2||(bounds&&intersects(box,bounds))||occupied.some(b=>intersects(box,b)))continue;chosen={...e,text,x,y,box};break;}if(chosen)break;}
+  if(chosen){occupied.push(chosen.box);out.push(chosen);}
+ }
+ return out;
+}
+export function drawRewardPopups(ctx,frame,X,Y,layout={}){
+ ctx.save();ctx.font='600 11px "Noto Sans KR", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+ for(const e of rewardPopupLayout(frame,X,Y,layout,text=>ctx.measureText(text).width)){ctx.globalAlpha=e.opacity;ctx.lineWidth=2.5;ctx.strokeStyle='#ffffffdf';ctx.strokeText(e.text,e.x,e.y);ctx.fillStyle=e.value>0?'#2e8b57':'#cb4850';ctx.fillText(e.text,e.x,e.y);}
  ctx.restore();
 }

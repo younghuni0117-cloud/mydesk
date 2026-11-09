@@ -1,10 +1,10 @@
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot39';
-import {compareAbilities} from './robot-performance.mjs?v=robot39';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot39';
-import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot39';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot39';
-import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot39';
-import {episode,POLICY_SIZE,STAGES,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot39';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot41';
+import {compareAbilities} from './robot-performance.mjs?v=robot41';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot41';
+import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot41';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot41';
+import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights} from './robot-policy.mjs?v=robot41';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot41';
 export const MODEL_VERSION=5;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -49,7 +49,7 @@ export class RobotLearner {
   if(saved?.validationBank&&vector(saved.validationBank.weights)&&stages.includes(saved.validationBank.task)&&Number.isFinite(saved.validationBank.ability?.meanReward)&&saved.validationBank.ability?.cases?.length===4)this.validationBank=structuredClone(saved.validationBank);
   if(Number.isSafeInteger(saved?.lastFullValidationAttempt)&&saved.lastFullValidationAttempt>=0&&saved.lastFullValidationAttempt<=this.attempts)this.lastFullValidationAttempt=saved.lastFullValidationAttempt;
   if(this.mean.slice(0,768).every(v=>v===0)){const tail=this.mean.slice(768);this.mean=initialPolicy(this.searchSeed);this.mean.splice(768,tail.length,...tail);}
-  const visionChanged=!!saved&&saved.environment?.visionVersion!==environment.visionVersion;if(visionChanged&&this.ppo)this.ppo.buffer=[];
+  const visionChanged=!!saved&&saved.environment?.visionVersion!==environment.visionVersion,locksChanged=!!saved&&saved.environment?.distalLocked!==environment.distalLocked;if(visionChanged||locksChanged){if(this.ppo)this.ppo.buffer=[];if(this.searchArchive?.ppo)this.searchArchive.ppo.buffer=[];}
   this.environmentChanged=!!saved&&JSON.stringify(saved.environment||{})!==JSON.stringify(environment);if(this.environmentChanged){this.generalization=null;this.validationBank=null;this.pending=[];this.cohortStart=this.attempts;}
   this.abilities=evaluateAbilities(this.weights,this.environment);this.goalReward=evaluateCommands(this.weights,this.environment);this.bestReward=modelScore(this);
   if(!this.history.length||this.environmentChanged||this.history.at(-1)?.rewardVersion!==REWARD_VERSION||!this.history.some(r=>r.rewards&&r.taskAttempts)){this.record(this.bestReward,false);this.history.at(-1).baseline=true;}
@@ -86,7 +86,7 @@ export class RobotLearner {
   const trialSlot=this.pending.length+offset,slot=this.algorithm==='cem'&&this.focus==='balance'?Math.floor(trialSlot/2):trialSlot;if(trialSlot===0)this.cohortStart=this.attempts;
   let weights;
   if(this.algorithm==='ppo'){if(!this.ppo)this.ppo=new PPOOptimizer(this.weights,this.searchSeed).snapshot();weights=[...this.ppo.actor];}
-  else if(slot===0)weights=[...this.mean];else if(slot===1)weights=[...this.weights];else{const pair=Math.floor((slot-2)/2),random=seeded((this.cohortStart*7919+pair*104729+314159+this.searchSeed)>>>0),joint=(Math.floor(this.cohortStart/32)+this.searchSeed+pair*5)%16,hidden=(Math.floor(this.cohortStart/32)+pair)%12,sign=slot%2===0?1:-1;
+  else if(slot===0)weights=[...this.mean];else if(slot===1)weights=[...this.weights];else{const pair=Math.floor((slot-2)/2),random=seeded((this.cohortStart*7919+pair*104729+314159+this.searchSeed)>>>0),movable=JOINTS.map((_,i)=>i).filter(i=>this.environment.distalLocked===false||!LOCKED_DISTAL_JOINTS.includes(JOINTS[i])),joint=movable[(Math.floor(this.cohortStart/32)+this.searchSeed+pair*5)%movable.length],hidden=(Math.floor(this.cohortStart/32)+pair)%12,sign=slot%2===0?1:-1;
    weights=this.mean.map((m,i)=>{const noise=gaussian(random),neural=(this.focus!=='balance'||horizon===fullHorizon)&&pair%4===3,selected=neural?(i<564&&Math.floor(i/47)===hidden)||(i>=564&&i<576&&i-564===hidden)||(i>=576&&i<768&&(i-576)%12===hidden)||(i>=880&&Math.floor((i-880)/26)===hidden):pair%3===0?i>=768&&i<784:pair%3===1?(i>=784+joint*6&&i<784+(joint+1)*6)||i===768+joint:i>=784&&i<880&&(i-784)%6===hidden%6,scale=pair%3===0?.4:pair%3===1?.4:.3;return clamp(m+(selected&&(i>=768||this.focus!=='balance'||horizon>2)?sign*this.spread[i]*noise*scale:0),-4,4);});}
   const task=this.focus,index=this.attempts+offset,seed=(0x2468ace0+this.searchSeed+Math.imul(this.cohortStart,2654435761))>>>0,batch=Math.floor(this.cohortStart/32),schedule=this.trainingCurriculum&&Math.max(this.abilities[task].passRate,this.abilities.balance.passRate)<.5?[]:trainingCommands(task,batch);if((!this.trainingCurriculum||Math.max(this.abilities[task].passRate,this.abilities.balance.passRate)>=.5)&&batch%6===5&&this.trainingCommand)schedule.splice(0,schedule.length,{time:0,command:this.trainingCommand});
   if(task==='balance')schedule.splice(0,schedule.length,{time:0,command:{mode:'hold'}});
