@@ -1,4 +1,4 @@
-import {TERRAIN_SENSOR_COUNT} from './robot-sensors.mjs?v=robot43';
+import {TERRAIN_SENSOR_COUNT} from './robot-sensors.mjs?v=robot45';
 export const POLICY_KIND='direct-torque-12joint-mlp-v6';
 export const POLICY_BODY_INPUTS=39,POLICY_INPUTS=39+TERRAIN_SENSOR_COUNT,POLICY_HIDDEN=12,POLICY_OUTPUTS=12;
 export const OUTPUT_START=POLICY_BODY_INPUTS*POLICY_HIDDEN+POLICY_HIDDEN;

@@ -1,13 +1,13 @@
-import {observationScene} from './robot-transfer.mjs?v=robot43';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot43';
-import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot43';
-import {STAGES} from './robot-core.mjs?v=robot43';
+import {observationScene} from './robot-transfer.mjs?v=robot45';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot45';
+import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot45';
+import {STAGES} from './robot-core.mjs?v=robot45';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null,rollouts=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
 function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:observationScene(lastTrial?.scene),endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,trainingSeconds:lastTrial?.trainingSeconds,terrainVariant:lastTrial?.terrainVariant,spawnRange:lastTrial?.spawnRange});}
 async function initialize(data,token){
- rollouts?.close();rollouts=new ParallelRollouts(typeof data.parallel==='boolean'?{enabled:data.parallel}:{});environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
+ rollouts?.close();rollouts=new ParallelRollouts(typeof data.parallel==='boolean'?{enabled:data.parallel}:{});environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);learner.onPhase=(phase,details)=>postMessage({type:'phase',phase,...details});stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
  await rollouts.start();if(token!==initToken)return;sendModel();preview();postMessage({type:'ready',parallelism:rollouts.ready?2:1});
 }
 self.onmessage=async({data})=>{
@@ -31,7 +31,7 @@ self.onmessage=async({data})=>{
    for(let i=0;i<trials.length;i++){
     if(i>0&&current.cancelled)break;
     const result=learner.completeTrial(prepared[i],trials[i]);lastCandidate=result.weights;lastTrial=result;completed++;
-    postMessage({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},algorithmAttempts:{...learner.algorithmAttempts},task:focus,score:result.score,remainingMs:(Date.now()-started)/completed*(target-completed)});
+    postMessage({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},algorithmAttempts:{...learner.algorithmAttempts},task:focus,score:result.score,travelRecord:learner.travelRecord,summary:prepared[i].options.record?{attempt:learner.attempts,time:trials[i].metrics.time,reward:trials[i].metrics.reward,pushes:trials[i].metrics.pushes,terminationReason:trials[i].metrics.terminationReason}:null,remainingMs:(Date.now()-started)/completed*(target-completed)});
     if(learner.pending.length>=learner.batchSize){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);if(job!==current)return;sendModel();}
     if(completed===1||completed%interval===0||completed===target)preview();
    }

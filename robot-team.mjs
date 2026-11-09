@@ -1,7 +1,8 @@
-import {STAGES} from './robot-core.mjs?v=robot43';
-import {modelScore,preservesAbilities,compactHistory} from './robot-learning.mjs?v=robot43';
+import {readTravelRecord} from './robot-study.mjs?v=robot45';
+import {STAGES} from './robot-core.mjs?v=robot45';
+import {modelScore,preservesAbilities,compactHistory} from './robot-learning.mjs?v=robot45';
 export class RobotTeam {
- constructor(factory=()=>new Worker(new URL('./robot-worker.mjs?v=robot43',import.meta.url),{type:'module'})){this.factory=factory;this.lanes=[];this.generation=0;this.model=null;this.settings={};this.running=false;}
+ constructor(factory=()=>new Worker(new URL('./robot-worker.mjs?v=robot45',import.meta.url),{type:'module'})){this.factory=factory;this.lanes=[];this.generation=0;this.model=null;this.settings={};this.running=false;}
  emit(data){this.onmessage?.({data});}
  terminate(){this.generation++;for(const l of this.lanes)l.worker.terminate();this.lanes=[];}
  counts(){const completed=this.lanes.reduce((n,l)=>n+l.completed,0),taskAttempts={...this.base.taskAttempts};if(this.running||this.job)taskAttempts[this.focus]+=completed;this.model.attempts=this.base.attempts+completed;this.model.taskAttempts=taskAttempts;return completed;}
@@ -19,7 +20,7 @@ export class RobotTeam {
   if(data.type==='ready'){lane.ready=true;if(training){if(this.cancelled||!lane.target)this.finish(lane);else lane.worker.postMessage({type:'train',count:lane.target,focus:this.focus,trainingPush:this.initData.trainingPush,trainingCommand:this.initData.trainingCommand,algorithm:this.initData.algorithm,curriculum:this.initData.curriculum,internalTeam:true});}else if(this.lanes.every(l=>l.ready))this.emit({type:'ready'});return;}
   if(data.type==='phase'||data.type==='goal'){this.emit(data);return;}
   if(data.type==='preview'){lane.preview=data;this.emit({...data,attempts:this.model?.attempts||data.attempts,scenes:this.lanes.map(l=>l.preview?.scene||null),team:this.lanes.length});return;}
-  if(data.type==='progress'){if(data.algorithmAttempts)this.model.algorithmAttempts={...data.algorithmAttempts};lane.completed=data.completed;const completed=this.counts();this.emit({...data,completed,target:this.target,attempts:this.model.attempts,taskAttempts:{...this.model.taskAttempts},algorithmAttempts:{...this.model.algorithmAttempts},remainingMs:(Date.now()-this.started)/Math.max(1,completed)*(this.target-completed)});return;}
+  if(data.type==='progress'){const travel=readTravelRecord(data.travelRecord);if(travel&&Math.abs(travel.distance)>Math.abs(this.model.travelRecord?.distance||0))this.model.travelRecord=travel;if(data.algorithmAttempts)this.model.algorithmAttempts={...data.algorithmAttempts};lane.completed=data.completed;const completed=this.counts();this.emit({...data,completed,target:this.target,attempts:this.model.attempts,taskAttempts:{...this.model.taskAttempts},algorithmAttempts:{...this.model.algorithmAttempts},remainingMs:(Date.now()-this.started)/Math.max(1,completed)*(this.target-completed)});return;}
   if(data.type==='done'){this.finish(lane);}
  }
  finish(lane){lane.done=true;if(!this.lanes.every(l=>l.done))return;const completed=this.counts();this.running=false;this.job=false;this.model.updatedAt=new Date().toISOString();this.emit({type:'model',model:structuredClone(this.model)});this.emit({type:'done',completed,target:this.target,cancelled:this.cancelled});}

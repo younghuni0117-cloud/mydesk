@@ -1,4 +1,4 @@
-export const REWARD_FEEDBACK_INTERVAL=1,REWARD_FEEDBACK_LIFETIME=.8;
+export const REWARD_FEEDBACK_INTERVAL=2,REWARD_FEEDBACK_LIFETIME=.8;
 const group=body=>body.includes('Toe')?body.startsWith('left')?'leftFoot':'rightFoot':body;
 export class RewardFeedback {
  constructor(){this.pending=new Map();this.events=[];this.sequence=0;this.lastFlush=0;}
@@ -33,7 +33,8 @@ export function robotScreenBounds(frame,parts,X,Y){const boxes=robotPartBounds(f
 const intersects=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
 export function rewardPopupLayout(frame,X,Y,layout={},measure=text=>text.length*7){
  const occupied=[],silhouette=robotPartBounds(frame,layout.parts,X,Y,layout.skin),out=[],W=layout.width??Infinity,H=layout.height??Infinity;
- for(const e of rewardPopups(frame)){const text=rewardText(e.value),width=measure(text)+5,sx=X(e.point[0]),sy=Y(e.point[1])-e.rise*.45,nearest=silhouette.find(b=>b.body===e.body)||[...silhouette].sort((a,b)=>Math.hypot((a.left+a.right)/2-sx,(a.top+a.bottom)/2-sy)-Math.hypot((b.left+b.right)/2-sx,(b.top+b.bottom)/2-sy))[0],b=nearest||{left:sx-8,right:sx+8,top:sy-8,bottom:sy+8},candidates=[];
+ const ranked=rewardPopups(frame).sort((a,b)=>b.time-a.time||Math.abs(b.value)-Math.abs(a.value)),selected=[];for(const sign of [1,-1]){const event=ranked.find(e=>Math.sign(e.value)===sign);if(event)selected.push(event);}
+ for(const e of selected){const text=rewardText(e.value),width=measure(text)+5,sx=X(e.point[0]),sy=Y(e.point[1])-e.rise*.45,nearest=silhouette.find(b=>b.body===e.body)||[...silhouette].sort((a,b)=>Math.hypot((a.left+a.right)/2-sx,(a.top+a.bottom)/2-sy)-Math.hypot((b.left+b.right)/2-sx,(b.top+b.bottom)/2-sy))[0],b=nearest||{left:sx-8,right:sx+8,top:sy-8,bottom:sy+8},candidates=[];
   for(const dy of [0,-14,14,-28,28,-42,42])candidates.push([b.left-width/2-3,sy+dy],[b.right+width/2+3,sy+dy]);for(const dx of [0,-14,14,-28,28])candidates.push([sx+dx,b.top-11-e.rise*.3],[sx+dx,b.bottom+11]);
   candidates.sort((a,b)=>Math.hypot(a[0]-sx,a[1]-sy)-Math.hypot(b[0]-sx,b[1]-sy));
   for(const [x,y]of candidates){const box={left:x-width/2,right:x+width/2,top:y-7,bottom:y+7};if(box.left<2||box.right>W-2||box.top<2||box.bottom>H-2||silhouette.some(b=>intersects(box,b))||occupied.some(b=>intersects(box,b)))continue;occupied.push(box);out.push({...e,text,x,y,box});break;}
@@ -42,7 +43,7 @@ export function rewardPopupLayout(frame,X,Y,layout={},measure=text=>text.length*
 }
 export function rewardTotals(metrics){let positive=0,negative=0;for(const n of Object.values(metrics?.rewardTerms||{})){if(!Number.isFinite(n))continue;if(n>=0)positive+=n;else negative-=n;}if(Number.isFinite(metrics?.positiveRewardTotal)&&Number.isFinite(metrics?.negativeRewardTotal)){positive=Math.max(0,metrics.positiveRewardTotal);negative=Math.max(0,metrics.negativeRewardTotal);}const sum=positive+negative;return {positive,negative,positiveRatio:sum?positive/sum:0,negativeRatio:sum?negative/sum:0};}
 export function drawRewardPopups(ctx,frame,X,Y,layout={}){
- ctx.save();ctx.font='600 11px "Noto Sans KR", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
- for(const e of rewardPopupLayout(frame,X,Y,layout,text=>ctx.measureText(text).width)){ctx.globalAlpha=e.opacity;ctx.lineWidth=2.5;ctx.strokeStyle='#ffffffdf';ctx.strokeText(e.text,e.x,e.y);ctx.fillStyle=e.value>0?'#2e8b57':'#cb4850';ctx.fillText(e.text,e.x,e.y);}
+ ctx.save();ctx.font='600 10px "Noto Sans KR", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+ for(const e of rewardPopupLayout(frame,X,Y,layout,text=>ctx.measureText(text).width)){ctx.globalAlpha=e.opacity;ctx.lineWidth=2.5;ctx.strokeStyle='#ffffffdf';ctx.strokeText(e.text,e.x,e.y);ctx.fillStyle=e.value>0?'#477fbd':'#cb4850';ctx.fillText(e.text,e.x,e.y);}
  ctx.restore();
 }

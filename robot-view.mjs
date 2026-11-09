@@ -20,5 +20,5 @@ export function playbackFrame(scene,elapsed,stage){
 
 export function drawFurthestFlag(ctx,metrics,terrain,X,Y,offset=0){
  if(!Number.isFinite(metrics?.furthestX)||Math.abs(metrics.furthestDistance??0)<.03)return;
- const x=X(metrics.furthestX+offset),y=Y(terrain(metrics.furthestX));ctx.save();ctx.strokeStyle='#8b8061';ctx.fillStyle='#bba477';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-23);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y-23);ctx.lineTo(x+11,y-19);ctx.lineTo(x,y-15);ctx.closePath();ctx.fill();ctx.restore();
+ const x=X(metrics.furthestX+offset),y=Y(terrain(metrics.furthestX));ctx.save();ctx.strokeStyle='#4c79a6';ctx.fillStyle='#4d83bd';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-23);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y-23);ctx.lineTo(x+11,y-19);ctx.lineTo(x,y-15);ctx.closePath();ctx.fill();ctx.restore();
 }

@@ -1,10 +1,11 @@
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot43';
-import {compareAbilities} from './robot-performance.mjs?v=robot43';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot43';
-import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot43';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot43';
-import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot43';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot43';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=robot45';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot45';
+import {compareAbilities} from './robot-performance.mjs?v=robot45';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot45';
+import {PPOOptimizer,ppoEpisode,upgradePPO} from './robot-ppo.mjs?v=robot45';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot45';
+import {POLICY_KIND,extendV3Weights,initialPolicy,upgradePolicyWeights,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot45';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot45';
 export const MODEL_VERSION=6;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -25,6 +26,7 @@ export class RobotLearner {
   this.validationBank=null;this.generalization=null;this.searchArchive=null;this.searchState={lastResetAttempt:saved?.attempts||0,restarts:0};this.lastFullValidationAttempt=0;this.algorithm='ppo';this.algorithmAttempts={cem:0,ppo:0};this.ppo=null;this.cohortStart=0;this.curriculum=Object.fromEntries(stages.map(s=>[s,.15]));this.trainingCurriculum=true;this.attempts=0;this.taskAttempts=Object.fromEntries(stages.map(s=>[s,0]));this.modelAttempt=0;this.revision=0;this.policyVersion=0;this.history=[];this.pending=[];this.focus='balance';
   if(RobotLearner.valid(saved))for(const k of ['id','weights','mean','spread','attempts','taskAttempts','modelAttempt','revision','policyVersion','history','algorithm','algorithmAttempts','ppo','pending','focus','cohortStart','curriculum','searchSeed'])this[k]=structuredClone(saved[k]);
 
+  this.travelRecord=readTravelRecord(saved?.travelRecord);
   if(saved?.searchState&&Number.isSafeInteger(saved.searchState.lastResetAttempt)&&saved.searchState.lastResetAttempt<=this.attempts&&Number.isSafeInteger(saved.searchState.restarts))this.searchState=structuredClone(saved.searchState);
   if(saved?.searchArchive)this.searchArchive=structuredClone(saved.searchArchive);if(saved?.generalization)this.generalization=structuredClone(saved.generalization);
   if(saved?.validationBank&&vector(saved.validationBank.weights)&&stages.includes(saved.validationBank.task)&&Number.isFinite(saved.validationBank.ability?.meanReward)&&saved.validationBank.ability?.cases?.length===4)this.validationBank=structuredClone(saved.validationBank);
@@ -79,6 +81,7 @@ export class RobotLearner {
   if(prepared.index!==this.attempts)throw Error('학습 결과의 순서가 일치하지 않습니다.');
   const {weights,task,seed,record}=prepared,result=trial.metrics;this.attempts++;this.taskAttempts[task]++;this.algorithmAttempts[this.algorithm]++;this.pending.push({weights,score:task==='balance'?(result.done&&result.terminationReason==='duration'&&result.falls===0?Math.max(0,20*result.upright*result.time+2*(result.longestUpright||0)+.01*result.reward):Math.min(-REWARDS.balanceFall,result.reward)):result.reward,task,reference:prepared.reference,group:prepared.group});if(this.algorithm==='ppo')this.ppo.buffer.push(...trial.experience);
 
+  this.travelRecord=nextTravelRecord(this.travelRecord,result,{attempt:this.attempts,task,terrain:this.environment.terrain||'meadow'});
   return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,spawnRange:prepared.options.spawnRange,endOnFall:prepared.options.endOnFall,spawnTilt:prepared.options.spawnTilt,trainingSeconds:prepared.options.observationSeconds,terrainVariant:prepared.options.terrainVariant,scene:record?trial:null};
  }
  trainOne(options={}){const prepared=this.prepareTrial(options);return this.completeTrial(prepared,prepared.algorithm==='ppo'?ppoEpisode(prepared):episode(prepared.weights,prepared.task,prepared.seed,prepared.options));}
@@ -98,6 +101,7 @@ export class RobotLearner {
   const full=force||this.attempts-this.lastFullValidationAttempt>=36;
   if(winner&&(this.algorithm!=='ppo'||this.ppo.updates%2===0||force)&&!winner.weights.every((w,i)=>w===this.weights[i])){
    if(!active())return null;
+   this.onPhase?.('candidate-validation',{task:this.focus,seconds:normalizeEvaluationSettings(this.environment).validationSeconds});
    const ability=validation?await validation.ability(winner.weights,this.focus,this.environment,active):evaluateAbility(winner.weights,this.focus,this.environment);await yieldControl();if(!active()||!ability)return null;
    this.revision++;this.record(this.bestReward,false,{[this.focus]:ability},false);
    if(preservesAbility(this.abilities[this.focus],ability)&&compareAbilities(ability,this.abilities[this.focus],this.focus)>0&&(!this.validationBank||compareAbilities(ability,this.validationBank.ability,this.focus)>0))this.validationBank={weights:[...winner.weights],task:this.focus,ability};
@@ -105,13 +109,14 @@ export class RobotLearner {
   }
   if(this.pending.length)this.updateDistribution();
   if(!full||!this.validationBank)return false;
+  this.onPhase?.('full-validation',{seconds:normalizeEvaluationSettings(this.environment).validationSeconds});
   const bank=this.validationBank,abilities={[bank.task]:bank.ability};
   for(const task of stages.filter(s=>s!==bank.task)){if(!active())return null;abilities[task]=validation?await validation.ability(bank.weights,task,this.environment,active):evaluateAbility(bank.weights,task,this.environment);await yieldControl();if(!active()||!abilities[task])return null;if(!preservesAbility(this.abilities[task],abilities[task])){this.validationBank=null;this.lastFullValidationAttempt=this.attempts;this.revision++;this.record(this.bestReward,false,abilities,false);return false;}}
   const goalReward=validation?await validation.commands(bank.weights,this.environment,active):evaluateCommands(bank.weights,this.environment);if(!active()||goalReward===null)return null;
   this.validationBank=null;this.lastFullValidationAttempt=this.attempts;const accepted=this.adopt(bank.weights,abilities,goalReward);
-  if(accepted&&active()){const seconds=normalizeEvaluationSettings(this.environment).monitorSeconds,cases=monitorCases(seconds);const ability=validation?await validation.ability(bank.weights,this.focus,this.environment,active,cases):evaluateAbility(bank.weights,this.focus,this.environment,cases);if(ability)this.generalization={task:this.focus,attempts:this.attempts,rewardVersion:REWARD_VERSION,seconds,ability};}
+  if(accepted&&active()){this.onPhase?.('monitor',{seconds:normalizeEvaluationSettings(this.environment).monitorSeconds});const seconds=normalizeEvaluationSettings(this.environment).monitorSeconds,cases=monitorCases(seconds);const ability=validation?await validation.ability(bank.weights,this.focus,this.environment,active,cases):evaluateAbility(bank.weights,this.focus,this.environment,cases);if(ability)this.generalization={task:this.focus,attempts:this.attempts,rewardVersion:REWARD_VERSION,seconds,ability};}
   return accepted;
  }
  checkpoint(){if(!this.pending.length)return;const winner=this.candidate(true);if(!winner)return;this.adopt(winner.weights,evaluateAbilities(winner.weights,this.environment));this.updateDistribution();}
- snapshot(){return {searchState:structuredClone(this.searchState),searchArchive:structuredClone(this.searchArchive),generalization:structuredClone(this.generalization),validationBank:structuredClone(this.validationBank),lastFullValidationAttempt:this.lastFullValidationAttempt,version:6,searchSeed:this.searchSeed,rewardVersion:REWARD_VERSION,algorithm:this.algorithm,algorithmAttempts:{...this.algorithmAttempts},ppo:this.ppo?structuredClone(this.ppo):null,pending:structuredClone(this.pending),focus:this.focus,cohortStart:this.cohortStart,curriculum:{...this.curriculum},goalReward:this.goalReward,physicsVersion:5,policyKind:POLICY_KIND,environment:{...this.environment},id:this.id,weights:[...this.weights],mean:[...this.mean],spread:[...this.spread],attempts:this.attempts,taskAttempts:{...this.taskAttempts},modelAttempt:this.modelAttempt,revision:this.revision,policyVersion:this.policyVersion,abilities:structuredClone(this.abilities),history:structuredClone(this.history),updatedAt:new Date().toISOString()};}
+ snapshot(){return {travelRecord:structuredClone(this.travelRecord),searchState:structuredClone(this.searchState),searchArchive:structuredClone(this.searchArchive),generalization:structuredClone(this.generalization),validationBank:structuredClone(this.validationBank),lastFullValidationAttempt:this.lastFullValidationAttempt,version:6,searchSeed:this.searchSeed,rewardVersion:REWARD_VERSION,algorithm:this.algorithm,algorithmAttempts:{...this.algorithmAttempts},ppo:this.ppo?structuredClone(this.ppo):null,pending:structuredClone(this.pending),focus:this.focus,cohortStart:this.cohortStart,curriculum:{...this.curriculum},goalReward:this.goalReward,physicsVersion:5,policyKind:POLICY_KIND,environment:{...this.environment},id:this.id,weights:[...this.weights],mean:[...this.mean],spread:[...this.spread],attempts:this.attempts,taskAttempts:{...this.taskAttempts},modelAttempt:this.modelAttempt,revision:this.revision,policyVersion:this.policyVersion,abilities:structuredClone(this.abilities),history:structuredClone(this.history),updatedAt:new Date().toISOString()};}
 }
