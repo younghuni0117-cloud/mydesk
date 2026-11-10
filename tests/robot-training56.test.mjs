@@ -17,8 +17,12 @@ test('36 outputs and previous-action/task inputs agree across actor, critic, gra
 });
 test('course proportions, change period, mixtures and bounded domains are reproducible',()=>{
  const specs=Array.from({length:7},(_,i)=>trainingCondition(i,42));assert.deepEqual(new Set(specs.map(s=>s.course)),new Set(TRAINING_COURSES));assert.deepEqual(specs[0],trainingCondition(0,42));assert.deepEqual(trainingCondition(0,42,{changeEvery:5}),trainingCondition(4,42,{changeEvery:5}));
- const weighted={weights:{flat:3,uphill:1,downhill:0,slopes:0,stones:0,lowSteps:0,highSteps:0}};const names=Array.from({length:4},(_,i)=>trainingCondition(i,42,weighted).course);assert.equal(names.filter(n=>n==='flat').length,3);
- const tasks=Array.from({length:10},(_,i)=>mixedTask('walk',i,42));assert.equal(tasks.filter(t=>t==='walk').length,6);for(const t of ['balance','recover','run','obstacles'])assert.equal(tasks.filter(x=>x===t).length,1);
+ const legacyWeights={weights:{flat:5,uphill:0,downhill:0,slopes:0,stones:0,lowSteps:0,highSteps:0}};assert.equal(new Set(Array.from({length:7},(_,i)=>trainingCondition(i,42,legacyWeights).course)).size,7);
+ const tasks=Array.from({length:10},(_,i)=>mixedTask('walk',i,42));assert.deepEqual(tasks,['walk','run','obstacles','balance','recover','walk','run','obstacles','balance','recover']);
+ for(const t of ['balance','recover','walk','run','obstacles'])assert.equal(tasks.filter(x=>x===t).length,2);
+ assert.ok(Array.from({length:10},(_,i)=>mixedTask('run',i,42,{mixMode:'selected'})).every(t=>t==='run'));
+ const random=Array.from({length:50},(_,i)=>mixedTask('walk',i,42,{mixMode:'random'}));assert.ok(new Set(random).size===5);assert.notDeepEqual(random.slice(0,10),tasks);assert.deepEqual(random,Array.from({length:50},(_,i)=>mixedTask('walk',i,42,{mixMode:'random'})));
+
  for(const s of specs){assert.ok(s.massScales.every(v=>v>=.85&&v<=1.15));assert.ok(s.motorScale>=.85&&s.motorScale<=1.15);assert.ok(s.friction>=.2&&s.friction<=1.3);assert.ok(s.delaySteps<=1);}
  assert.equal(normalizeGround({massVariation:20}).massVariation,.3);
 });
