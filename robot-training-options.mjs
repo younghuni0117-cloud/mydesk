@@ -1,3 +1,5 @@
 export function normalizeBalanceTraining(raw={}){const every=Number(raw?.balanceFullEvery),seconds=Number(raw?.trainingSeconds);return {trainingSeconds:Number.isInteger(seconds)&&seconds>=1&&seconds<=120?seconds:10,balanceEarlyStop:raw?.balanceEarlyStop!==false,balanceFullTrials:raw?.balanceFullTrials!==false,balanceFullEvery:Number.isInteger(every)&&every>=1&&every<=10000?every:8};}
-// CEM compares each policy under paired left/right starts. Keep the pair's stopping rule identical.
-export function endBalanceTrialEarly(raw,algorithm,balanceTrialIndex){const s=normalizeBalanceTraining(raw);if(!s.balanceEarlyStop)return false;if(!s.balanceFullTrials)return true;const unit=algorithm==='cem'?Math.floor(balanceTrialIndex/2):balanceTrialIndex;return (unit+1)%s.balanceFullEvery!==0;}
+// Periods are real trials in both algorithms. CEM retains matched L/R pairs.
+export function fullTrialPeriod(every,algorithm){return algorithm==='cem'?Math.max(2,2*Math.ceil(every/2)):every;}
+export function endBalanceTrialEarly(raw,algorithm,balanceTrialIndex){const s=normalizeBalanceTraining(raw);if(!s.balanceEarlyStop)return false;if(!s.balanceFullTrials)return true;const period=fullTrialPeriod(s.balanceFullEvery,algorithm);return algorithm==='cem'?(Math.floor(balanceTrialIndex/2)+1)%(period/2)!==0:(balanceTrialIndex+1)%period!==0;}
+export const effectiveTrainingPush=({stage,autoPush,curriculum,horizon,trainingSeconds})=>autoPush!==false&&!(stage==='balance'&&curriculum&&horizon<trainingSeconds);

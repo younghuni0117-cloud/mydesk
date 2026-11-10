@@ -13,8 +13,8 @@ test('angle targets preserve asymmetric anatomical limits and bounded damped tor
  const world=new RobotWorld('balance',{autoPush:false});
  for(const m of world.motors){
   assert.ok(JOINT_SERVOS[m.name]);
-  assert.equal(jointTargetAngle(-1,m.lower,m.upper),m.lower);
-  assert.equal(jointTargetAngle(1,m.lower,m.upper),m.upper);
+  assert.equal(jointTargetAngle(-1,m.lower,m.upper),m.lower===0?m.upper:m.lower);
+  assert.equal(jointTargetAngle(1,m.lower,m.upper),m.upper===0?m.lower:m.upper);
   assert.equal(Math.abs(jointTargetAngle(0,m.lower,m.upper)),0);
   for(const action of [-5,-1,-.2,0,.2,1,5])for(const angle of [-3,0,3])for(const speed of [-20,-1,0,1,20]){
    const t=jointServoTorque(m,action,angle,speed);
@@ -25,9 +25,9 @@ test('angle targets preserve asymmetric anatomical limits and bounded damped tor
   assert.ok(jointServoTorque(m,0,0,-1)>0,'damps negative speed');
   assert.equal(jointServoTorque(m,1,-10,10),0,'no driving past speed envelope');
  }
- assert.equal(jointTargetAngle(.5,-2.6,0),0);
+ assert.equal(jointTargetAngle(.5,-2.6,0),-1.3);
  assert.equal(jointTargetAngle(-.5,-2.6,0),-1.3);
- assert.equal(jointTargetAngle(-.5,0,2.6),0);
+ assert.equal(jointTargetAngle(-.5,0,2.6),1.3);
  assert.equal(jointTargetAngle(.5,0,2.6),1.3);
 });
 

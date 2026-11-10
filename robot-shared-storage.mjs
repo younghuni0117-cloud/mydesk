@@ -1,4 +1,5 @@
-import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot50';
+import {mergeTravelRecord} from './robot-study.mjs?v=robot51';
+import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot51';
 
 export const ROBOT_CACHE_KEY='mydesk.robot.v8';
 const CACHE_KEY=ROBOT_CACHE_KEY,MAX_BYTES=8*1024*1024;
@@ -30,7 +31,7 @@ export class RobotSharedStorage {
   await this.discardRetiredData();
   let pending=false;try{const saved=JSON.parse(this.local?.getItem(CACHE_KEY)||'null'),model=this.decode(saved?.model);if(model){this.cachedModel=model;pending=saved.pending===true;}else if(saved)this.local?.removeItem(CACHE_KEY);}catch{}
   if(pending)this.pendingModel=structuredClone(this.cachedModel);
-  try{if(this.pendingModel){const result=await this.publish(this.pendingModel,{force:true});if(!result.ok)throw result.error;}const model=await this.read();if(model){this.cache(model,false);return {model,blocked:false,source:'shared'};}return {model:this.cachedModel,blocked:false,source:'local'};}
+  try{if(this.pendingModel){const result=await this.publish(this.pendingModel,{force:true});if(!result.ok)throw result.error;}const localModel=this.cachedModel,model=await this.read();if(model){if(localModel?.id===model.id)model.travelRecord=mergeTravelRecord(model.travelRecord,localModel.travelRecord);this.cache(model,false);return {model,blocked:false,source:'shared'};}return {model:this.cachedModel,blocked:false,source:'local'};}
   catch(error){this.setState(error instanceof InvalidSharedModel?'invalid':'offline');return {model:this.cachedModel,blocked:error instanceof InvalidSharedModel,source:'local',error};}
  }
  async save(model){if(!this.decode(model))return {ok:false};this.cache(model);return {ok:true};}

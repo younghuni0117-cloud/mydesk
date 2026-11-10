@@ -1,4 +1,4 @@
-import {walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot50';
+import {walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot51';
 export const REWARD_VERSION=9;
 export const REWARDS=Object.freeze({gaze:.3,distalMotion:.35,distalChange:.06,walkUpright:.2,walkQuality:.5,walkSpeed:4,walkForward:10,walkFall:30,walkDown:8,upright:2,balanceUpright:10,balanceUnstable:2,balanceFall:30,balanceDown:8,balanceQuality:8,motionQuality:4,lowQuality:4,remainingFailure:6,alive:.1,speed:2,speedVariance:.3,tilt:1.2,lowHeight:.8,heightReference:.9,drift:.8,forward:5,crawl:.1,maxStepDistance:.08,rise:2,recovery:8,fall:12,pushStanding:1.5,pushDown:.5,pushWindow:1.5,impact:.5,impactImpulse:.06,impactCap:4,effort:.003,obstacle:10,obstacleClearance:.2,arrival:2,posture:2,lowPostureHeight:.62,impactSpeed:.6,impactEnergy:.06,recoveryProgress:6,postureProgress:2});
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -32,7 +32,7 @@ export function rewardBreakdown(stage,s){const c=REWARDS,moving=Math.abs(s.targe
  return terms;
 }
 export function rewardHelp(stages){const c=REWARDS;return {
- attention:`실제 눈 센서가 관측한 지형 범위에 자세 품질을 곱해 초당 최대 +${c.gaze}점입니다. 목의 과도한 회전과 제어 급변에는 작은 비용을 줍니다. 머리 목표각이나 기본 보행 동작은 지정하지 않습니다.`,
+ attention:`실제 눈 센서가 관측한 지형 범위에 자세 품질을 곱해 초당 최대 +${c.gaze}점입니다. 목의 과도한 회전과 제어 급변에는 작은 비용을 줍니다. 머리 목표각은 모델이 학습하며 미리 정한 시선 각도나 보행 동작은 없습니다.`,
  standing:`균형은 서 있기 초당 +10점과 자세 품질 8q²−4(1−q)점입니다. 이동 목표가 있는 걷기·달리기는 서 있기 +0.2점, 자세 품질 0.5q²−4(1−q)점만 적용합니다. 다른 과제와 명시적인 정지 명령은 기존 자세 보상을 유지합니다.`,
  speed:`걷기 목표 0.55m/s에는 초당 최대 +4점, 달리기 목표 1.4m/s에는 최대 +6점의 속도 일치 보상을 줍니다. 이동 보상은 실제 목표 방향 진행 1m당 최대 +10점에 지지 품질을 곱합니다. 쓰러져 미끄러질 때의 양의 이동·속도 보상은 0입니다. 되돌아간 거리는 전액 감점합니다.`,
  penalties:`걷기·달리기에서 전진 속도가 목표의 40%보다 느리면 부족한 비율에 따라 초당 최대 −4점입니다. 제자리 정지는 순벌점, 정상 전진은 순보상이 되도록 설계했습니다. 단, 정지·도착 명령의 멈춤은 벌하지 않습니다. 균형·걷기·달리기는 넘어짐 −30점과 쓰러져 있는 동안 초당 −8점입니다. 균형은 첫 실패에 누적 가점을 회수하고 이후 가점을 차단합니다. 기울기·낮은 높이·충격·에너지·제어 급변 비용도 적용합니다.`,

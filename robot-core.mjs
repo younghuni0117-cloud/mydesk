@@ -1,17 +1,17 @@
-import {JOINT_SERVOS,jointServoTorque} from './robot-actuation.mjs?v=robot50';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot50';
-import {distalActivity} from './robot-attention.mjs?v=robot50';
-import {sampleEnvironment} from './robot-sensors.mjs?v=robot50';
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot50';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot50';
-import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot50';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot50';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=robot51';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot51';
+import {distalActivity} from './robot-attention.mjs?v=robot51';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot51';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot51';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot51';
+import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot51';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot51';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot50';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot51';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot50';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot50';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot50';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot51';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot51';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot51';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
@@ -29,7 +29,7 @@ export function seeded(seed) { return () => {seed=(Math.imul(seed,1664525)+10139
 const wrap = a => Math.atan2(Math.sin(a),Math.cos(a));
 export class RobotWorld {
   constructor(stage='balance', options={}) {
-    this.distalLocked=false;this.stage = STAGES[stage] ? stage : 'balance'; this.task=STAGES[this.stage];this.controlStride=['walk','run'].includes(this.stage)?6:3;
+    this.actuation=normalizeActuation(options);this.distalLocked=false;this.stage = STAGES[stage] ? stage : 'balance'; this.task=STAGES[this.stage];this.controlStride=['walk','run'].includes(this.stage)?6:3;
     this.duration=Number.isInteger(options.observationSeconds)&&options.observationSeconds>=1&&options.observationSeconds<=3600?options.observationSeconds:this.task.duration;
     this.rewardFeedback=options.record||options.rewardEffects?new RewardFeedback():null;this.rewardContactPoints=[];
     this.seed=options.seed??1;this.random=seeded(this.seed);this.time=0;this.reward=0;this.energy=0;this.steps=0;
@@ -88,29 +88,29 @@ export class RobotWorld {
   joint(name,a,b,x,y,lower,upper,torque){
     const locked=this.distalLocked&&LOCKED_DISTAL_JOINTS.includes(name);if(locked)lower=upper=0;
     const joint=this.world.createJoint(RevoluteJoint({enableLimit:true,lowerAngle:lower,upperAngle:upper,enableMotor:false,maxMotorTorque:torque,motorSpeed:0,collideConnected:false},a,b,this.transform(x,y)));
-    this.joints[name]=joint;this.motors.push({name,joint,lower,upper,torque,...JOINT_SERVOS[name],locked,bodyA:a,bodyB:b});
+    this.joints[name]=joint;this.motors.push({name,joint,lower,upper,torque,kp:JOINT_SERVOS[name].kp*SERVO_PROFILES[this.actuation.servoProfile].kp,kd:JOINT_SERVOS[name].kd*SERVO_PROFILES[this.actuation.servoProfile].kd,target:0,locked,bodyA:a,bodyB:b});
   }
   makeRobot(){
     const pelvis=this.part('pelvis',0,1.06,.3,.18,4,'#536d8c');
     const torso=this.part('torso',0,1.375,.32,.45,6,'#6788ac');
     const head=this.part('head',0,1.75,.13,.13,1,'#bdcbdc',true);
-    this.joint('waist',pelvis,torso,0,1.15,-1.4,.9,95);this.joint('neck',torso,head,0,1.62,-1.05,1.05,8);
+    this.joint('waist',pelvis,torso,0,1.15,...JOINT_RANGES.waist,95);this.joint('neck',torso,head,0,1.62,...JOINT_RANGES.neck,8);
     for(const [side,color] of [['left','#8fa8c5'],['right','#d6a174']]){
       const thigh=this.part(side+'Thigh',0,.805,.11,.45,1.4,color);
       const shin=this.part(side+'Shin',0,.355,.085,.45,1,color);
       const foot=this.part(side+'Foot',.07,.08,.25,.1,.5,color);
       foot.createFixture(Box(.04,.035,Vec2(.165,-.015)),{density:.15/(.08*.07),friction:1.2,restitution:.015,filterGroupIndex:-1,filterCategoryBits:side==='left'?2:4});this.parts[side+'ToePart']=foot;
-      this.joint(side+'Hip',pelvis,thigh,0,1.03,-.65,2.1,80);
+      this.joint(side+'Hip',pelvis,thigh,0,1.03,...JOINT_RANGES[side+'Hip'],80);
       // Facing +X: knees flex backward (negative), elbows forward (positive).
-      this.joint(side+'Knee',thigh,shin,0,.58,-2.6,0,80);
-      this.joint(side+'Ankle',shin,foot,0,.13,-1.1,1.1,45);
+      this.joint(side+'Knee',thigh,shin,0,.58,...JOINT_RANGES[side+'Knee'],80);
+      this.joint(side+'Ankle',shin,foot,0,.13,...JOINT_RANGES[side+'Ankle'],45);
 
       const sx=0; // Both shoulders project onto the same side-view axis, like the hips.
       const upper=this.part(side+'UpperArm',sx,1.39,.085,.3,.7,color);
       const lower=this.part(side+'Forearm',sx,1.105,.073,.27,.5,color);
       lower.createFixture(Box(.045,.065,Vec2(0,-.2)),{density:.2/(.09*.13),friction:.5,restitution:.015,filterGroupIndex:-1,filterCategoryBits:side==='left'?2:4});this.parts[side+'Hand']=lower;
-      this.joint(side+'Shoulder',torso,upper,sx,1.54,-1.05,3.05,25);
-      this.joint(side+'Elbow',upper,lower,sx,1.24,0,2.6,20);
+      this.joint(side+'Shoulder',torso,upper,sx,1.54,...JOINT_RANGES[side+'Shoulder'],25);
+      this.joint(side+'Elbow',upper,lower,sx,1.24,...JOINT_RANGES[side+'Elbow'],20);
 
     }
   }
@@ -134,17 +134,18 @@ export class RobotWorld {
    if(this.policyWeights!==weights){this.policyWeights=weights;this.zeroPolicy=weights.every(v=>v===0);}
    if(this.steps%this.controlStride===0||this.commandChanged)this.actions=this.zeroPolicy?Array(JOINTS.length).fill(0):policyActions(weights,this.observations());this.commandChanged=false;
   }
-  applyActuation(dt){let work=0;for(let i=0;i<this.motors.length;i++){const m=this.motors[i];m.joint.enableMotor(false);if(m.locked){this.activeTorques[i]=0;continue;}const speed=m.joint.getJointSpeed(),torque=jointServoTorque(m,this.actions[i],m.joint.getJointAngle(),speed);this.activeTorques[i]=torque;this.torqueLoad+=(torque/m.torque)**2*dt/this.motors.length;if(torque){m.bodyB.applyTorque(torque,true);m.bodyA.applyTorque(-torque,true);}work+=Math.abs(torque*speed)*dt;}return work;}
+  applyActuation(dt){let work=0;for(let i=0;i<this.motors.length;i++){const m=this.motors[i];m.joint.enableMotor(false);if(m.locked){this.activeTorques[i]=0;continue;}m.target=advanceJointTarget(m.target,jointTargetAngle(this.actions[i],m.lower,m.upper),this.actuation.targetSpeed,dt);const speed=m.joint.getJointSpeed(),torque=jointTargetTorque(m,m.target,m.joint.getJointAngle(),speed);this.activeTorques[i]=torque;this.torqueLoad+=(torque/m.torque)**2*dt/this.motors.length;if(torque){m.bodyB.applyTorque(torque,true);m.bodyA.applyTorque(-torque,true);}work+=Math.abs(torque*speed)*dt;}return work;}
   applyScheduledCommands(){while(this.nextCommand<this.commandSchedule.length&&this.time>=this.commandSchedule[this.nextCommand].time)this.setCommand(this.commandSchedule[this.nextCommand++].command);}
   step(weights=Array(POLICY_SIZE).fill(0),report=true,actions=null){
     this.applyScheduledCommands();
-    this.impactCost=0;if(this.rewardFeedback)this.rewardContactPoints=[];this.torqueLoad=0;const previousActions=[...this.actions];if(actions)this.actions=actions;else this.control(weights);if(this.distalLocked)this.actions=this.actions.map((v,i)=>this.motors[i].locked?0:v);const actionChange=this.actions.reduce((sum,a,i)=>sum+(a-previousActions[i])**2,0)/this.actions.length;let work=0;
+    this.impactCost=0;if(this.rewardFeedback)this.rewardContactPoints=[];this.torqueLoad=0;const previousActions=[...this.actions];if(actions)this.actions=actions;else this.control(weights);if(this.distalLocked)this.actions=this.actions.map((v,i)=>this.motors[i].locked?0:v);const previousTargets=this.motors.map(m=>m.target);let work=0;
     // Sample once per action interval, sharing the same measurements with policy and reward.
     if(this.steps%this.controlStride===0&&this.lastVisionStep!==this.steps)this.readVision();
     while(this.nextPushIndex<this.pushes.length&&this.time>=this.pushes[this.nextPushIndex].time){const p=this.pushes[this.nextPushIndex++];this.push(p.strength,p.direction,p.location,p.duration||0);this.impactEvents.at(-1).scheduledTime=p.time;this.pushesApplied++;this.lastPushAt=this.time;}
     // Smaller steps resolve loaded servos and fast motion; joint constraints enforce anatomical limits.
     const stressed=this.motors.some((m,i)=>Math.abs(m.joint.getJointSpeed())>4.5||Math.abs(jointServoTorque(m,this.actions[i],m.joint.getJointAngle(),m.joint.getJointSpeed()))>m.torque*.1),substeps=stressed?12:2;
     for(let i=0;i<substeps;i++){this.resistWaist();work+=this.applyActuation(DT/substeps);if(this.sustainedPush&&this.sustainedPush.remaining>0){this.sustainedPush.body.applyForce(this.sustainedPush.vector,this.sustainedPush.body.getWorldPoint(this.sustainedPush.localPoint),true);this.sustainedPush.remaining-=DT/substeps;}this.world.step(DT/substeps,stressed?10:8,stressed?16:10);this.world.clearForces();}this.energy+=work;this.time+=DT;this.steps++;
+    const actionChange=this.motors.reduce((sum,m,i)=>sum+((m.target-previousTargets[i])/DT)**2,0)*DT/this.motors.length;
     const pelvis=this.parts.pelvis,torso=this.parts.torso,pos=pelvis.getPosition(),velocity=pelvis.getLinearVelocity();
     const angle=wrap(torso.getAngle()),footDown=['leftFoot','rightFoot','leftToePart','rightToePart'].some(n=>(this.contacts.get(n)||0)>0);
     const relativeHeight=pos.y-this.groundHeight(pos.x);
