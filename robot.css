@@ -223,5 +223,6 @@ body[data-page=robot] .robot-controls>.robot-chart{margin-top:0;margin-bottom:8p
 .robot-ground-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}.robot-ground-grid label{min-width:0}.robot-ground-grid input{min-width:0;width:100%}.robot-training-caption{font-size:11px;color:#566d80}
 .robot-terrain-review{width:100%;font-size:12px;border-collapse:collapse}.robot-terrain-review th,.robot-terrain-review td{padding:6px 4px;text-align:right;border-bottom:1px solid #e2e7ee}.robot-terrain-review th:first-child,.robot-terrain-review td:first-child{text-align:left}#rb-terrain-results{margin-top:12px;font-size:12px}#rb-terrain-results summary{cursor:pointer}
 
-/* Reserve the first line for centred, unboxed training information. */
-body[data-page=robot] .robot-stage-tools{top:28px}
+
+
+.robot-environment-info{margin:0;color:#607b97;text-align:center;font-size:clamp(9px,2.8vw,11px);line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0}

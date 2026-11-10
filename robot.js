@@ -1,4 +1,4 @@
-import {drawTrainingStatus} from './robot-training-view.mjs?v=robot61';
+import {trainingStatusLines} from './robot-training-view.mjs?v=robot61';
 import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=robot60';
 import {normalizeGround} from './robot-training-ground.mjs?v=robot60';
 import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=robot60';
@@ -187,7 +187,7 @@ function draw(data){
  if(liveSource==='best'&&command.mode==='position'){const x=X(command.position),y=Y(terrainHeight(meta.terrain.segments,command.position));ctx.strokeStyle='#527aa4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-36);ctx.lineTo(x+14,y-30);ctx.lineTo(x,y-24);ctx.stroke();ctx.fillStyle='#466989';ctx.font='10px sans-serif';ctx.fillText(command.position.toFixed(1)+'m',x+4,y-40);}
 
  // Independent environments are displayed about one robot height apart.
- for(const [i,actor]of actors.entries()){const Xlocal=x=>X(x+actor.offset),shift=terrainHeight(actor.meta.terrain.segments,0)-terrainHeight(meta.terrain.segments,0),Ylocal=y=>Y(y-shift);if(meta.terrain.kind==='training'&&actors.length>1){ctx.save();const left=i===0?0:X(actor.offset-1.1),right=i===actors.length-1?W:X(actor.offset+1.1);ctx.beginPath();ctx.rect(left,0,right-left,H);ctx.clip();drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:actor.meta.terrain,obstacles:actor.meta.obstacles||[],X:Xlocal,Y:Ylocal});ctx.restore();}drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Ylocal,scale,skin);if(actor.meta.terrain.kind==='training')drawTrainingStatus(ctx,actor.frame,actor.meta,Xlocal,Ylocal,scale,W,H);}
+ for(const [i,actor]of actors.entries()){const Xlocal=x=>X(x+actor.offset),shift=terrainHeight(actor.meta.terrain.segments,0)-terrainHeight(meta.terrain.segments,0),Ylocal=y=>Y(y-shift);if(meta.terrain.kind==='training'&&actors.length>1){ctx.save();const left=i===0?0:X(actor.offset-1.1),right=i===actors.length-1?W:X(actor.offset+1.1);ctx.beginPath();ctx.rect(left,0,right-left,H);ctx.clip();drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:actor.meta.terrain,obstacles:actor.meta.obstacles||[],X:Xlocal,Y:Ylocal});ctx.restore();}drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Ylocal,scale,skin);}
  const actor=actors[0];
  if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,X,Y,scale);}
  for(const robot of actors){const Xlocal=x=>X(x+robot.offset),shift=terrainHeight(robot.meta.terrain.segments,0)-terrainHeight(meta.terrain.segments,0),Ylocal=y=>Y(y-shift);for(const effect of hammerEffects(robot.frame,robot.meta))drawHammer(ctx,effect,Xlocal,Ylocal,scale);}
@@ -208,7 +208,7 @@ function observeScene(frame){
  viewLog.time=frame.time;
 }
 
-function hud(data){if(!data)return;const m=data.frame.metrics,score=rewardTotals(m);get('positive-total').textContent='+'+score.positive.toFixed(1);get('negative-total').textContent='−'+score.negative.toFixed(1);get('positive-bar').style.width=(score.positiveRatio*100)+'%';get('negative-bar').style.width=(score.negativeRatio*100)+'%';get('score-balance').setAttribute('aria-label',`현재 시도 보상 ${score.positive.toFixed(1)}점, 벌점 ${score.negative.toFixed(1)}점`);get('time').innerHTML=`${m.time.toFixed(1)}<small>초</small>`;get('distance').innerHTML=`${signed(m.distance)}<small>m</small>`;get('speed').innerHTML=`${m.speed.toFixed(1)}<small>m/s</small>`;observeScene(data.frame);
+function hud(data){if(!data)return;const m=data.frame.metrics,info=get('environment-info');info.hidden=data.meta.terrain.kind!=='training';if(!info.hidden){const text=trainingStatusLines(data.meta.terrain,m,data.frame.parts[0][0])[0];if(info.textContent!==text){info.textContent=text;info.title=text;}}get('time').innerHTML=`${m.time.toFixed(1)}<small>초</small>`;get('distance').innerHTML=`${signed(m.distance)}<small>m</small>`;get('speed').innerHTML=`${m.speed.toFixed(1)}<small>m/s</small>`;observeScene(data.frame);
 
 }
 
