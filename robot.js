@@ -1,7 +1,7 @@
-import {trainingStatusLines} from './robot-training-view.mjs?v=robot67';
+import {trainingStatusLines} from './robot-training-view.mjs?v=robot68';
 import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=robot64';
-import {normalizeGround} from './robot-training-ground.mjs?v=robot67';
-import {trainingPreviewSpec} from './robot-training-preview.mjs?v=robot67';
+import {normalizeGround} from './robot-training-ground.mjs?v=robot68';
+import {trainingPreviewSpec} from './robot-training-preview.mjs?v=robot68';
 import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=robot64';
 import {normalizeActuation} from './robot-actuation.mjs?v=robot64';
 import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=robot64';
@@ -17,12 +17,12 @@ import {REWARD_VERSION} from './robot-rewards.mjs?v=robot64';
 import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot64';
 import {rewardHelp} from './robot-rewards.mjs?v=robot64';
 import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot64';
-import {RobotTeam} from './robot-team.mjs?v=robot67';
+import {RobotTeam} from './robot-team.mjs?v=robot68';
 import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot64';
 import {drawRobotSkin} from './robot-skin.mjs?v=robot64';
 import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=robot64';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot67';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot67';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot68';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot68';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=readTravelRecord(model?.travelRecord);
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}

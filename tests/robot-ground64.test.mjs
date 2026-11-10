@@ -37,3 +37,14 @@ test('training stair limits accept 0–50 cm for both directions and low steps n
  }
  assert.equal(normalizeGround({stepMax:-1}).stepMax,0);assert.equal(normalizeGround({stepMax:1}).stepMax,.5);
 });
+test('maximum slope supports zero through sixty degrees without a hidden five-degree floor',()=>{
+ for(const maximum of [0,1,60])for(const level of [.15,1])for(let i=0;i<9;i++){
+  const spec=trainingCondition(i,42,{slopeMax:maximum},level);assert.ok(spec.angle>=0&&spec.angle<=maximum);
+  if(!['uphill','downhill','slopes','stones'].includes(spec.course))continue;
+  const terrain=makeTrainingTerrain(spec);
+  for(const s of terrain.segments){const degrees=Math.abs(Math.atan2(s.y1-s.y0,s.x1-s.x0)*180/Math.PI);assert.ok(degrees<=maximum+1e-8);}
+  if(maximum===0)assert.ok(terrain.segments.every(s=>Math.abs(s.y0-s.y1)<1e-8));
+  const world=new RobotWorld('balance',{terrain:'training',trainingSpec:spec,disturbances:false});assert.ok(world.bodies.every(p=>Number.isFinite(p.body.getPosition().y)));
+ }
+ assert.equal(normalizeGround({slopeMax:-1}).slopeMax,0);assert.equal(normalizeGround({slopeMax:90}).slopeMax,60);
+});

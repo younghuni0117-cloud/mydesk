@@ -1,4 +1,4 @@
-import {trainingTerrainInfo} from './robot-training-ground.mjs?v=robot67';
+import {trainingTerrainInfo} from './robot-training-ground.mjs?v=robot68';
 const signed=value=>{const v=Math.abs(value)<.05?0:value;return (v<0?'−':'+')+Math.abs(v).toFixed(1);};
 export function trainingStatusLines(terrain,metrics={},x=0,taskLabel=''){const i=trainingTerrainInfo(terrain,metrics,x),surface=i.direction?`높이 ${Number((i.step*100).toFixed(1))}cm`:`경사 ${signed(i.angle)}°`;return [[taskLabel,i.label,surface,`마찰 ${i.friction.toFixed(2)}`,`질량 ${i.massChange===null?'—':signed(i.massChange)+'%'}`].filter(Boolean).join(' / ')];}
 export function drawTrainingStatus(ctx,frame,meta,X,Y,scale,width,height){const text=trainingStatusLines(meta.terrain,frame.metrics,frame.parts[0][0])[0];ctx.save();ctx.font='11px sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#4e6477';ctx.fillText(text,width/2,7,Math.max(1,width-16));ctx.restore();}
