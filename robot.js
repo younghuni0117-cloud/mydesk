@@ -175,10 +175,11 @@ function draw(data){
  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}ctx.setTransform(ratio,0,0,ratio,0,0);const W=w/ratio,H=h/ratio;ctx.clearRect(0,0,W,H);if(!data)return;
  const {frame,meta}=data,actors=(data.actors||[{frame,meta,offset:0}]).slice(0,1),root=frame.parts[0];
  terrainDatum=terrainHeight(meta.terrain.segments,0);
- // A new training scene is placed around the last on-screen robot. Fixed view
+ // A new training scene preserves the initial robot anchor of the last scene.
+ // Never re-anchor from a fallen terminal pose: repeated trials would drift. Fixed view
  // stays fixed during motion; following view keeps its own tracking behavior.
- if(cameraScene!==meta.terrain){if(meta.terrain.kind==='training'&&previousCameraRoot&&!follow)({panX,panY}=reanchorCamera({panX,panY,root,datum:terrainDatum,previous:previousCameraRoot}));cameraScene=meta.terrain;}
- const view=cameraFrame({width:W,height:H,zoom,panX,panY,follow,root,datum:terrainDatum}),{scale,camera,ground}=view;drawScale=scale;cameraX=camera;groundPixel=ground;previousCameraRoot={x:root[0],relativeY:root[1]-terrainDatum};
+ if(cameraScene!==meta.terrain){if(meta.terrain.kind==='training'&&previousCameraRoot&&!follow)({panX,panY}=reanchorCamera({panX,panY,root,datum:terrainDatum,previous:previousCameraRoot}));cameraScene=meta.terrain;previousCameraRoot={x:root[0],relativeY:root[1]-terrainDatum};}
+ const view=cameraFrame({width:W,height:H,zoom,panX,panY,follow,root,datum:terrainDatum}),{scale,camera,ground}=view;drawScale=scale;cameraX=camera;groundPixel=ground;
 
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
  drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:meta.terrain,obstacles:meta.obstacles||[],X,Y});
