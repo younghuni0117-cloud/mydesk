@@ -1,17 +1,17 @@
-import {JOINT_SERVOS,jointServoTorque} from './robot-actuation.mjs?v=robot49';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot49';
-import {distalActivity} from './robot-attention.mjs?v=robot49';
-import {sampleEnvironment} from './robot-sensors.mjs?v=robot49';
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot49';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot49';
-import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot49';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot49';
+import {JOINT_SERVOS,jointServoTorque} from './robot-actuation.mjs?v=robot50';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot50';
+import {distalActivity} from './robot-attention.mjs?v=robot50';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot50';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot50';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot50';
+import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot50';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot50';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot49';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot50';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot49';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot49';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot49';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot50';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot50';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot50';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },

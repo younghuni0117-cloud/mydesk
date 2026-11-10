@@ -1,13 +1,14 @@
-import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot49';
+import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot50';
 
-const CACHE_KEY='mydesk.robot.v6',MAX_BYTES=8*1024*1024;
+export const ROBOT_CACHE_KEY='mydesk.robot.v8';
+const CACHE_KEY=ROBOT_CACHE_KEY,MAX_BYTES=8*1024*1024;
 class InvalidSharedModel extends Error {}
 
 // One public row, last completed write wins. Local storage is only the current
 // working cache: no account, archive, revision history or recovery copies.
 export class RobotSharedStorage {
- constructor(migrate,{fetcher=globalThis.fetch?.bind(globalThis),url=SHARED_MODEL_URL,key=SHARED_MODEL_KEY,local=globalThis.localStorage}={}){
-  Object.assign(this,{migrate,fetcher,url,key,local});this.revision=null;this.needsSeed=false;this.pendingModel=null;this.cachedModel=null;this.state='connecting';this.writeQueue=Promise.resolve();this.lastUpload=0;this.lastRead=0;this.busy=0;
+ constructor(migrate,{fetcher=globalThis.fetch?.bind(globalThis),url=SHARED_MODEL_URL,key=SHARED_MODEL_KEY,local=globalThis.localStorage,indexed=globalThis.indexedDB}={}){
+  Object.assign(this,{migrate,fetcher,url,key,local,indexed});this.revision=null;this.needsSeed=false;this.pendingModel=null;this.cachedModel=null;this.state='connecting';this.writeQueue=Promise.resolve();this.lastUpload=0;this.lastRead=0;this.busy=0;
  }
  setState(state){this.state=state;this.onstate?.(state);}
  decode(model){try{return this.migrate(model)||null;}catch{return null;}}
@@ -18,8 +19,16 @@ export class RobotSharedStorage {
  }
  accept(row){const model=this.decode(row?.model);if(!model)throw new InvalidSharedModel('공용 모델 형식을 읽을 수 없습니다.');this.revision=String(row.revision);this.needsSeed=false;this.lastRead=Date.now();this.setState('synced');return model;}
  async read(){const rows=await this.request('?id=eq.main&select=model,revision&limit=1');if(!rows.length){this.needsSeed=true;this.setState('empty');return null;}return this.accept(rows[0]);}
+ async discardRetiredData(){
+  // Only robot learning data is retired. Display preferences and other apps
+  // remain untouched. Old caches must never upload into the new model.
+  try{const keys=[];for(let i=0;i<this.local?.length;i++){const key=this.local.key(i);if(key?.startsWith('mydesk.robot.')&&![CACHE_KEY,'mydesk.robot.options','mydesk.robot.skin'].includes(key))keys.push(key);}for(const key of keys)this.local.removeItem(key);}catch{}
+  if(!this.indexed)return;
+  await new Promise(resolve=>{const timer=setTimeout(resolve,1200);try{const request=this.indexed.deleteDatabase('mydesk.robot.local');request.onsuccess=request.onerror=request.onblocked=()=>{clearTimeout(timer);resolve();};}catch{clearTimeout(timer);resolve();}});
+ }
  async load(){
-  let pending=false;for(const key of [CACHE_KEY,'mydesk.robot.v4','mydesk.robot.v3']){try{const saved=JSON.parse(this.local?.getItem(key)||'null'),model=this.decode(saved?.model);if(model){this.cachedModel=model;pending=key===CACHE_KEY&&saved.pending===true;break;}}catch{}}
+  await this.discardRetiredData();
+  let pending=false;try{const saved=JSON.parse(this.local?.getItem(CACHE_KEY)||'null'),model=this.decode(saved?.model);if(model){this.cachedModel=model;pending=saved.pending===true;}else if(saved)this.local?.removeItem(CACHE_KEY);}catch{}
   if(pending)this.pendingModel=structuredClone(this.cachedModel);
   try{if(this.pendingModel){const result=await this.publish(this.pendingModel,{force:true});if(!result.ok)throw result.error;}const model=await this.read();if(model){this.cache(model,false);return {model,blocked:false,source:'shared'};}return {model:this.cachedModel,blocked:false,source:'local'};}
   catch(error){this.setState(error instanceof InvalidSharedModel?'invalid':'offline');return {model:this.cachedModel,blocked:error instanceof InvalidSharedModel,source:'local',error};}

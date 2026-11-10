@@ -1,6 +1,6 @@
 // Learned joint targets, not a gait or a balance controller. Gains are physical
 // actuator settings; both CEM and PPO use this same inner torque loop.
-export const CONTROL_KIND='joint-target-pd-12joint-mlp-v7';
+export const CONTROL_KIND='joint-target-pd-12joint-mlp-v8';
 export const JOINT_SERVOS=Object.freeze({
  waist:Object.freeze({kp:200,kd:15}),neck:Object.freeze({kp:12,kd:1}),
  leftHip:Object.freeze({kp:180,kd:12}),rightHip:Object.freeze({kp:180,kd:12}),

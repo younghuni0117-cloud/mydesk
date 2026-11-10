@@ -1,25 +1,24 @@
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=robot49';
-import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=robot49';
-import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=robot49';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot49';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot49';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot49';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot49';
-import {abilitySummary} from './robot-performance.mjs?v=robot49';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot49';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot49';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot49';
-import {rewardHelp} from './robot-rewards.mjs?v=robot49';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot49';
-import {RobotTeam} from './robot-team.mjs?v=robot49';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot49';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot49';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow,drawFurthestFlag} from './robot-view.mjs?v=robot49';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot49';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot49';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=robot50';
+import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=robot50';
+import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=robot50';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot50';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot50';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot50';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot50';
+import {abilitySummary} from './robot-performance.mjs?v=robot50';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot50';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot50';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot50';
+import {rewardHelp} from './robot-rewards.mjs?v=robot50';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot50';
+import {RobotTeam} from './robot-team.mjs?v=robot50';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot50';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot50';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow,drawFurthestFlag} from './robot-view.mjs?v=robot50';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot50';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot50';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
-let cachedTravel=null;try{const cached=JSON.parse(localStorage.getItem('mydesk.robot.v6')||'null')?.model;cachedTravel=cached?{id:cached.id,record:readTravelRecord(cached.travelRecord)}:null;}catch{}
-const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=mergeTravelRecord(model?.travelRecord,cachedTravel?.id===model?.id?cachedTravel.record:null),recordDirty=false;if(model)model.travelRecord=knownTravel;
+const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=readTravelRecord(model?.travelRecord),recordDirty=false;
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
 let options={terrain:'meadow',view:'terrain',robots:1,observationSeconds:30,interval:20,...normalizePushSettings()};try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');options={terrain:o.terrain==='rockyhills'?'desert':TERRAINS[o.terrain]?o.terrain:'meadow',view:o.view==='robot'?'robot':'terrain',robots:1,observationSeconds:Number.isInteger(o.observationSeconds)&&o.observationSeconds>=1&&o.observationSeconds<=3600?o.observationSeconds:30,interval:[10,20,50,100].includes(o.interval)?o.interval:20,...normalizePushSettings(o)};}catch{}
 Object.assign(options,normalizeEvaluationSettings(model?.environment));try{const raw=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');Object.assign(options,normalizeEvaluationSettings({...options,...raw}));}catch{}
@@ -37,7 +36,6 @@ let lastTime=0,accumulator=0,frame=null,lastHud=0,lastDraw=0,pushArrow=null,drag
 let zoom=1,panX=.4,panY=0,follow=options.view==='robot',drawScale=100,cameraX=0;const pointers=new Map();let pinch=null;
 const writeLog=createStudyLog(get('log'),{enabled:()=>options.logVisible!==false});let viewLog={key:null},lastRecordAttempt=-1,lastModelVersion=model?.policyVersion??0;
 const status=text=>{get('status').textContent=text;writeLog(text)},signed=n=>(n>0?'+':'')+n.toFixed(1);
-if(model?.controllerArchive)writeLog('관절 제어 변경 · 목표 각도 + PD 토크 제어 · 이전 토크 모델과 횟수·기록은 보관하고 새 제어 정책을 학습합니다.');
 function sharedStatus(){const text={connecting:'공용 모델 연결 중',empty:'공용 모델 공유 · 첫 학습 대기',saving:'공용 모델 저장 중',synced:'공용 모델 자동 공유',offline:'연결 대기 · 학습 결과는 이 기기에 임시 저장',invalid:'공용 모델 형식 오류 · 초기화가 필요합니다.'}[storage.state];get('shared-state').textContent=text;get('storage-note').textContent=text;if(storage.state==='synced'&&!training&&get('status').textContent.includes('공용 저장 연결 대기'))get('status').textContent=get('status').textContent.replace('공용 저장 연결 대기','공용 모델 저장 완료');}
 storage.onstate=sharedStatus;
 function persist(){if(!model||recoveryBlocked)return;return storage.save(model);}

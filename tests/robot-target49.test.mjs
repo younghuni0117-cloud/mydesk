@@ -60,27 +60,13 @@ test('all real robot joints resist angle error even with zero learned outputs',(
  assert.ok(w.activeTorques[knee]<0);
 });
 
-const legacyFixture=()=>{
- const old=new RobotLearner(null,42,{terrain:'meadow',validationSeconds:1,monitorSeconds:1}).snapshot();
- Object.assign(old,{version:6,physicsVersion:5,policyKind:'direct-torque-12joint-mlp-v6',attempts:12,modelAttempt:8,algorithmAttempts:{cem:4,ppo:8},taskAttempts:{balance:12,recover:0,walk:0,run:0,obstacles:0},controllerArchive:undefined});
- delete old.environment.controlKind;
- old.weights[624]=.2;old.ppo=new PPOOptimizer(old.weights,42).snapshot();
- old.ppo.actorAdam.t=10;old.ppo.actorAdam.m[0]=.01;
- old.ppo.buffer=[{obs:Array(65).fill(0),latent:Array(12).fill(0),value:0,reward:1,nextValue:0,oldLogP:0,done:false}];
- return old;
-};
-
-test('migration preserves the full torque controller and counters while separating new angle learning',()=>{
- const old=legacyFixture(),unchanged=structuredClone(old),m=migrateModel(old);
- assert.deepEqual(old,unchanged);assert.equal(m.version,7);assert.equal(m.policyKind,CONTROL_KIND);
- assert.deepEqual(m.controllerArchive.model,old);assert.ok(m.weights.every(v=>v===0));assert.equal(m.ppo,null);assert.deepEqual(m.pending,[]);
- assert.equal(m.attempts,12);assert.deepEqual(m.taskAttempts,old.taskAttempts);assert.deepEqual(m.history,old.history);
- const l=new RobotLearner(m,42,{terrain:'meadow',validationSeconds:1,monitorSeconds:1});
- assert.deepEqual(l.controllerArchive.model,old);assert.equal(l.environment.controlKind,CONTROL_KIND);
- assert.ok(l.history.some(r=>r.environment===JSON.stringify(l.environment)));
- const saved=l.snapshot();assert.ok(RobotLearner.valid(saved));assert.equal(migrateModel(saved),saved);
- assert.deepEqual(new RobotLearner(saved,42,l.environment).controllerArchive.model,old);
- assert.equal(migrateModel({...old,weights:[1]}),null);
+test('retired models and controller archives cannot enter the new angle model',()=>{
+ const fresh=new RobotLearner(null,42,{validationSeconds:6,monitorSeconds:6}).snapshot();
+ assert.equal(fresh.version,8);assert.equal(fresh.attempts,0);assert.equal(fresh.travelRecord,null);
+ assert.ok(fresh.weights.every(v=>v===0));assert.equal(fresh.ppo,null);assert.ok(!('controllerArchive' in fresh));
+ assert.ok(fresh.history.every(r=>r.attempts===0));
+ for(const old of [{...fresh,version:6,physicsVersion:5,policyKind:'direct-torque-12joint-mlp-v6'},{...fresh,version:7,policyKind:'joint-target-pd-12joint-mlp-v7'},{...fresh,controllerArchive:{model:{}}}])assert.equal(migrateModel(old),null);
+ assert.equal(migrateModel(fresh),fresh);
 });
 
 test('PPO and CEM rollouts, observations and shared reload use the same angle controller',async()=>{
@@ -92,9 +78,18 @@ test('PPO and CEM rollouts, observations and shared reload use the same angle co
   if(algorithm==='ppo')assert.deepEqual(a.metrics,ppoEpisode(p).metrics);
   l.completeTrial(p,a);
  }
- const old=legacyFixture(),api=sharedAPI(old),a=new RobotSharedStorage(migrateModel,{local:localMemory(),fetcher:api.fetch,url:'https://example.test/rest/v1/model',key:'test'});
- const loaded=await a.load();assert.equal(loaded.blocked,false);assert.equal(loaded.model.version,7);assert.deepEqual(loaded.model.controllerArchive.model,JSON.parse(JSON.stringify(old)));
- assert.equal((await a.publish(loaded.model,{force:true})).ok,true);
+ const fresh=l.snapshot(),api=sharedAPI(fresh),local=localMemory();
+ const retired={...fresh,version:7,policyKind:'joint-target-pd-12joint-mlp-v7',attempts:100000};
+ for(const key of ['mydesk.robot.v6','mydesk.robot.v5','mydesk.robot.archive.original','mydesk.robot.backup.v4'])local.setItem(key,JSON.stringify({model:retired,pending:true}));
+ local.setItem('mydesk.robot.options','settings');local.setItem('mydesk.robot.skin','tin');local.setItem('calendar.test','keep');
+ let deleted=0;const indexed={deleteDatabase(name){assert.equal(name,'mydesk.robot.local');deleted++;const request={};queueMicrotask(()=>request.onsuccess());return request;}};
+ const a=new RobotSharedStorage(migrateModel,{local,indexed,fetcher:api.fetch,url:'https://example.test/rest/v1/model',key:'test'});
+ const loaded=await a.load();assert.equal(loaded.blocked,false);assert.equal(loaded.model.version,8);assert.equal(loaded.model.attempts,2);assert.equal(deleted,1);
+ assert.equal(local.getItem('mydesk.robot.v6'),null);assert.equal(local.getItem('mydesk.robot.archive.original'),null);
+ assert.equal(local.getItem('mydesk.robot.options'),'settings');assert.equal(local.getItem('mydesk.robot.skin'),'tin');assert.equal(local.getItem('calendar.test'),'keep');
+ assert.ok(api.requests.every(r=>r.options.method!=='POST'),'retired pending caches must not upload');
+ assert.equal((await a.publish(retired,{force:true})).ok,false);
+ assert.equal((await a.publish(fresh,{force:true})).ok,true);
  const b=new RobotSharedStorage(migrateModel,{local:localMemory(),fetcher:api.fetch,url:'https://example.test/rest/v1/model',key:'test'});
- assert.deepEqual((await b.load()).model,JSON.parse(JSON.stringify(loaded.model)));
+ assert.deepEqual((await b.load()).model,JSON.parse(JSON.stringify(fresh)));
 });
