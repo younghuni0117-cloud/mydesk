@@ -1,9 +1,9 @@
-import {normalizeRobotCount} from './robot-training-options.mjs?v=robot53';
-import {loadTaskSettings} from './robot-task-settings.mjs?v=robot53';
-import {observationScene} from './robot-transfer.mjs?v=robot53';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot53';
-import {ParallelRollouts} from './robot-rollouts.mjs?v=robot53';
-import {STAGES} from './robot-core.mjs?v=robot53';
+import {normalizeRobotCount} from './robot-training-options.mjs?v=robot55';
+import {loadTaskSettings} from './robot-task-settings.mjs?v=robot55';
+import {observationScene} from './robot-transfer.mjs?v=robot55';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot55';
+import {ParallelRollouts} from './robot-rollouts.mjs?v=robot55';
+import {STAGES} from './robot-core.mjs?v=robot55';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,interval=20,lastCandidate=null,lastTrial=null,rollouts=null,robotCount=1,lastScenes=[];
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));

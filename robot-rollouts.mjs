@@ -1,15 +1,15 @@
-import {normalizeRobotCount} from './robot-training-options.mjs?v=robot53';
-import {taskEnvironment} from './robot-task-settings.mjs?v=robot53';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot53';
-import {packRollout} from './robot-transfer.mjs?v=robot53';
-import {episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=robot53';
-import {COMMAND_CASES} from './robot-goals.mjs?v=robot53';
-import {ppoEpisode} from './robot-ppo.mjs?v=robot53';
+import {normalizeRobotCount} from './robot-training-options.mjs?v=robot55';
+import {taskEnvironment} from './robot-task-settings.mjs?v=robot55';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot55';
+import {packRollout} from './robot-transfer.mjs?v=robot55';
+import {episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=robot55';
+import {COMMAND_CASES} from './robot-goals.mjs?v=robot55';
+import {ppoEpisode} from './robot-ppo.mjs?v=robot55';
 export const executeTrial=p=>packRollout(p.algorithm==='ppo'?ppoEpisode(p):episode(p.weights,p.task,p.seed,p.options),p);
 // One learner/coordinator computes the first rollout; up to four physics-only
 // workers compute the others. Results always return in prepared index order.
 export class ParallelRollouts {
- constructor({count=2,enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=robot53',import.meta.url),{type:'module'})}={}){
+ constructor({count=2,enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=robot55',import.meta.url),{type:'module'})}={}){
   this.width=enabled?normalizeRobotCount(count):1;this.lanes=[];this.nextId=0;
   for(let i=1;i<this.width;i++){
    const lane={worker:null,ready:false,pending:null};lane.waiting=new Promise(resolve=>lane.resolveReady=resolve);this.lanes.push(lane);
