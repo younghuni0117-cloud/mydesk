@@ -1,5 +1,5 @@
 import {TERRAIN_SENSOR_COUNT as S} from './robot-sensors.mjs?v=robot64';
-import {RobotWorld,DT,robotGeometry,seeded,clamp} from './robot-core.mjs?v=robot64';
+import {RobotWorld,DT,robotGeometry,seeded,clamp} from './robot-core.mjs?v=robot67';
 import {POLICY_INPUTS as I,POLICY_BODY_INPUTS as B,POLICY_HIDDEN as H,POLICY_OUTPUTS as O,POLICY_SIZE,initialPolicy,feedbackFeatures,FEEDBACK_START,ACTION_EXPLORATION_SCALES} from './robot-policy.mjs?v=robot64';
 export const MAX_PPO_EXPERIENCES=16384;
 export const PPO_CONFIG=Object.freeze({gamma:.995,lambda:.97,clip:.2,epochs:4,minibatch:64,actorRate:.0003,valueRate:.001,entropy:.01,maxKL:.04});

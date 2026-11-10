@@ -1,4 +1,4 @@
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=robot64';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=robot67';
 import {taskEnvironment} from './robot-task-settings.mjs?v=robot64';
 import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=robot64';
 import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot64';
