@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-01T07:29:06.489663+00:00",
+  "doe_sha256": "29942b37c8b4c908e0bcf3faef9cd0136c2705bcd1fa1124b4f3d46aee828f1a",
+  "vtu_sha256": {
+    "case_001": "92f6090e91fbc716eae367c0d8406f3142003dc9d362282c56abf9688526ca82",
+    "case_002": "467cf5290236b491590e99e00b577048410429d9508d2660a7eef5ae60dcae82",
+    "case_003": "f21cb1048522d0b8d2d95980e7eacd37239f0af0ae8740b80931cdbfae56c736",
+    "case_004": "e008d68f4981fa3d6e343be264c29092d4ac88b6f2d5e774d6b80123f9feffbd",
+    "case_005": "fb4d1944b748b189700b74469e5b5f86b8fd490551df4bb1ccd22a290d8abf37",
+    "case_006": "3798291f3fa49c8ac231cc18381eae61f79449dfc53bf73d594a7640068f10a4",
+    "case_007": "cd0212cf3349deae1e22b57e3ba27d32f70faf52bab715bd84e04db32e0b13b3",
+    "case_008": "a6be667d25b8143f8607914d813bd22304421a5ed6d942e80e9902b706f1b8d6",
+    "case_009": "9c91536024dab8f1aca59338ec96bae51e89c162dac78ae8eeb991675bbed37e",
+    "case_010": "758bb417990dd115456c50e1144b6070baf581cd128e68b6c5044a7c44efabba"
+  },
+  "source_data": "education/data/lhs_doe.csv and education/data/vtu/case_*.vtu",
+  "split_sha256": "5bf4ea887ffc2e1c51640980742d496eba4b371083ede18cafb00d140d26f63d",
+  "stats_sha256": "e1734c49bbbc6140e2d84940aa583e977a866e74f9f515568cac1132442b1d20",
+  "points_per_case": 4096,
+  "batch_size": 2,
+  "artifact_sha256": {
+    "split_info.json": "ecb4940a6894c512a519b74b4b880e85a703c4792266224e277c54440352eaed",
+    "stats.json": "5a93f78cc776df6b9b5ea830a5d911a71ed4a3aa6f04ccc88a8b4e5e7542e11d",
+    "data_contract.json": "8392137773c55b81b30b52ff4f68d10cc7acd3a157e00ab89bf2970063156773",
+    "fixed_sample_indices.npz": "0ae53998c27f01f53dad63b6f786e484644aea10bd149a17ae4a6bdb5dfa3ce3",
+    "dataset_checks.json": "cfd70fff12dcd4a43aef4a7205863a69639e12102ac45f391726a1f3338323a6",
+    "case_inventory.csv": "443d5d3fe0e183df8a25cae50f2cf5b1be6fa7e0e1c55a31707ba9fba517ffd2"
+  },
+  "source_code_sha256": {
+    "course_utils/dataset.py": "a471702c07ae5448dbd0daf61503a143f180ccc02720618fa2e2d1e4efef9712",
+    "course_utils/dataset_checks.py": "12fab73a3a41e82dfe9c7cd5d93a0edd94f967c856277520c0ca1d14aea7a382",
+    "preparation/prepare_dataset.py": "908d4f94febed638e6f2b7f4c0557fde8e5538d46284beab1147bae971f9aef5"
+  },
+  "environment": {
+    "python": "3.12.6",
+    "numpy": "2.5.2",
+    "torch": "2.6.0+cu124",
+    "scipy": "1.18.1",
+    "pyvista": "0.48.4"
+  },
+  "scope": "Dataset preparation only; no model training, test scoring or inference performed"
+}

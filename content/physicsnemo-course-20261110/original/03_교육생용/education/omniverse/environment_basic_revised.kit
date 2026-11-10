@@ -1,0 +1,32 @@
+[package]
+title = "Chapter 1 - Kit Environment Check"
+version = "1.0.0"
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.kit.viewport.window" = {}
+"omni.kit.viewport.utility" = {}
+"omni.kit.manipulator.camera" = {}
+"omni.kit.renderer.core" = {}
+"omni.kit.renderer.capture" = {}
+"omni.hydra.rtx" = {}
+
+[settings]
+app.window.title = "Chapter 1 - Kit Environment Check"
+app.window.width = 1100
+app.window.height = 760
+app.content.emptyStageOnStart = false
+app.extensions.registryEnabled = false
+app.settings.persistent = false
+app.settings.loadUserConfig = false
+app.docks.disabled = false
+app.renderer.skipWhileMinimized = false
+app.viewport.defaults.guide.grid.visible = false
+renderer.enabled = "rtx"
+renderer.active = "rtx"
+rtx.rendermode = "RaytracedLighting"
+rtx.post.tonemap.op = 1
+rtx.post.tonemap.filmIso = 100
+rtx.post.tonemap.cameraShutter = 50
+rtx.post.tonemap.exposureTime = 0.02
+rtx.post.tonemap.fNumber = 5

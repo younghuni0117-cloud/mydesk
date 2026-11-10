@@ -1,0 +1,82 @@
+[
+  {
+    "chapter": 1,
+    "id": "physicsnemo-course-20261110-ch01",
+    "title": "1장. 교육 전체 개요와 환경 준비 — CAE/Python 입문자용",
+    "notebook": "03_교육생용/education/notebooks/01_environment_setup_beginner.ipynb",
+    "html": "03_교육생용/education/reports/notebook_review/01_environment_setup_beginner.html",
+    "cells": 135,
+    "code_cells": 9,
+    "body_bytes": 184051
+  },
+  {
+    "chapter": 2,
+    "id": "physicsnemo-course-20261110-ch02",
+    "title": "2장. CAE 학습 데이터 준비와 ANSYS 결과 변환",
+    "notebook": "03_교육생용/education/notebooks/02_rst_to_vtu_beginner.ipynb",
+    "html": "03_교육생용/education/reports/notebook_review/02_rst_to_vtu_beginner.html",
+    "cells": 38,
+    "code_cells": 10,
+    "body_bytes": 47811
+  },
+  {
+    "chapter": 3,
+    "id": "physicsnemo-course-20261110-ch03",
+    "title": "3장. CAE 학습 데이터 구성과 전처리",
+    "notebook": "03_교육생용/education/notebooks/03_dataset_beginner.ipynb",
+    "html": "03_교육생용/education/reports/notebook_review/03_dataset_beginner.html",
+    "cells": 36,
+    "code_cells": 9,
+    "body_bytes": 43669
+  },
+  {
+    "chapter": 4,
+    "id": "physicsnemo-course-20261110-ch04",
+    "title": "4장. PhysicsNeMo의 AI 모델 이해와 사용",
+    "notebook": "03_교육생용/education/notebooks/04_models_beginner.ipynb",
+    "html": "03_교육생용/education/reports/notebook_review/04_models_beginner.html",
+    "cells": 55,
+    "code_cells": 17,
+    "body_bytes": 82819
+  },
+  {
+    "chapter": 5,
+    "id": "physicsnemo-course-20261110-ch05",
+    "title": "5장. AI 예측 모델로 후크의 응력/변위 학습하기",
+    "notebook": "03_교육생용/education/notebooks/05_training_beginner.ipynb",
+    "html": "03_교육생용/education/reports/notebook_review/05_training_beginner.html",
+    "cells": 74,
+    "code_cells": 21,
+    "body_bytes": 74899
+  },
+  {
+    "chapter": 6,
+    "id": "physicsnemo-course-20261110-ch06",
+    "title": "6장. AI 예측 모델로 후크의 응력/변위를 예측하고 평가하기",
+    "notebook": "03_교육생용/education/notebooks/06_inference_evaluation_beginner.ipynb",
+    "html": "03_교육생용/education/reports/notebook_review/06_inference_evaluation_beginner.html",
+    "cells": 48,
+    "code_cells": 14,
+    "body_bytes": 45514
+  },
+  {
+    "chapter": 7,
+    "id": "physicsnemo-course-20261110-ch07",
+    "title": "7장. Omniverse 연결을 위한 AI 추론 서버 준비",
+    "notebook": "03_교육생용/education/notebooks/07_regions_load_study_beginner.ipynb",
+    "html": "03_교육생용/education/reports/notebook_review/07_regions_load_study_beginner.html",
+    "cells": 36,
+    "code_cells": 10,
+    "body_bytes": 43613
+  },
+  {
+    "chapter": 8,
+    "id": "physicsnemo-course-20261110-ch08",
+    "title": "8장. Omniverse에서 후크의 두께/하중에 따른 응력/변위 확인하기",
+    "notebook": "03_교육생용/education/notebooks/08_omniverse_visualization_beginner.ipynb",
+    "html": "03_교육생용/education/reports/notebook_review/08_omniverse_visualization_beginner.html",
+    "cells": 20,
+    "code_cells": 5,
+    "body_bytes": 24263
+  }
+]

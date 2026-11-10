@@ -1,0 +1,213 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>7장. Omniverse 연결을 위한 AI 추론 서버 준비</title><style>
+:root{color-scheme:dark;--bg:#212121;--card:#282828;--fg:#dedede;--muted:#aaa;--line:#454545;--link:#96c9e8;--code:#232527}
+:root[data-theme=light]{color-scheme:light;--bg:#edf0f2;--card:#f9fafb;--fg:#28323a;--muted:#65717c;--line:#d9dfe4;--link:#21647d;--code:#f0f3f5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 'Malgun Gothic',sans-serif}main{max-width:1180px;margin:auto;padding:26px 24px 70px}h1{font-size:25px}a{color:var(--link);text-underline-offset:3px}nav,.tools{display:flex;gap:14px;align-items:center;flex-wrap:wrap}nav{margin:18px 0}.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card,article{background:var(--card);border:1px solid var(--line);border-radius:8px;margin:18px 0;padding:20px}.card{display:block;text-decoration:none;margin:0}article{scroll-margin-top:16px}.label{font-weight:bold;font-size:14px}.kind{color:var(--link)}small{color:var(--muted)}button{font:inherit;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 12px;color:var(--fg);cursor:pointer}.tools{justify-content:space-between}pre{background:var(--code);padding:18px;border:1px solid var(--line);border-radius:5px;overflow:auto;font:14px/1.65 Consolas,'Malgun Gothic',monospace;tab-size:4}pre code{white-space:pre}a:focus-visible,button:focus-visible{outline:2px solid var(--link)}@media(max-width:760px){main{padding:18px 12px}.cards{grid-template-columns:1fr}article{padding:14px}pre{font-size:12px}}@media print{body{background:white;color:black}button{display:none}pre{white-space:pre-wrap}pre code{white-space:pre-wrap}.cards{display:block}}
+
+.overview{padding:22px;background:var(--card);border:1px solid var(--line);border-radius:8px;margin:20px 0}.overview h2{margin-top:0}table{border-collapse:collapse;font-size:14px;width:100%}th,td{padding:10px 12px;text-align:left;border:1px solid var(--line)}.heading-block h2{font-size:23px;margin:38px 0 12px}.heading-block h3{font-size:20px;margin:24px 0 12px}.heading-block h4{font-size:17px}.toc{border:1px solid var(--line);padding:14px 20px;border-radius:8px;margin:20px 0}.toc ul{padding-left:20px}.toc a{text-decoration:none}table code{font:inherit} .overview{overflow-x:auto}
+.chapter1-body{overflow-x:auto}.chapter1-body img{display:block;max-width:100%;height:auto;background:#fff;border-radius:6px}.chapter1-body code{overflow-wrap:anywhere}.emphasis-key{font-size:13px;color:var(--muted)}mark{border-radius:3px;padding:2px 3px}
+</style></head><body><main><div class="tools"><small>CAE 데이터 기반 AI 예측 모델 구축 실무</small><button id="theme" type="button">밝은 화면</button></div><h1>7장. Omniverse 연결을 위한 AI 추론 서버 준비</h1><nav><a href="index.html">1~8장</a><a href="../../notebooks/07_regions_load_study_beginner.ipynb" download>Notebook</a></nav><section class="overview"><h2>개요</h2>
+<p><strong>목표:</strong> 평가한 모델을 추론 서버로 실행 → 입력 두께로 형상 모핑(morphing) → AI 모델 추론 → 노드별 응력/변위 데이터 수신 → Omniverse 연결 준비</p>
+<table>
+<thead>
+<tr>
+<th>순서</th>
+<th>배울 내용</th>
+<th>직접 하는 일</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Omniverse와 추론 서버의 연결 구조</td>
+<td>서버/클라이언트/API의 관계</td>
+<td>요청과 응답의 흐름 이해</td>
+</tr>
+<tr>
+<td>2. 모델과 형상 준비하기</td>
+<td>정규화 기준/두께 모핑/전체 노드와 표면</td>
+<td>평가한 모델과 모핑 자료 준비</td>
+</tr>
+<tr>
+<td>3. 주고받을 데이터 이해하기</td>
+<td>두께/하중 입력과 노드별 결과</td>
+<td>JSON 요청 작성</td>
+</tr>
+<tr>
+<td>4. 서버 실행하기</td>
+<td>BAT 파일/주소/포트</td>
+<td>BAT 생성/실행 후 상태 확인</td>
+</tr>
+<tr>
+<td>5. 예측 결과 받기</td>
+<td>결과 전달과 두께 변화</td>
+<td>첫 요청 → 전달 확인 → 같은 하중에서 두께 비교</td>
+</tr>
+<tr>
+<td>6. 다음 장 준비하기</td>
+<td>서버 유지와 연결 정보</td>
+<td>연결 정보 저장 후 Omniverse 실습 준비</td>
+</tr>
+</tbody>
+</table></section><details class="toc"><summary>장 / 절 목차</summary><ul><li style="margin-left:0px"><a href="#section-003-01">2. 추론에 사용할 모델과 후크 형상 준비하기</a></li><li style="margin-left:14px"><a href="#section-003-02">2.1 평가한 모델과 정규화 기준 불러오기</a></li><li style="margin-left:14px"><a href="#section-006-03">2.4 모핑 자료 파일 만들기</a></li><li style="margin-left:0px"><a href="#section-009-01">3. 서버와 주고받을 데이터 이해하기</a></li><li style="margin-left:14px"><a href="#section-009-02">3.1 두께/하중을 요청으로 표현하기</a></li><li style="margin-left:0px"><a href="#section-013-01">4. 추론 서버 실행하고 연결 확인하기</a></li><li style="margin-left:14px"><a href="#section-013-02">4.1 서버 실행용 BAT 파일 만들기</a></li><li style="margin-left:14px"><a href="#section-016-01">4.2 서버의 준비 상태 확인하기</a></li><li style="margin-left:0px"><a href="#section-019-01">5. 두께/하중을 보내 예측 결과 받기</a></li><li style="margin-left:14px"><a href="#section-019-02">5.1 첫 요청을 보내고 응답 읽기</a></li><li style="margin-left:14px"><a href="#section-022-01">5.2 예측값이 같은 노드에 전달됐는지 확인하기</a></li><li style="margin-left:14px"><a href="#section-025-01">5.3 같은 하중에서 6 mm와 12 mm 비교하기</a></li><li style="margin-left:14px"><a href="#section-028-01">5.4 설계 범위를 벗어난 입력 확인하기</a></li><li style="margin-left:0px"><a href="#section-031-01">6. Omniverse 연결에 필요한 정보 정리하기</a></li><li style="margin-left:14px"><a href="#section-031-02">6.1 서버 주소와 실행 정보 저장하기</a></li></ul></details><section class="heading-block" id="section-003-01"><h2>2. 추론에 사용할 모델과 후크 형상 준비하기</h2></section><section class="heading-block" id="section-003-02"><h3>2.1 평가한 모델과 정규화 기준 불러오기</h3></section><article id="source-cell-004-notebook-00" data-kind="notebook" data-source-cell="4" data-source-sha256="6ba11c787504b63e4d66385646ae7f6b09adc30e3d3b5dbf810af45233647d53"><div class="tools"><span class="label">07장 / 셀 04 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 교육 폴더와 필요한 함수를 준비합니다.
+from pathlib import Path, PureWindowsPath
+from datetime import datetime
+import json, sys, subprocess
+import numpy as np
+import torch
+working_dir = Path.cwd().resolve()
+education_dir = next((p for base in [working_dir, *working_dir.parents]
+                      for p in [base, base/&#x27;education&#x27;]
+                      if (p/&#x27;preparation/serve_transolver.py&#x27;).is_file()), None)
+if education_dir is None:
+    raise FileNotFoundError(&#x27;교육 폴더 또는 그 하위 폴더에서 실행하세요.&#x27;)
+if str(education_dir) not in sys.path:
+    sys.path.insert(0, str(education_dir))
+from course_utils.inference import load_selected_model, predict_fields
+from course_utils.dataset import file_sha256
+from course_utils.morphing import prepare_morphing_reference, morph_points, morph_reference_stl
+from course_utils.lesson_handoff import resolve_evaluation_handoff
+
+# 6장 마지막에 저장한 연결 정보에서 평가 폴더를 자동으로 찾습니다.
+evaluation_dir = resolve_evaluation_handoff(education_dir)
+print(&#x27;6장에서 이어받은 평가 폴더:&#x27;, evaluation_dir)
+# 2. 평가 기록에 연결된 학습 폴더를 찾습니다.
+evaluation_report = json.loads((evaluation_dir/&#x27;evaluation_report.json&#x27;).read_text(encoding=&#x27;utf-8&#x27;))
+assert evaluation_report[&#x27;status&#x27;] == &#x27;completed&#x27; and not evaluation_report[&#x27;test_used_to_update_model&#x27;]
+expected_context = evaluation_report[&#x27;context&#x27;]
+training_dir = education_dir/&#x27;runs/training&#x27;/PureWindowsPath(expected_context[&#x27;checkpoint&#x27;]).parent.name
+if not torch.cuda.is_available():
+    raise RuntimeError(&#x27;1장의 GPU/CUDA용 PyTorch/커널을 확인하세요.&#x27;)
+# 3. 같은 모델과 정규화 기준을 GPU에 불러옵니다.
+device = &#x27;cuda&#x27;
+model, normalizer, cases, split, fixed, context = load_selected_model(education_dir, training_dir, device)
+assert all(context[k] == v for k, v in expected_context.items() if k != &#x27;checkpoint&#x27;)
+assert getattr(model, &#x27;requires_full_point_context&#x27;, False)
+# 4. 이번 서버 준비 자료를 저장할 폴더를 만듭니다.
+server_dir = education_dir/&#x27;runs/inference_server&#x27;/(&#x27;student_transolver_&#x27;+datetime.now().strftime(&#x27;%Y%m%d_%H%M%S_%f&#x27;))
+server_dir.mkdir(parents=True, exist_ok=False)
+print(&#x27;추론 모델: PhysicsNeMo Transolver | 선택 에폭:&#x27;, context[&#x27;selected_epoch&#x27;])
+print(&#x27;6장과 같은 모델 SHA256:&#x27;, context[&#x27;checkpoint_sha256&#x27;])
+print(&#x27;GPU:&#x27;, torch.cuda.get_device_name(), &#x27;| 장치:&#x27;, device)
+print(&#x27;이번 서버 준비 폴더:&#x27;, server_dir.resolve())
+</code></pre></article><section class="heading-block" id="section-006-03"><h3>2.4 모핑 자료 파일 만들기</h3></section><article id="source-cell-007-notebook-00" data-kind="notebook" data-source-cell="7" data-source-sha256="1d62078d9de574b5e6c39280437c1870c9b8c07778f992f94b5f1db086d4fb6f"><div class="tools"><span class="label">07장 / 셀 07 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code>surface_dir = server_dir/&#x27;surfaces&#x27;
+morphing_manifest = prepare_morphing_reference(education_dir, training_dir, surface_dir)
+assert morphing_manifest[&#x27;context&#x27;][&#x27;checkpoint_sha256&#x27;] == context[&#x27;checkpoint_sha256&#x27;]
+print(&#x27;기준 케이스:&#x27;, morphing_manifest[&#x27;reference_case_id&#x27;])
+print(&#x27;기준 두께(mm):&#x27;, morphing_manifest[&#x27;reference_thickness_mm&#x27;])
+print(&#x27;연속 두께 범위(mm):&#x27;, morphing_manifest[&#x27;thickness_range_mm&#x27;])
+print(&#x27;전체 노드:&#x27;, morphing_manifest[&#x27;full_node_count&#x27;], &#x27;| 표면 노드:&#x27;, morphing_manifest[&#x27;surface_node_count&#x27;])
+print(&#x27;기준 STL:&#x27;, surface_dir/&#x27;reference_hook.stl&#x27;)
+preview_stl = morph_reference_stl(surface_dir, 9.0, surface_dir/&#x27;example_9mm.stl&#x27;)
+print(&#x27;9 mm 모핑 STL 예시:&#x27;, preview_stl)
+print(&#x27;모핑 자료 폴더:&#x27;, surface_dir.resolve())
+</code></pre></article><section class="heading-block" id="section-009-01"><h2>3. 서버와 주고받을 데이터 이해하기</h2></section><section class="heading-block" id="section-009-02"><h3>3.1 두께/하중을 요청으로 표현하기</h3></section><article id="source-cell-010-notebook-00" data-kind="notebook" data-source-cell="10" data-source-sha256="64820b79b10829fa98360e34e9d045143b595b4cdd84ca801386faed06c8201a"><div class="tools"><span class="label">07장 / 셀 10 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code>request_body = {&#x27;thickness_mm&#x27;: 10.25, &#x27;force_N&#x27;: 343.561}
+print(&#x27;요청 입력:&#x27;, json.dumps(request_body, ensure_ascii=False))
+</code></pre></article><section class="heading-block" id="section-013-01"><h2>4. 추론 서버 실행하고 연결 확인하기</h2></section><section class="heading-block" id="section-013-02"><h3>4.1 서버 실행용 BAT 파일 만들기</h3></section><article id="source-cell-014-notebook-00" data-kind="notebook" data-source-cell="14" data-source-sha256="66b973b1e1ed52aeed65889fd9942445d20ff5c14229b489c4adfcf752400b5b"><div class="tools"><span class="label">07장 / 셀 14 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code>from course_utils.server_launcher import create_server_launcher
+api_url = &#x27;http://127.0.0.1:8098&#x27;
+server_command = [sys.executable, str(education_dir/&#x27;preparation/serve_transolver.py&#x27;),
+                  &#x27;--training-dir&#x27;, str(training_dir.resolve()), &#x27;--surface-dir&#x27;, str(surface_dir.resolve()),
+                  &#x27;--device&#x27;, device, &#x27;--port&#x27;, &#x27;8098&#x27;]
+server_command_text = subprocess.list2cmdline(server_command)
+server_bat = create_server_launcher(server_dir/&#x27;start_inference_server.bat&#x27;, server_command, education_dir.parent)
+print(&#x27;서버 실행 파일:&#x27;, server_bat)
+print(&#x27;파일이 있는 폴더:&#x27;, server_bat.parent)
+print(&#x27;파일 탐색기에서 BAT 파일을 더블클릭한 뒤 다음 셀로 진행하세요.&#x27;)
+</code></pre></article><section class="heading-block" id="section-016-01"><h3>4.2 서버의 준비 상태 확인하기</h3></section><article id="source-cell-017-notebook-00" data-kind="notebook" data-source-cell="17" data-source-sha256="4185c4c4f58868ae6ebf84711dfc5053c67f1dfbca129ad54b2c05f283d96d11"><div class="tools"><span class="label">07장 / 셀 17 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code>sys.path.insert(0, str(education_dir/&#x27;omniverse&#x27;))
+from client import HookClient
+client = HookClient(api_url)
+health = client.request(&#x27;/health&#x27;)
+assert health[&#x27;ready&#x27;] and health.get(&#x27;api_kind&#x27;) == &#x27;live_transolver&#x27;
+assert health[&#x27;device&#x27;] == device and health[&#x27;model_id&#x27;] == context[&#x27;checkpoint_sha256&#x27;]
+catalog = client.request(&#x27;/geometries&#x27;)
+print(&#x27;서버 준비:&#x27;, health[&#x27;ready&#x27;], &#x27;| 장치:&#x27;, health[&#x27;device&#x27;])
+print(&#x27;6장과 같은 모델:&#x27;, health[&#x27;model_id&#x27;] == context[&#x27;checkpoint_sha256&#x27;])
+print(&#x27;연속 두께 범위(mm):&#x27;, catalog[&#x27;thickness_range_mm&#x27;])
+print(&#x27;API 문서:&#x27;, api_url+&#x27;/docs&#x27;)
+</code></pre></article><section class="heading-block" id="section-019-01"><h2>5. 두께/하중을 보내 예측 결과 받기</h2></section><section class="heading-block" id="section-019-02"><h3>5.1 첫 요청을 보내고 응답 읽기</h3></section><article id="source-cell-020-notebook-00" data-kind="notebook" data-source-cell="20" data-source-sha256="43186d227e4990c08644bca64b94cb884b19729035f7eb4fb0c7035e20702cd0"><div class="tools"><span class="label">07장 / 셀 20 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code>surface, prediction, timing = client.fetch_conditions(**request_body)
+print(&#x27;적용 조건:&#x27;, prediction[&#x27;thickness_mm&#x27;], &#x27;mm /&#x27;, prediction[&#x27;force_N&#x27;], &#x27;N&#x27;)
+print(&#x27;전체 계산 노드:&#x27;, prediction[&#x27;full_node_count&#x27;], &#x27;| 응답 표면 노드:&#x27;, len(prediction[&#x27;node_ids&#x27;]))
+print(&#x27;응력 배열:&#x27;, np.asarray(prediction[&#x27;stress_mpa&#x27;]).shape,
+      &#x27;| 변위 배열:&#x27;, np.asarray(prediction[&#x27;displacement_mm&#x27;]).shape)
+print(&#x27;단위:&#x27;, prediction[&#x27;units&#x27;])
+print(&#x27;앞 세 노드 ID:&#x27;, prediction[&#x27;node_ids&#x27;][:3])
+print(&#x27;앞 세 응력(MPa):&#x27;, np.round(prediction[&#x27;stress_mpa&#x27;][:3], 4))
+print(&#x27;앞 세 변위(mm):&#x27;, np.round(prediction[&#x27;displacement_mm&#x27;][:3], 6))
+</code></pre></article><section class="heading-block" id="section-022-01"><h3>5.2 예측값이 같은 노드에 전달됐는지 확인하기</h3></section><article id="source-cell-023-notebook-00" data-kind="notebook" data-source-cell="23" data-source-sha256="5da10ecb164f21ce5793c35c6bac889116751a6b6bfaf0e26fd5a4b59aab9ed7"><div class="tools"><span class="label">07장 / 셀 23 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 첫 요청과 같은 조건으로 전체 노드를 직접 추론합니다.
+case = cases[prediction[&#x27;case_id&#x27;]]
+morphed_coords = morph_points(case.coords, morphing_manifest[&#x27;reference_thickness_mm&#x27;], prediction[&#x27;thickness_mm&#x27;])
+direct = predict_fields(model, normalizer, morphed_coords,
+                        np.array([prediction[&#x27;thickness_mm&#x27;], prediction[&#x27;force_N&#x27;]]))
+# 2. 노드 ID로 표면과 전체 결과의 위치를 맞춥니다.
+lookup = {int(node): i for i, node in enumerate(case.node_ids)}
+indices = [lookup[int(node)] for node in surface[&#x27;node_ids&#x27;]]
+np.testing.assert_allclose(surface[&#x27;points_mm&#x27;], morphed_coords[indices], rtol=0, atol=1e-5)
+assert prediction[&#x27;node_ids&#x27;] == surface[&#x27;node_ids&#x27;]
+assert prediction[&#x27;units&#x27;][&#x27;stress&#x27;] == &#x27;MPa&#x27; and prediction[&#x27;units&#x27;][&#x27;displacement&#x27;] == &#x27;mm&#x27;
+# 3. 같은 노드의 응력과 변위 성분 차이를 계산합니다.
+stress_difference = float(np.max(np.abs(np.asarray(prediction[&#x27;stress_mpa&#x27;]) - direct[&#x27;stress&#x27;][indices, 0])))
+displacement_difference = float(np.max(np.abs(np.asarray(prediction[&#x27;displacement_mm&#x27;]) - direct[&#x27;displacement&#x27;][indices])))
+assert stress_difference &lt;= 1e-4 and displacement_difference &lt;= 1e-6
+print(&#x27;직접 추론과 응력 최대 차이(MPa):&#x27;, stress_difference)
+print(&#x27;직접 추론과 변위 성분 최대 차이(mm):&#x27;, displacement_difference)
+print(&#x27;모델/단위/표면 위치/노드 순서 확인 완료&#x27;)
+</code></pre></article><section class="heading-block" id="section-025-01"><h3>5.3 같은 하중에서 6 mm와 12 mm 비교하기</h3></section><article id="source-cell-026-notebook-00" data-kind="notebook" data-source-cell="26" data-source-sha256="13b21abb0713952b1363a972b282580878ca5a1848d6ac7561f1cdafa9e553ae"><div class="tools"><span class="label">07장 / 셀 26 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code>fixed_force = request_body[&#x27;force_N&#x27;]
+thin_body = {&#x27;thickness_mm&#x27;: 6.0, &#x27;force_N&#x27;: fixed_force}
+changed_body = {&#x27;thickness_mm&#x27;: 12.0, &#x27;force_N&#x27;: fixed_force}
+thin_surface, thin_prediction, _ = client.fetch_conditions(**thin_body)
+changed_surface, changed_prediction, _ = client.fetch_conditions(**changed_body)
+assert thin_prediction[&#x27;force_N&#x27;] == changed_prediction[&#x27;force_N&#x27;] == fixed_force
+assert thin_prediction[&#x27;node_ids&#x27;] == changed_prediction[&#x27;node_ids&#x27;] == prediction[&#x27;node_ids&#x27;]
+assert thin_prediction[&#x27;model_id&#x27;] == changed_prediction[&#x27;model_id&#x27;] == prediction[&#x27;model_id&#x27;]
+assert thin_prediction[&#x27;surface_version&#x27;] != changed_prediction[&#x27;surface_version&#x27;]
+for body, geometry, result in [(thin_body, thin_surface, thin_prediction),
+                               (changed_body, changed_surface, changed_prediction)]:
+    actual_thickness = np.ptp(np.asarray(geometry[&#x27;points_mm&#x27;])[:, 2])
+    assert np.isclose(actual_thickness, body[&#x27;thickness_mm&#x27;])
+    assert isinstance(result[&#x27;cache_hit&#x27;], bool)  # 같은 조건의 재실행도 허용
+print(&#x27;공통 하중(N):&#x27;, fixed_force)
+print(&#x27;두께(mm) | 실제 형상 두께(mm) | 전체 최대응력(MPa) | 전체 최대 변위 크기(mm) | 학습 영역 구분&#x27;)
+for geometry, result in [(thin_surface, thin_prediction), (changed_surface, changed_prediction)]:
+    print(f&quot;{result[&#x27;thickness_mm&#x27;]:g} | {np.ptp(np.asarray(geometry[&#x27;points_mm&#x27;])[:, 2]):g} | &quot;
+          f&quot;{result[&#x27;full_max_stress_mpa&#x27;]:.6f} | {result[&#x27;full_max_displacement_mm&#x27;]:.6f} | &quot;
+          f&quot;{&#x27;학습 영역 안&#x27; if result[&#x27;inside_training_hull&#x27;] else &#x27;외삽(학습 영역 밖)&#x27;}&quot;)
+print(&#x27;최대응력 차이: 6 mm − 12 mm (MPa):&#x27;,
+      thin_prediction[&#x27;full_max_stress_mpa&#x27;] - changed_prediction[&#x27;full_max_stress_mpa&#x27;])
+print(&#x27;최대 변위 크기 차이: 6 mm − 12 mm (mm):&#x27;,
+      thin_prediction[&#x27;full_max_displacement_mm&#x27;] - changed_prediction[&#x27;full_max_displacement_mm&#x27;])
+from course_utils.morphing_plot import plot_thickness_predictions
+from IPython.display import Image, display
+thickness_figure = plot_thickness_predictions(
+    [thin_surface, changed_surface], [thin_prediction, changed_prediction],
+    server_dir/&#x27;thickness_prediction_comparison.png&#x27;)
+display(Image(filename=thickness_figure[&#x27;image&#x27;]))
+</code></pre></article><section class="heading-block" id="section-028-01"><h3>5.4 설계 범위를 벗어난 입력 확인하기</h3></section><article id="source-cell-029-notebook-00" data-kind="notebook" data-source-cell="29" data-source-sha256="509b05a187eea80097b2f7955c954d3884c8377a47ce3afb7953a2e1f5110233"><div class="tools"><span class="label">07장 / 셀 29 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code>import urllib.error
+try:
+    client.request(&#x27;/predict&#x27;, {&#x27;thickness_mm&#x27;: 999, &#x27;force_N&#x27;: 300})
+    raise AssertionError(&#x27;범위 밖의 두께가 허용되었습니다.&#x27;)
+except urllib.error.HTTPError as error:
+    assert error.code == 422
+    error_detail = json.loads(error.read().decode(&#x27;utf-8&#x27;))[&#x27;detail&#x27;]
+    print(&#x27;의도한 입력 오류 응답:&#x27;, error.code)
+    print(&#x27;입력 오류 안내:&#x27;, error_detail[0][&#x27;msg&#x27;])
+    print(&#x27;두께 6~12 mm, 하중 100~500 N 범위로 다시 요청하세요.&#x27;)
+</code></pre></article><section class="heading-block" id="section-031-01"><h2>6. Omniverse 연결에 필요한 정보 정리하기</h2></section><section class="heading-block" id="section-031-02"><h3>6.1 서버 주소와 실행 정보 저장하기</h3></section><article id="source-cell-032-notebook-00" data-kind="notebook" data-source-cell="32" data-source-sha256="36ddbc8397fd8f42e6695058c6144dcd563c36d858d481a7285393d139c56040"><div class="tools"><span class="label">07장 / 셀 32 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code>connection = dict(api_url=api_url, training_dir=str(training_dir.resolve()), surface_dir=str(surface_dir.resolve()),
+                  model_sha256=context[&#x27;checkpoint_sha256&#x27;], server_command=server_command_text,
+                  server_launcher=str(server_bat.resolve()),
+                  request_example=request_body)
+api_check = dict(passed=True, context=context, api_url=api_url, device=health[&#x27;device&#x27;], real_http=True,
+                 request=request_body, thin_request=thin_body, changed_request=changed_body,
+                 stress_max_difference_mpa=stress_difference, displacement_max_difference_mm=displacement_difference,
+                 node_order_checked=True, units_checked=True, out_of_range_thickness_status=422,
+                 purpose=&#x27;Inference delivery check; not ANSYS accuracy evaluation&#x27;)
+for name, value in [(&#x27;inference_connection.json&#x27;, connection), (&#x27;inference_api_check.json&#x27;, api_check)]:
+    (server_dir/name).write_text(json.dumps(value, ensure_ascii=False, indent=2)+&#x27;\n&#x27;, encoding=&#x27;utf-8&#x27;)
+print(&#x27;연결 정보:&#x27;, server_dir/&#x27;inference_connection.json&#x27;)
+print(&#x27;전달 확인 기록:&#x27;, server_dir/&#x27;inference_api_check.json&#x27;)
+from course_utils.server_handoff import save_server_handoff
+chapter7_handoff = save_server_handoff(education_dir, server_dir)
+print(&#x27;8장 연결 준비 완료:&#x27;, chapter7_handoff)
+print(&#x27;8장 API 주소:&#x27;, api_url)
+print(&#x27;서버 Console은 8장에서도 열어 두세요.&#x27;)
+</code></pre></article></main><script>
+const root=document.documentElement,theme=document.querySelector('#theme');try{root.dataset.theme=localStorage.getItem('learner-theme')||'dark'}catch(e){}function update(){theme.textContent=root.dataset.theme==='light'?'어두운 화면':'밝은 화면'}theme.onclick=()=>{root.dataset.theme=root.dataset.theme==='light'?'dark':'light';try{localStorage.setItem('learner-theme',root.dataset.theme)}catch(e){}update()};update();
+document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{const text=b.closest('article').querySelector('code').textContent;try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.append(t);t.select();document.execCommand('copy');t.remove()}b.textContent='복사됨';setTimeout(()=>b.textContent='복사',1200)});
+</script></body></html>

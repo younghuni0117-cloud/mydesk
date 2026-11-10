@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "train_cases": [
+    "case_002",
+    "case_004",
+    "case_005",
+    "case_007",
+    "case_009",
+    "case_010"
+  ],
+  "split_sha256": "5bf4ea887ffc2e1c51640980742d496eba4b371083ede18cafb00d140d26f63d",
+  "weighting": "Equal weight per training case; all nodes within each case have equal weight",
+  "sampling_used_to_fit_statistics": false,
+  "std_ddof": 0,
+  "condition_order": [
+    "thickness_mm",
+    "force_N"
+  ],
+  "units": {
+    "coords": "mm",
+    "globals": [
+      "mm",
+      "N"
+    ],
+    "stress": "MPa",
+    "displacement": "mm"
+  },
+  "train_vtu_sha256": {
+    "case_002": "467cf5290236b491590e99e00b577048410429d9508d2660a7eef5ae60dcae82",
+    "case_004": "e008d68f4981fa3d6e343be264c29092d4ac88b6f2d5e774d6b80123f9feffbd",
+    "case_005": "fb4d1944b748b189700b74469e5b5f86b8fd490551df4bb1ccd22a290d8abf37",
+    "case_007": "cd0212cf3349deae1e22b57e3ba27d32f70faf52bab715bd84e04db32e0b13b3",
+    "case_009": "9c91536024dab8f1aca59338ec96bae51e89c162dac78ae8eeb991675bbed37e",
+    "case_010": "758bb417990dd115456c50e1144b6070baf581cd128e68b6c5044a7c44efabba"
+  },
+  "fields": {
+    "coords": {
+      "mean": [
+        7.1161122798382594,
+        -15.014070991655162,
+        4.4293830635786495
+      ],
+      "std": [
+        21.02289306596072,
+        43.12798179719098,
+        3.1367843178350636
+      ],
+      "scale": [
+        21.02289306596072,
+        43.12798179719098,
+        3.1367843178350636
+      ],
+      "constant_channels": [
+        false,
+        false,
+        false
+      ]
+    },
+    "globals": {
+      "mean": [
+        8.705333333333334,
+        314.0308333333333
+      ],
+      "std": [
+        1.9666200841940864,
+        140.46408140092453
+      ],
+      "scale": [
+        1.9666200841940864,
+        140.46408140092453
+      ],
+      "constant_channels": [
+        false,
+        false
+      ]
+    },
+    "stress": {
+      "mean": [
+        28.080312924559205
+      ],
+      "std": [
+        27.80625059756288
+      ],
+      "scale": [
+        27.80625059756288
+      ],
+      "constant_channels": [
+        false
+      ]
+    },
+    "displacement": {
+      "mean": [
+        0.24156451964870085,
+        -0.055185075874661565,
+        4.4696857737088265e-05
+      ],
+      "std": [
+        0.21665564247218033,
+        0.164838095012528,
+        0.00016450136631756122
+      ],
+      "scale": [
+        0.21665564247218033,
+        0.164838095012528,
+        0.00016450136631756122
+      ],
+      "constant_channels": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "stats_sha256": "e1734c49bbbc6140e2d84940aa583e977a866e74f9f515568cac1132442b1d20"
+}

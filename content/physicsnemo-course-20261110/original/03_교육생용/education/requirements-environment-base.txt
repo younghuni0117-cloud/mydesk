@@ -1,0 +1,12 @@
+# Complete course Python-package declaration; not a version lock.
+# Python and Jupyter are installed using Ansys Python Manager.
+# For the Manager-first lesson, use requirements-course.txt after GUI installation.
+# Install CUDA-enabled PyTorch first and keep CUDA pins/index as documented in chapter 1.
+numpy
+scipy
+pandas
+matplotlib
+pyvista
+scikit-learn
+ansys-dpf-core
+-r requirements-course.txt

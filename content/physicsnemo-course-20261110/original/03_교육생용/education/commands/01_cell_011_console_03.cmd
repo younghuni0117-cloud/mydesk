@@ -1,0 +1,1 @@
+python -c "import torch; print('Torch:', torch.__version__); print('CUDA build:', torch.backends.cuda.is_built()); print('CUDA runtime:', torch.version.cuda); print('GPU available:', torch.cuda.is_available())"

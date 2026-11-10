@@ -1,0 +1,522 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>4장. PhysicsNeMo의 AI 모델 이해와 사용</title><style>
+:root{color-scheme:dark;--bg:#212121;--card:#282828;--fg:#dedede;--muted:#aaa;--line:#454545;--link:#96c9e8;--code:#232527}
+:root[data-theme=light]{color-scheme:light;--bg:#edf0f2;--card:#f9fafb;--fg:#28323a;--muted:#65717c;--line:#d9dfe4;--link:#21647d;--code:#f0f3f5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 'Malgun Gothic',sans-serif}main{max-width:1180px;margin:auto;padding:26px 24px 70px}h1{font-size:25px}a{color:var(--link);text-underline-offset:3px}nav,.tools{display:flex;gap:14px;align-items:center;flex-wrap:wrap}nav{margin:18px 0}.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card,article{background:var(--card);border:1px solid var(--line);border-radius:8px;margin:18px 0;padding:20px}.card{display:block;text-decoration:none;margin:0}article{scroll-margin-top:16px}.label{font-weight:bold;font-size:14px}.kind{color:var(--link)}small{color:var(--muted)}button{font:inherit;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 12px;color:var(--fg);cursor:pointer}.tools{justify-content:space-between}pre{background:var(--code);padding:18px;border:1px solid var(--line);border-radius:5px;overflow:auto;font:14px/1.65 Consolas,'Malgun Gothic',monospace;tab-size:4}pre code{white-space:pre}a:focus-visible,button:focus-visible{outline:2px solid var(--link)}@media(max-width:760px){main{padding:18px 12px}.cards{grid-template-columns:1fr}article{padding:14px}pre{font-size:12px}}@media print{body{background:white;color:black}button{display:none}pre{white-space:pre-wrap}pre code{white-space:pre-wrap}.cards{display:block}}
+
+.overview{padding:22px;background:var(--card);border:1px solid var(--line);border-radius:8px;margin:20px 0}.overview h2{margin-top:0}table{border-collapse:collapse;font-size:14px;width:100%}th,td{padding:10px 12px;text-align:left;border:1px solid var(--line)}.heading-block h2{font-size:23px;margin:38px 0 12px}.heading-block h3{font-size:20px;margin:24px 0 12px}.heading-block h4{font-size:17px}.toc{border:1px solid var(--line);padding:14px 20px;border-radius:8px;margin:20px 0}.toc ul{padding-left:20px}.toc a{text-decoration:none}table code{font:inherit} .overview{overflow-x:auto}
+.chapter1-body{overflow-x:auto}.chapter1-body img{display:block;max-width:100%;height:auto;background:#fff;border-radius:6px}.chapter1-body code{overflow-wrap:anywhere}.emphasis-key{font-size:13px;color:var(--muted)}mark{border-radius:3px;padding:2px 3px}
+</style></head><body><main><div class="tools"><small>CAE 데이터 기반 AI 예측 모델 구축 실무</small><button id="theme" type="button">밝은 화면</button></div><h1>4장. PhysicsNeMo의 AI 모델 이해와 사용</h1><nav><a href="index.html">1~8장</a><a href="../../notebooks/04_models_beginner.ipynb" download>Notebook</a></nav><section class="overview"><h2>개요</h2>
+<p><strong>학습 목표:</strong> PhysicsNeMo와 GNN/Neural Operator/FNO/Transolver의 개념/특징/활용 이해</p>
+<table>
+<thead>
+<tr>
+<th>읽을 순서</th>
+<th>알아볼 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. PhysicsNeMo와 모델 사용</td>
+<td>제공 모델의 역할, 그래프/격자/점 자료, 공통 온도 문제와 학습 과정</td>
+</tr>
+<tr>
+<td>2. GNN</td>
+<td>노드/연결과 이웃 정보 전달 원리</td>
+</tr>
+<tr>
+<td>3. Neural Operator와 FNO</td>
+<td>분포 사이의 관계를 배우는 원리와 정상상태 온도 예측</td>
+</tr>
+<tr>
+<td>4. Transolver</td>
+<td>좌표가 있는 점들의 관계를 처리하는 구조와 활용</td>
+</tr>
+<tr>
+<td>5. 다음 장 준비</td>
+<td>모델 소개에서 후크 자료의 학습/검증으로 이어지는 흐름</td>
+</tr>
+</tbody>
+</table></section><details class="toc"><summary>장 / 절 목차</summary><ul><li style="margin-left:0px"><a href="#section-002-01">1. PhysicsNeMo와 모델 사용 흐름</a></li><li style="margin-left:14px"><a href="#section-002-04">1.3 예제 실행 준비</a></li><li style="margin-left:14px"><a href="#section-005-01">1.4 세 모델로 풀어 볼 공통 온도 예측 문제</a></li><li style="margin-left:0px"><a href="#section-008-01">2. GNN: 연결된 노드의 정보를 함께 처리하는 모델</a></li><li style="margin-left:14px"><a href="#section-011-01">2.5 PhysicsNeMo GNN으로 정상상태 온도 예측하기</a></li><li style="margin-left:28px"><a href="#section-011-02">2.5.1 그래프와 모델 준비</a></li><li style="margin-left:28px"><a href="#section-013-01">2.5.2 정답과 비교하며 학습</a></li><li style="margin-left:28px"><a href="#section-015-01">2.5.3 시험 예측과 오차 확인</a></li><li style="margin-left:28px"><a href="#section-019-01">2.5.4 선택 확인: 한 노드의 입력과 연결 읽기</a></li><li style="margin-left:0px"><a href="#section-021-01">3. Neural Operator와 FNO</a></li><li style="margin-left:14px"><a href="#section-025-01">3.5 PhysicsNeMo FNO로 정상상태 온도 예측하기</a></li><li style="margin-left:28px"><a href="#section-026-01">3.5.1 자료와 모델 준비</a></li><li style="margin-left:28px"><a href="#section-028-01">3.5.2 정답과 비교하며 학습</a></li><li style="margin-left:28px"><a href="#section-031-01">3.5.3 시험 예측과 오차 확인</a></li><li style="margin-left:28px"><a href="#section-036-01">3.5.4 선택 확인: 중간 특징과 숫자 배열</a></li><li style="margin-left:0px"><a href="#section-040-01">4. Transolver: 점 정보를 모아 관계를 학습하는 모델</a></li><li style="margin-left:14px"><a href="#section-043-01">4.4 PhysicsNeMo Transolver로 점별 온도 예측하기</a></li><li style="margin-left:28px"><a href="#section-044-01">4.4.1 자료와 모델 준비</a></li><li style="margin-left:28px"><a href="#section-046-01">4.4.2 정답과 비교하며 학습</a></li><li style="margin-left:28px"><a href="#section-049-01">4.4.3 시험 예측과 오차 확인</a></li></ul></details><section class="heading-block" id="section-002-01"><h2>1. PhysicsNeMo와 모델 사용 흐름</h2></section><section class="heading-block" id="section-002-04"><h3>1.3 예제 실행 준비</h3></section><article id="source-cell-003-notebook-00" data-kind="notebook" data-source-cell="3" data-source-sha256="b1b6ca681d4fb6f9c6eacce90a039216e54273d14b2fe08c8bf1094c7467503b"><div class="tools"><span class="label">04장 / 셀 03 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 현재 위치와 상위 폴더에서 교육 폴더를 찾습니다.
+from pathlib import Path
+import sys
+
+working_dir = Path.cwd().resolve()
+education_dir = next((p for base in [working_dir, *working_dir.parents]
+                      for p in [base, base / &#x27;education&#x27;]
+                      if (p / &#x27;course_utils/dataset.py&#x27;).is_file()), None)
+if education_dir is None:
+    raise FileNotFoundError(&#x27;교육 폴더 또는 프로젝트 루트에서 실행하세요.&#x27;)
+if str(education_dir) not in sys.path:
+    sys.path.insert(0, str(education_dir))
+
+# 2. PhysicsNeMo를 불러오기 전에 교육용 임시 저장 위치를 준비합니다.
+import os
+os.environ[&quot;PHYSICSNEMO_FORCE_TE&quot;] = &quot;False&quot;
+os.environ.setdefault(&quot;WARP_CACHE_PATH&quot;, str(education_dir / &quot;runs/.warp_cache&quot;))
+import course_utils
+import warp
+warp.config.log_level = warp.LOG_WARNING
+import torch
+import physicsnemo
+
+# 3. 작은 예제의 실행 설정을 정하고 패키지 버전을 확인합니다.
+torch.set_num_threads(4)
+torch.manual_seed(42)
+print(&#x27;PyTorch:&#x27;, torch.__version__, &#x27;| PhysicsNeMo:&#x27;, physicsnemo.__version__)
+
+import torch_geometric
+print(&#x27;PyG:&#x27;, torch_geometric.__version__)
+from physicsnemo.models.meshgraphnet import MeshGraphNet
+</code></pre></article><section class="heading-block" id="section-005-01"><h3>1.4 세 모델로 풀어 볼 공통 온도 예측 문제</h3></section><article id="source-cell-006-notebook-00" data-kind="notebook" data-source-cell="6" data-source-sha256="715eb93c2efe86f87cea7df54c91c8b7fd3620a594921b6a6a76096366784011"><div class="tools"><span class="label">04장 / 셀 06 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 발열량과 열전도/경계조건으로 정상상태 온도 정답을 계산합니다.
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+
+def solve_steady_temperature(source):
+    # 가장자리를 제외한 30 × 30 위치의 열전도 균형식을 준비합니다.
+    n = 30
+    line = (2 * torch.eye(n, dtype=torch.float64)
+            - torch.diag(torch.ones(n - 1, dtype=torch.float64), 1)
+            - torch.diag(torch.ones(n - 1, dtype=torch.float64), -1))
+    identity = torch.eye(n, dtype=torch.float64)
+    matrix = (torch.kron(identity, line) + torch.kron(line, identity)) * 31 ** 2
+
+    # 입력을 W/m³로 되돌려, 열전도율 1 W/(m·K)인 평판의 온도 상승을 구합니다.
+    rhs = source[:, :, 1:-1, 1:-1].double().reshape(len(source), n * n) * 1000
+    interior = torch.linalg.solve(matrix, rhs.T).T.reshape(len(source), 1, n, n)
+
+    # 온도 상승을 40으로 나누고, 가장자리 20 ℃는 변환한 값 0으로 둡니다.
+    target = torch.zeros_like(source)
+    target[:, :, 1:-1, 1:-1] = (interior / 40).to(source.dtype)
+    return target
+
+# 2. 열이 발생하는 두 영역의 위치/크기/양을 바꾸어 자료를 만듭니다.
+def make_source_temperature_pairs(count, seed):
+    rng = torch.Generator().manual_seed(seed)
+    y, x = torch.meshgrid(torch.linspace(0, 1, 32),
+                          torch.linspace(0, 1, 32), indexing=&#x27;ij&#x27;)
+    source = torch.zeros(count, 1, 32, 32)
+    for _ in range(2):
+        cx = 0.2 + 0.6 * torch.rand(count, 1, 1, 1, generator=rng)
+        cy = 0.2 + 0.6 * torch.rand(count, 1, 1, 1, generator=rng)
+        width = 0.06 + 0.12 * torch.rand(count, 1, 1, 1, generator=rng)
+        amount = 0.2 + 0.3 * torch.rand(count, 1, 1, 1, generator=rng)
+        source += amount * torch.exp(-((x - cx) ** 2 + (y - cy) ** 2) / (2 * width ** 2))
+    source[:, :, [0, -1], :] = 0
+    source[:, :, :, [0, -1]] = 0
+    return source, solve_steady_temperature(source)
+
+# 3. 모든 모델이 함께 사용할 CPU 원본을 한 번 준비합니다.
+common_train_input, common_train_target = make_source_temperature_pairs(256, seed=4030)
+common_val_input, common_val_target = make_source_temperature_pairs(64, seed=4031)
+common_test_input, common_test_target = make_source_temperature_pairs(64, seed=4032)
+common_pairs = [(common_train_input, common_train_target),
+                (common_val_input, common_val_target),
+                (common_test_input, common_test_target)]
+print(&#x27;공통 자료 | 학습:&#x27;, tuple(common_train_input.shape),
+      &#x27;| 검증:&#x27;, tuple(common_val_input.shape), &#x27;| 시험:&#x27;, tuple(common_test_input.shape))
+
+# 4. 별도 CPU 난수 생성기로 에폭마다 학습 256개의 순서만 섞습니다.
+# 세 모델은 같은 순서표를 16개씩 나누어 각 케이스를 에폭마다 정확히 한 번 사용합니다.
+common_epochs, common_batch_size = 50, 16
+common_order_generator = torch.Generator(device=&#x27;cpu&#x27;).manual_seed(4033)
+common_epoch_orders = [torch.randperm(len(common_train_input), generator=common_order_generator)
+                       for _ in range(common_epochs)]
+common_steps_per_epoch = len(common_train_input) // common_batch_size
+assert len(common_train_input) % common_batch_size == 0
+assert all(torch.equal(order.sort().values, torch.arange(len(common_train_input)))
+           for order in common_epoch_orders)
+print(f&#x27;공통 학습 | 배치 {common_batch_size}개 | {common_epochs}에폭 | &#x27;
+      f&#x27;에폭당 {common_steps_per_epoch}스텝 | 총 {common_epochs * common_steps_per_epoch}스텝&#x27;)
+</code></pre></article><section class="heading-block" id="section-008-01"><h2>2. GNN: 연결된 노드의 정보를 함께 처리하는 모델</h2></section><section class="heading-block" id="section-011-01"><h3>2.5 PhysicsNeMo GNN으로 정상상태 온도 예측하기</h3></section><section class="heading-block" id="section-011-02"><h4>2.5.1 그래프와 모델 준비</h4></section><article id="source-cell-012-notebook-00" data-kind="notebook" data-source-cell="12" data-source-sha256="500d8f304c55b2ab5887be523f17eff6c425611daa1dca99ad1be8f3f68ae86d"><div class="tools"><span class="label">04장 / 셀 12 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 공식 모델과 그래프 준비 도구를 불러옵니다.
+from physicsnemo.models.meshgraphnet import MeshGraphNet
+from course_utils.gnn_temperature import make_plate_graph, predict_temperature
+
+# 2. 학습 배치 16개, 평가 배치 4개, 한 케이스용 그래프를 준비합니다.
+gnn_device = torch.device(&#x27;cuda&#x27; if torch.cuda.is_available() else &#x27;cpu&#x27;)
+graphs = {b: make_plate_graph(b, gnn_device) for b in (1, 4, common_batch_size)}
+graph = graphs[1]
+assert graph.num_nodes == 1024 and graph.num_edges == 9600
+assert torch.equal(graph.batch[graph.edge_index[0]], graph.batch[graph.edge_index[1]])
+print(&#x27;한 케이스 노드:&#x27;, graph.num_nodes, &#x27;| 방향을 구분한 엣지:&#x27;, graph.num_edges)
+print(&#x27;노드 입력: (1024, 4) / 엣지 입력:&#x27;, tuple(graph.edge_attr.shape))
+print(&#x27;계산 장치:&#x27;, gnn_device)
+
+# 3. 여섯 번의 정보 전달을 수행하는 작은 MeshGraphNet을 생성합니다.
+torch.manual_seed(42)
+gnn = MeshGraphNet(input_dim_nodes=4, input_dim_edges=3, output_dim=1,
+    processor_size=6, hidden_dim_processor=32, hidden_dim_node_encoder=32,
+    hidden_dim_edge_encoder=32, hidden_dim_node_decoder=32).to(gnn_device)
+
+# 4. 같은 원본 자료를 사용하며, 평가는 메모리를 줄이기 위해 네 케이스씩 계산합니다.
+gnn_train_x, gnn_train_y = [v.to(gnn_device) for v in common_pairs[0]]
+gnn_val_x, gnn_val_y = [v.to(gnn_device) for v in common_pairs[1]]
+gnn_test_x, gnn_test_y = [v.to(gnn_device) for v in common_pairs[2]]
+def predict_gnn_cases(model, source):
+    return torch.cat([predict_temperature(model, part, graphs[len(part)])
+                      for part in source.split(4)])
+gnn.eval()
+with torch.no_grad():
+    gnn_before = predict_gnn_cases(gnn, gnn_test_x).cpu()
+print(&#x27;학습/검증/시험 케이스:&#x27;, len(gnn_train_x), len(gnn_val_x), len(gnn_test_x))
+print(&#x27;한 케이스 출력:&#x27;, tuple(gnn_before[:1].shape))
+</code></pre></article><section class="heading-block" id="section-013-01"><h4>2.5.2 정답과 비교하며 학습</h4></section><article id="source-cell-014-notebook-00" data-kind="notebook" data-source-cell="14" data-source-sha256="76d5ca4afea0a4e2a731424dee5773031b46d45eef55373ea848dc7e5ae443f1"><div class="tools"><span class="label">04장 / 셀 14 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 학습 256개를 에폭마다 한 번씩 사용해 50에폭 동안 가중치를 조정합니다.
+gnn_optimizer = torch.optim.Adam(gnn.parameters(), lr=0.001)
+gnn_loss_history, gnn_validation_history = [], []
+for epoch, epoch_order in enumerate(common_epoch_orders, start=1):
+    gnn.train()
+    epoch_loss_sum = 0.0
+    for start in range(0, len(epoch_order), common_batch_size):
+        batch_ids = epoch_order[start:start + common_batch_size].to(gnn_device)
+        gnn_optimizer.zero_grad()
+        prediction = predict_temperature(gnn, gnn_train_x[batch_ids], graphs[len(batch_ids)])
+        loss = F.mse_loss(prediction, gnn_train_y[batch_ids])
+        loss.backward()
+        gnn_optimizer.step()
+        # 배치 평균에 케이스 수를 곱해 더한 뒤, 학습 256개 전체의 평균을 기록합니다.
+        epoch_loss_sum += loss.detach().item() * len(batch_ids)
+    gnn_loss_history.append(epoch_loss_sum / len(gnn_train_x))
+    if epoch % 5 == 0:
+        gnn.eval()
+        with torch.no_grad():
+            validation = predict_gnn_cases(gnn, gnn_val_x)
+            val_mae = (validation - gnn_val_y).abs().mean().item() * 40
+        gnn_validation_history.append(val_mae)
+        print(f&#x27;{epoch}에폭 | 학습 평균 손실: {gnn_loss_history[-1]:.6f} | 검증 MAE: {val_mae:.3f} ℃&#x27;)
+
+# 2. 학습이 끝난 모델과 손실 곡선을 저장합니다.
+gnn.eval()
+demo_dir = education_dir / &#x27;runs/model_intro&#x27;
+demo_dir.mkdir(parents=True, exist_ok=True)
+gnn_checkpoint = demo_dir / &#x27;gnn_steady_temperature.mdlus&#x27;
+gnn.save(gnn_checkpoint)
+print(&#x27;PhysicsNeMo 모델 저장:&#x27;, gnn_checkpoint.name)
+plt.rcParams.update({&#x27;font.family&#x27;: &#x27;Malgun Gothic&#x27;, &#x27;axes.unicode_minus&#x27;: False})
+fig, ax = plt.subplots(figsize=(8, 3), layout=&#x27;constrained&#x27;)
+ax.plot(range(1, common_epochs + 1), gnn_loss_history)
+ax.set(title=&#x27;GNN의 정상상태 온도 예측 학습&#x27;, xlabel=&#x27;완료한 에폭(학습 자료 전체 사용 횟수)&#x27;,
+       ylabel=&#x27;에폭 평균 학습 손실(MSE)&#x27;, yscale=&#x27;log&#x27;)
+# 로그 눈금을 일반 숫자로 표시해 지수의 마이너스 글꼴 경고를 방지합니다.
+from matplotlib.ticker import FuncFormatter, NullFormatter
+ax.yaxis.set_major_formatter(FuncFormatter(lambda value, position: f&#x27;{value:g}&#x27;))
+ax.yaxis.set_minor_formatter(NullFormatter())
+ax.grid(alpha=0.3)
+plt.show()
+</code></pre></article><section class="heading-block" id="section-015-01"><h4>2.5.3 시험 예측과 오차 확인</h4></section><article id="source-cell-016-notebook-00" data-kind="notebook" data-source-cell="16" data-source-sha256="79f11742a940333d2013d1a809a1a6dc024c24a9d2010bbef4ddbb956da628fd"><div class="tools"><span class="label">04장 / 셀 16 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 학습에 사용하지 않은 시험 64개에서 온도를 예측합니다.
+with torch.no_grad():
+    gnn_output = predict_gnn_cases(gnn, gnn_test_x).cpu()
+gnn_source = common_test_input * 1000
+gnn_target_c = common_test_target * 40 + 20
+gnn_prediction_c = gnn_output * 40 + 20
+gnn_before_c = gnn_before * 40 + 20
+gnn_absolute_error = (gnn_prediction_c - gnn_target_c).abs()
+gnn_before_mae = (gnn_before_c - gnn_target_c).abs().mean().item()
+gnn_after_mae = gnn_absolute_error.mean().item()
+gnn_baseline_mae = (20 - gnn_target_c).abs().mean().item()
+assert gnn_output.shape == (64, 1, 32, 32) and torch.isfinite(gnn_output).all()
+print(f&#x27;시험 64개 MAE(℃) | 모두 20 ℃: {gnn_baseline_mae:.3f} | 학습 전: {gnn_before_mae:.3f} | 학습 후: {gnn_after_mae:.3f}&#x27;)
+
+# 2. 같은 두 사례를 같은 위치에 배치합니다. 온도는 세 열 모두 같은 색 눈금입니다.
+panels = [(&#x27;발열량 입력(W/m³)&#x27;, gnn_source, &#x27;magma&#x27;, 0, 1000),
+          (&#x27;학습 전 예측(℃)&#x27;, gnn_before_c, &#x27;turbo&#x27;, 20, 60),
+          (&#x27;학습 후 예측(℃)&#x27;, gnn_prediction_c, &#x27;turbo&#x27;, 20, 60),
+          (&#x27;정상상태 정답(℃)&#x27;, gnn_target_c, &#x27;turbo&#x27;, 20, 60)]
+fig, axes = plt.subplots(2, 4, figsize=(13, 7), layout=&#x27;constrained&#x27;)
+for col, (title, arrays, palette, low, high) in enumerate(panels):
+    for row in range(2):
+        image = axes[row, col].imshow(arrays[row, 0].numpy(), origin=&#x27;lower&#x27;,
+            interpolation=&#x27;nearest&#x27;, cmap=palette, vmin=low, vmax=high)
+        axes[row, col].set(title=title, aspect=&#x27;equal&#x27;)
+        axes[row, col].set_xticks([]); axes[row, col].set_yticks([])
+        if col == 0: axes[row, col].set_ylabel(f&#x27;시험 사례 {row + 1}&#x27;)
+        fig.colorbar(image, ax=axes[row, col], shrink=0.75)
+fig.suptitle(&#x27;GNN: 같은 위치에서 비교한 발열량/온도 예측/정답&#x27;, fontsize=16)
+plt.show()
+</code></pre></article><article id="source-cell-018-notebook-00" data-kind="notebook" data-source-cell="18" data-source-sha256="f6e3ad585500598b995b4de7472099122c708373d163cd1077bdf109cfba325e"><div class="tools"><span class="label">04장 / 셀 18 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 3. 같은 두 사례에서 오차가 남은 위치를 확인합니다.
+fig, axes = plt.subplots(1, 2, figsize=(9, 4), layout=&#x27;constrained&#x27;)
+maximum = gnn_absolute_error[:2].max().item()
+for i, ax in enumerate(axes):
+    image = ax.imshow(gnn_absolute_error[i, 0].numpy(), origin=&#x27;lower&#x27;,
+        interpolation=&#x27;nearest&#x27;, cmap=&#x27;viridis&#x27;, vmin=0, vmax=maximum)
+    ax.set(title=f&#x27;시험 사례 {i + 1}: 온도 절대오차(℃)&#x27;)
+    ax.set_xticks([]); ax.set_yticks([])
+    fig.colorbar(image, ax=ax, shrink=0.8)
+plt.show()
+
+# 4. 저장한 모델을 다시 불러와 첫 시험 사례의 예측이 같은지 확인합니다.
+reloaded_gnn = MeshGraphNet.from_checkpoint(gnn_checkpoint).to(gnn_device).eval()
+with torch.no_grad():
+    restored = predict_temperature(reloaded_gnn, gnn_test_x[:1], graphs[1]).cpu()
+torch.testing.assert_close(restored, gnn_output[:1], rtol=1e-4, atol=1e-5)
+print(&#x27;저장/재로딩 예측 일치: PASS&#x27;)
+</code></pre></article><section class="heading-block" id="section-019-01"><h4>2.5.4 선택 확인: 한 노드의 입력과 연결 읽기</h4></section><article id="source-cell-020-notebook-00" data-kind="notebook" data-source-cell="20" data-source-sha256="ba1074e6b17fed53972fca95ddfd47ceaf0f9dd06395c75d6cb788fa242de1e8"><div class="tools"><span class="label">04장 / 셀 20 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 선택 확인: 중앙 노드 528의 입력과 연결된 이웃을 읽습니다.
+one_graph = make_plate_graph()
+node_id = 16 * 32 + 16
+neighbors = one_graph.edge_index[1, one_graph.edge_index[0] == node_id]
+print(&#x27;노드 번호(0부터):&#x27;, node_id)
+print(&#x27;좌표:&#x27;, one_graph.pos[node_id].tolist())
+print(&#x27;이웃 노드 번호:&#x27;, neighbors.tolist())
+print(&#x27;발열량(W/m³):&#x27;, gnn_source[0, 0, 16, 16].item())
+print(&#x27;예측/정답 온도(℃):&#x27;, gnn_prediction_c[0, 0, 16, 16].item(),
+      gnn_target_c[0, 0, 16, 16].item())
+</code></pre></article><section class="heading-block" id="section-021-01"><h2>3. Neural Operator와 FNO</h2></section><section class="heading-block" id="section-025-01"><h3>3.5 PhysicsNeMo FNO로 정상상태 온도 예측하기</h3></section><section class="heading-block" id="section-026-01"><h4>3.5.1 자료와 모델 준비</h4></section><article id="source-cell-027-notebook-00" data-kind="notebook" data-source-cell="27" data-source-sha256="0ba329fbf006ff375a909280a442edfc6751d9e3e8c9000f72c540f0c341c50c"><div class="tools"><span class="label">04장 / 셀 27 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. GNN과 동일한 공통 원본에서 FNO용 발열량/온도 쌍을 준비합니다.
+heat_train_input, heat_train_target = [a.clone() for a in common_pairs[0]]
+heat_val_input, heat_val_target = [a.clone() for a in common_pairs[1]]
+heat_test_input, heat_test_target = [a.clone() for a in common_pairs[2]]
+
+# 2. PhysicsNeMo의 제공 FNO를 만들고 모델과 자료를 같은 장치에 올립니다.
+from physicsnemo.models.fno import FNO
+fno_device = torch.device(&#x27;cuda&#x27; if torch.cuda.is_available() else &#x27;cpu&#x27;)
+torch.manual_seed(44)
+fno = FNO(in_channels=1, out_channels=1, dimension=2,
+          latent_channels=16, num_fno_layers=2,
+          num_fno_modes=8, padding=4).to(fno_device).eval()
+heat_train_input, heat_train_target = heat_train_input.to(fno_device), heat_train_target.to(fno_device)
+heat_val_input, heat_val_target = heat_val_input.to(fno_device), heat_val_target.to(fno_device)
+fno_input = heat_test_input.to(fno_device)
+
+# 3. 학습 전 예측과 실제 사용 모델/장치/자료의 모양을 확인합니다.
+with torch.no_grad():
+    fno_before = fno(fno_input).cpu()
+device_name = torch.cuda.get_device_name(fno_device) if fno_device.type == &#x27;cuda&#x27; else &#x27;CPU&#x27;
+print(&#x27;사용 모델:&#x27;, type(fno).__module__ + &#x27;.&#x27; + type(fno).__name__)
+print(&#x27;FNO 계산 장치:&#x27;, fno_device, &#x27;|&#x27;, device_name)
+print(&#x27;학습:&#x27;, tuple(heat_train_input.shape), &#x27;| 검증:&#x27;, tuple(heat_val_input.shape))
+print(&#x27;시험 입력/정답:&#x27;, tuple(heat_test_input.shape))
+</code></pre></article><section class="heading-block" id="section-028-01"><h4>3.5.2 정답과 비교하며 학습</h4></section><article id="source-cell-029-notebook-00" data-kind="notebook" data-source-cell="29" data-source-sha256="a3bef99d3e766398f147eaaf92869550a87e92c1e7e6ba7c98bf0eb117f82f75"><div class="tools"><span class="label">04장 / 셀 29 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 학습 256개를 에폭마다 한 번씩 사용해 50에폭 동안 가중치를 조정합니다.
+heat_optimizer = torch.optim.Adam(fno.parameters(), lr=0.003)
+heat_loss_history, heat_validation_history = [], []
+for epoch, epoch_order in enumerate(common_epoch_orders, start=1):
+    fno.train()
+    epoch_loss_sum = 0.0
+    for start in range(0, len(epoch_order), common_batch_size):
+        batch_ids = epoch_order[start:start + common_batch_size].to(fno_device)
+        heat_optimizer.zero_grad()
+        prediction = fno(heat_train_input[batch_ids])
+        loss = F.mse_loss(prediction, heat_train_target[batch_ids])
+        loss.backward()
+        heat_optimizer.step()
+        # 배치 평균에 케이스 수를 곱해 더한 뒤, 학습 256개 전체의 평균을 기록합니다.
+        epoch_loss_sum += loss.detach().item() * len(batch_ids)
+    heat_loss_history.append(epoch_loss_sum / len(heat_train_input))
+    if epoch % 5 == 0:
+        fno.eval()
+        with torch.no_grad():
+            val_mae = float((fno(heat_val_input) - heat_val_target).abs().mean() * 40)
+        heat_validation_history.append(val_mae)
+        print(f&#x27;{epoch}에폭 | 학습 평균 손실: {heat_loss_history[-1]:.6f} | 검증 MAE: {val_mae:.3f} ℃&#x27;)
+
+# 5. 학습한 PhysicsNeMo 모델을 실습 전용 폴더에 저장합니다.
+fno.eval()
+heat_demo_dir = education_dir / &#x27;runs/model_intro&#x27;
+heat_demo_dir.mkdir(parents=True, exist_ok=True)
+fno_checkpoint = heat_demo_dir / &#x27;fno_steady_temperature.mdlus&#x27;
+fno.save(fno_checkpoint)
+print(&#x27;PhysicsNeMo 모델 저장:&#x27;, fno_checkpoint.name)
+
+# 6. 학습에 따라 손실이 줄어드는지 그래프로 확인합니다.
+plt.rcParams.update({&#x27;font.family&#x27;: &#x27;Malgun Gothic&#x27;, &#x27;axes.unicode_minus&#x27;: False})
+fig, ax = plt.subplots(figsize=(8, 3), layout=&#x27;constrained&#x27;)
+ax.plot(range(1, common_epochs + 1), heat_loss_history)
+ax.set(title=&#x27;FNO의 정상상태 온도 예측 학습&#x27;, xlabel=&#x27;완료한 에폭(학습 자료 전체 사용 횟수)&#x27;,
+       ylabel=&#x27;에폭 평균 학습 손실(MSE)&#x27;)
+ax.set_yscale(&#x27;log&#x27;)
+ax.set_yticks([0.1, 0.01, 0.001, 0.0001, 0.00001],
+             labels=[&#x27;0.1&#x27;, &#x27;0.01&#x27;, &#x27;0.001&#x27;, &#x27;0.0001&#x27;, &#x27;0.00001&#x27;])
+ax.grid(alpha=0.3)
+plt.show()
+</code></pre></article><section class="heading-block" id="section-031-01"><h4>3.5.3 시험 예측과 오차 확인</h4></section><article id="source-cell-032-notebook-00" data-kind="notebook" data-source-cell="32" data-source-sha256="433f12e2f28a8b971406cc571025db63304bc20737fd76b6990d787b32a0b3d5"><div class="tools"><span class="label">04장 / 셀 32 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 7. 시험 자료의 정상상태 온도를 예측하고 물리량별 단위로 되돌립니다.
+with torch.no_grad():
+    fno_output = fno(fno_input).cpu()
+source_density = heat_test_input * 1000
+steady_temperature = heat_test_target * 40 + 20
+fno_before_temperature = fno_before * 40 + 20
+fno_predicted_temperature = fno_output * 40 + 20
+heat_absolute_error = (fno_predicted_temperature - steady_temperature).abs()
+heat_baseline_mae = (20 - steady_temperature).abs().mean(dim=(1, 2, 3))
+heat_before_mae = (fno_before_temperature - steady_temperature).abs().mean(dim=(1, 2, 3))
+heat_after_mae = heat_absolute_error.mean(dim=(1, 2, 3))
+print(&#x27;시험 64개 평균 MAE(℃) | 모두 20 ℃인 기준값:&#x27;, float(heat_baseline_mae.mean()),
+      &#x27;| 학습 전:&#x27;, float(heat_before_mae.mean()), &#x27;| 학습 후:&#x27;, float(heat_after_mae.mean()))
+for i in range(2):
+    print(f&#x27;사례 {i + 1} | 학습 후 MAE: {heat_after_mae[i]:.3f} ℃&#x27;)
+assert fno_output.shape == (64, 1, 32, 32)
+assert torch.isfinite(fno_output).all()
+
+# 8. 발열량 입력과 온도 결과를 각 물리량의 눈금으로 비교합니다.
+panels = [(&#x27;발열량 입력(W/m³)&#x27;, source_density, &#x27;magma&#x27;, 0, 1000),
+          (&#x27;학습 전 예측(℃)&#x27;, fno_before_temperature, &#x27;turbo&#x27;, 20, 60),
+          (&#x27;학습 후 예측(℃)&#x27;, fno_predicted_temperature, &#x27;turbo&#x27;, 20, 60),
+          (&#x27;정상상태 정답(℃)&#x27;, steady_temperature, &#x27;turbo&#x27;, 20, 60)]
+fig, axes = plt.subplots(2, 4, figsize=(13, 7), layout=&#x27;constrained&#x27;)
+for col, (title, arrays, palette, low, high) in enumerate(panels):
+    for row in range(2):
+        image = axes[row, col].imshow(arrays[row, 0].numpy(), origin=&#x27;lower&#x27;, cmap=palette,
+                                     vmin=low, vmax=high, interpolation=&#x27;nearest&#x27;)
+        axes[row, col].set_title(title)
+        axes[row, col].set_xticks([]); axes[row, col].set_yticks([])
+        if col == 0:
+            axes[row, col].set_ylabel(f&#x27;시험 사례 {row + 1}&#x27;)
+        fig.colorbar(image, ax=axes[row, col], shrink=0.75)
+fig.suptitle(&#x27;FNO의 정상상태 온도 예측: 학습에 쓰지 않은 시험 자료&#x27;, fontsize=16)
+plt.show()
+</code></pre></article><article id="source-cell-034-notebook-00" data-kind="notebook" data-source-cell="34" data-source-sha256="1077559135d1480c9b366c91406023906d20e83c2497ccdeceac376c37a1019c"><div class="tools"><span class="label">04장 / 셀 34 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 9. 예측과 정답의 차이가 어느 위치에 남았는지 ℃ 단위로 확인합니다.
+fig, axes = plt.subplots(1, 2, figsize=(9, 4), layout=&#x27;constrained&#x27;)
+error_max = float(heat_absolute_error[:2].max())
+for i, ax in enumerate(axes):
+    image = ax.imshow(heat_absolute_error[i, 0].numpy(), origin=&#x27;lower&#x27;, cmap=&#x27;viridis&#x27;,
+                      vmin=0, vmax=error_max, interpolation=&#x27;nearest&#x27;)
+    ax.set_title(f&#x27;시험 사례 {i + 1}: 온도 절대오차(℃)&#x27;)
+    ax.set_xticks([]); ax.set_yticks([])
+    fig.colorbar(image, ax=ax, shrink=0.8)
+fig.suptitle(&#x27;예측/정답의 차이가 큰 위치 확인&#x27;, fontsize=16)
+plt.show()
+</code></pre></article><section class="heading-block" id="section-036-01"><h4>3.5.4 선택 확인: 중간 특징과 숫자 배열</h4></section><article id="source-cell-037-notebook-00" data-kind="notebook" data-source-cell="37" data-source-sha256="5a0dd4846d851c3ac9ee358c8120fc8a60b1bd027a231d0e412886bf609fcdc7"><div class="tools"><span class="label">04장 / 셀 37 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 선택 1. 학습한 FNO에서 온도 출력 직전의 실제 중간 특징을 읽습니다.
+with torch.no_grad():
+    fno_features = fno.spec_encoder(fno_input[:2]).cpu()
+assert fno_features.shape == (2, 16, 32, 32)
+heat_feature_ids = fno_features.var(dim=(0, 2, 3)).topk(2).indices.tolist()
+panels = [(f&#x27;중간 특징 {j + 1}&#x27;, fno_features[:, j]) for j in heat_feature_ids]
+fig, axes = plt.subplots(2, 2, figsize=(8, 7), layout=&#x27;constrained&#x27;)
+for col, (title, arrays) in enumerate(panels):
+    low, high = float(arrays.min()), float(arrays.max())
+    for row in range(2):
+        image = axes[row, col].imshow(arrays[row].numpy(), origin=&#x27;lower&#x27;, cmap=&#x27;viridis&#x27;,
+                                     vmin=low, vmax=high, interpolation=&#x27;nearest&#x27;)
+        axes[row, col].set_title(title)
+        axes[row, col].set_xticks([]); axes[row, col].set_yticks([])
+        if col == 0:
+            axes[row, col].set_ylabel(f&#x27;시험 사례 {row + 1}&#x27;)
+        fig.colorbar(image, ax=axes[row, col], shrink=0.75)
+fig.suptitle(&#x27;학습한 FNO의 출력 직전 중간 특징&#x27;, fontsize=16)
+plt.show()
+</code></pre></article><article id="source-cell-039-notebook-00" data-kind="notebook" data-source-cell="39" data-source-sha256="b4f8b6ed06dc0e4839389173396f8e7bfcc0de0e94bde30775b05bc09fbc16cd"><div class="tools"><span class="label">04장 / 셀 39 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 선택 2. 같은 위치의 발열량/중간 특징/온도 예측/정답을 비교합니다.
+torch.set_printoptions(precision=3, sci_mode=False)
+for i in range(2):
+    print(f&#x27;시험 사례 {i + 1} | 가운데 3 × 3 영역&#x27;)
+    for name, array in [(&#x27;발열량 입력(W/m³)&#x27;, source_density[i, 0]),
+                        (f&#x27;중간 특징 {heat_feature_ids[0] + 1}&#x27;, fno_features[i, heat_feature_ids[0]]),
+                        (&#x27;온도 예측(℃)&#x27;, fno_predicted_temperature[i, 0]),
+                        (&#x27;정상상태 온도 정답(℃)&#x27;, steady_temperature[i, 0])]:
+        print(name); print(array[15:18, 15:18])
+</code></pre></article><section class="heading-block" id="section-040-01"><h2>4. Transolver: 점 정보를 모아 관계를 학습하는 모델</h2></section><section class="heading-block" id="section-043-01"><h3>4.4 PhysicsNeMo Transolver로 점별 온도 예측하기</h3></section><section class="heading-block" id="section-044-01"><h4>4.4.1 자료와 모델 준비</h4></section><article id="source-cell-045-notebook-00" data-kind="notebook" data-source-cell="45" data-source-sha256="1bdfb2a2baed86dc09663976c704501ef8554c19146366ebb83543af35fd9fbd"><div class="tools"><span class="label">04장 / 셀 45 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 기존 발열량/온도 쌍을 같은 순서의 점별 입력/정답으로 바꿉니다.
+from physicsnemo.models.transolver import Transolver
+transolver_pairs = [(q.clone(), t.clone()) for q, t in common_pairs]
+point_pairs = [(q.flatten(2).transpose(1, 2).contiguous(),
+                t.flatten(2).transpose(1, 2).contiguous()) for q, t in transolver_pairs]
+y, x = torch.meshgrid(torch.linspace(0, 1, 32), torch.linspace(0, 1, 32), indexing=&#x27;ij&#x27;)
+transolver_coords = torch.stack([x.flatten(), y.flatten()], dim=-1).unsqueeze(0)
+
+# 2. 제공 모델과 모든 학습 자료를 같은 GPU(또는 CPU)에 올립니다.
+transolver_device = torch.device(&#x27;cuda&#x27; if torch.cuda.is_available() else &#x27;cpu&#x27;)
+torch.manual_seed(45)
+transolver = Transolver(functional_dim=1, embedding_dim=2, out_dim=1,
+                        n_layers=3, n_hidden=64, n_head=4, slice_num=16,
+                        structured_shape=None, use_te=False).to(transolver_device).eval()
+transolver_coords = transolver_coords.to(transolver_device)
+point_train_input, point_train_target = [a.to(transolver_device) for a in point_pairs[0]]
+point_val_input, point_val_target = [a.to(transolver_device) for a in point_pairs[1]]
+point_test_input, point_test_target = [a.to(transolver_device) for a in point_pairs[2]]
+
+# 3. 여러 사례에서 같은 평판 좌표를 사용해 학습 전 예측을 보관합니다.
+with torch.no_grad():
+    point_before = transolver(point_test_input,
+        embedding=transolver_coords.expand(len(point_test_input), -1, -1)).cpu()
+device_name = torch.cuda.get_device_name(transolver_device) if transolver_device.type == &#x27;cuda&#x27; else &#x27;CPU&#x27;
+print(&#x27;사용 모델:&#x27;, type(transolver).__module__ + &#x27;.&#x27; + type(transolver).__name__)
+print(&#x27;Transolver 계산 장치:&#x27;, transolver_device, &#x27;|&#x27;, device_name)
+print(&#x27;좌표:&#x27;, tuple(transolver_coords.shape), &#x27;| 학습:&#x27;, tuple(point_train_input.shape))
+print(&#x27;검증:&#x27;, tuple(point_val_input.shape), &#x27;| 시험:&#x27;, tuple(point_test_input.shape))
+assert point_train_input.shape == point_train_target.shape == (256, 1024, 1)
+</code></pre></article><section class="heading-block" id="section-046-01"><h4>4.4.2 정답과 비교하며 학습</h4></section><article id="source-cell-047-notebook-00" data-kind="notebook" data-source-cell="47" data-source-sha256="ac9e7b5ea366f76e8fb74eacfce2b02c7b033ed4a1b89ee7231e2f42b6c5336c"><div class="tools"><span class="label">04장 / 셀 47 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 1. 학습 256개를 에폭마다 한 번씩 사용해 50에폭 동안 가중치를 조정합니다.
+point_optimizer = torch.optim.Adam(transolver.parameters(), lr=0.001)
+point_loss_history, point_validation_history = [], []
+for epoch, epoch_order in enumerate(common_epoch_orders, start=1):
+    transolver.train()
+    epoch_loss_sum = 0.0
+    for start in range(0, len(epoch_order), common_batch_size):
+        batch_ids = epoch_order[start:start + common_batch_size].to(transolver_device)
+        point_optimizer.zero_grad()
+        prediction = transolver(point_train_input[batch_ids],
+                                    embedding=transolver_coords.expand(len(batch_ids), -1, -1))
+        loss = F.mse_loss(prediction, point_train_target[batch_ids])
+        loss.backward()
+        point_optimizer.step()
+        # 배치 평균에 케이스 수를 곱해 더한 뒤, 학습 256개 전체의 평균을 기록합니다.
+        epoch_loss_sum += loss.detach().item() * len(batch_ids)
+    point_loss_history.append(epoch_loss_sum / len(point_train_input))
+    if epoch % 5 == 0:
+        transolver.eval()
+        with torch.no_grad():
+            validation = transolver(point_val_input,
+                embedding=transolver_coords.expand(len(point_val_input), -1, -1))
+            val_mae = float((validation - point_val_target).abs().mean() * 40)
+        point_validation_history.append(val_mae)
+        print(f&#x27;{epoch}에폭 | 학습 평균 손실: {point_loss_history[-1]:.6f} | 검증 MAE: {val_mae:.3f} ℃&#x27;)
+
+# 5. 제공 모델을 저장하고 학습 손실의 변화를 확인합니다.
+transolver.eval()
+point_demo_dir = education_dir / &#x27;runs/model_intro&#x27;
+point_demo_dir.mkdir(parents=True, exist_ok=True)
+transolver_checkpoint = point_demo_dir / &#x27;transolver_steady_temperature.mdlus&#x27;
+transolver.save(transolver_checkpoint)
+print(&#x27;PhysicsNeMo 모델 저장:&#x27;, transolver_checkpoint.name)
+plt.rcParams.update({&#x27;font.family&#x27;: &#x27;Malgun Gothic&#x27;, &#x27;axes.unicode_minus&#x27;: False})
+fig, ax = plt.subplots(figsize=(8, 3), layout=&#x27;constrained&#x27;)
+ax.plot(range(1, common_epochs + 1), point_loss_history)
+ax.set(title=&#x27;Transolver의 점별 온도 예측 학습&#x27;, xlabel=&#x27;완료한 에폭(학습 자료 전체 사용 횟수)&#x27;,
+       ylabel=&#x27;에폭 평균 학습 손실(MSE)&#x27;, yscale=&#x27;log&#x27;)
+ax.set_yticks([0.1, 0.01, 0.001, 0.0001], labels=[&#x27;0.1&#x27;, &#x27;0.01&#x27;, &#x27;0.001&#x27;, &#x27;0.0001&#x27;])
+ax.grid(alpha=0.3)
+plt.show()
+</code></pre></article><section class="heading-block" id="section-049-01"><h4>4.4.3 시험 예측과 오차 확인</h4></section><article id="source-cell-050-notebook-00" data-kind="notebook" data-source-cell="50" data-source-sha256="a4cfa7f6071ecd9ffff7e8f697cd5ad6dbbfd50a6cf30d10f7574b80b46613aa"><div class="tools"><span class="label">04장 / 셀 50 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 6. 학습에 사용하지 않은 점별 시험 입력에서 온도를 예측합니다.
+with torch.no_grad():
+    point_output = transolver(point_test_input,
+        embedding=transolver_coords.expand(len(point_test_input), -1, -1)).cpu()
+point_source = point_test_input.cpu() * 1000
+point_temperature = point_test_target.cpu() * 40 + 20
+point_prediction = point_output * 40 + 20
+point_before_temperature = point_before * 40 + 20
+point_absolute_error = (point_prediction - point_temperature).abs()
+point_before_mae = (point_before_temperature - point_temperature).abs().mean(dim=(1, 2))
+point_after_mae = point_absolute_error.mean(dim=(1, 2))
+point_baseline_mae = (20 - point_temperature).abs().mean(dim=(1, 2))
+print(&#x27;시험 64개 평균 MAE(℃) | 모두 20 ℃인 기준값:&#x27;, float(point_baseline_mae.mean()),
+      &#x27;| 학습 전:&#x27;, float(point_before_mae.mean()), &#x27;| 학습 후:&#x27;, float(point_after_mae.mean()))
+for i in range(2):
+    print(f&#x27;사례 {i + 1} | 학습 후 MAE: {point_after_mae[i]:.3f} ℃&#x27;)
+assert point_output.shape == (64, 1024, 1)
+assert torch.isfinite(point_output).all()
+
+# 7. 점별 값을 원래의 32 × 32 위치에 배치해 빈틈 없는 색상 격자로 비교합니다.
+# 모델은 점 목록을 처리하며, 아래 reshape는 그림을 그리기 위한 배열 정리입니다.
+panels = [(&#x27;발열량 입력(W/m³)&#x27;, point_source, &#x27;magma&#x27;, 0, 1000),
+          (&#x27;학습 전 예측(℃)&#x27;, point_before_temperature, &#x27;turbo&#x27;, 20, 60),
+          (&#x27;학습 후 예측(℃)&#x27;, point_prediction, &#x27;turbo&#x27;, 20, 60),
+          (&#x27;정상상태 정답(℃)&#x27;, point_temperature, &#x27;turbo&#x27;, 20, 60)]
+fig, axes = plt.subplots(2, 4, figsize=(13, 7), layout=&#x27;constrained&#x27;)
+for col, (title, arrays, palette, low, high) in enumerate(panels):
+    for row in range(2):
+        image = axes[row, col].imshow(arrays[row, :, 0].reshape(32, 32).numpy(),
+            origin=&#x27;lower&#x27;, interpolation=&#x27;nearest&#x27;, cmap=palette, vmin=low, vmax=high)
+        axes[row, col].set(title=title, aspect=&#x27;equal&#x27;)
+        axes[row, col].set_xticks([]); axes[row, col].set_yticks([])
+        if col == 0:
+            axes[row, col].set_ylabel(f&#x27;시험 사례 {row + 1}&#x27;)
+        fig.colorbar(image, ax=axes[row, col], shrink=0.75)
+fig.suptitle(&#x27;Transolver: 같은 점에서 비교한 입력/예측/정답&#x27;, fontsize=16)
+plt.show()
+</code></pre></article><article id="source-cell-052-notebook-00" data-kind="notebook" data-source-cell="52" data-source-sha256="88918873e0d07bd4da9d85deea4cac3ec6dcd65ffa5a723c6637df9d3da257e1"><div class="tools"><span class="label">04장 / 셀 52 / Notebook</span><span> <button type="button" data-copy>복사</button></span></div><pre><code># 8. 점별 오차도 원래의 32 × 32 위치에 배치해 같은 색 눈금으로 비교합니다.
+fig, axes = plt.subplots(1, 2, figsize=(9, 4), layout=&#x27;constrained&#x27;)
+error_max = float(point_absolute_error[:2].max())
+for i, ax in enumerate(axes):
+    image = ax.imshow(point_absolute_error[i, :, 0].reshape(32, 32).numpy(),
+        origin=&#x27;lower&#x27;, interpolation=&#x27;nearest&#x27;, cmap=&#x27;viridis&#x27;, vmin=0, vmax=error_max)
+    ax.set(title=f&#x27;시험 사례 {i + 1}: 점별 온도 절대오차(℃)&#x27;, aspect=&#x27;equal&#x27;)
+    ax.set_xticks([]); ax.set_yticks([])
+    fig.colorbar(image, ax=ax, shrink=0.8)
+fig.suptitle(&#x27;점별 예측 오차가 남은 위치 확인&#x27;, fontsize=16)
+plt.show()
+</code></pre></article></main><script>
+const root=document.documentElement,theme=document.querySelector('#theme');try{root.dataset.theme=localStorage.getItem('learner-theme')||'dark'}catch(e){}function update(){theme.textContent=root.dataset.theme==='light'?'어두운 화면':'밝은 화면'}theme.onclick=()=>{root.dataset.theme=root.dataset.theme==='light'?'dark':'light';try{localStorage.setItem('learner-theme',root.dataset.theme)}catch(e){}update()};update();
+document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{const text=b.closest('article').querySelector('code').textContent;try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.append(t);t.select();document.execCommand('copy');t.remove()}b.textContent='복사됨';setTimeout(()=>b.textContent='복사',1200)});
+</script></body></html>

@@ -1,0 +1,74 @@
+[
+  {
+    "chapter": 1,
+    "cells": 135,
+    "codeBlocks": 27,
+    "tables": 23,
+    "images": 2,
+    "textExact": true,
+    "codeExact": true
+  },
+  {
+    "chapter": 2,
+    "cells": 38,
+    "codeBlocks": 11,
+    "tables": 1,
+    "images": 0,
+    "textExact": true,
+    "codeExact": true
+  },
+  {
+    "chapter": 3,
+    "cells": 36,
+    "codeBlocks": 10,
+    "tables": 1,
+    "images": 0,
+    "textExact": true,
+    "codeExact": true
+  },
+  {
+    "chapter": 4,
+    "cells": 55,
+    "codeBlocks": 17,
+    "tables": 1,
+    "images": 0,
+    "textExact": true,
+    "codeExact": true
+  },
+  {
+    "chapter": 5,
+    "cells": 74,
+    "codeBlocks": 22,
+    "tables": 1,
+    "images": 0,
+    "textExact": true,
+    "codeExact": true
+  },
+  {
+    "chapter": 6,
+    "cells": 48,
+    "codeBlocks": 14,
+    "tables": 1,
+    "images": 0,
+    "textExact": true,
+    "codeExact": true
+  },
+  {
+    "chapter": 7,
+    "cells": 36,
+    "codeBlocks": 10,
+    "tables": 1,
+    "images": 0,
+    "textExact": true,
+    "codeExact": true
+  },
+  {
+    "chapter": 8,
+    "cells": 20,
+    "codeBlocks": 5,
+    "tables": 1,
+    "images": 0,
+    "textExact": true,
+    "codeExact": true
+  }
+]

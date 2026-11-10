@@ -1,0 +1,11 @@
+﻿case_id,workbench_design_point,thickness_mm,force_N,rst_file,source_rst,size_bytes,sha256
+case_001,DP 0,10.250,343.561,raw/case_001.rst,results/wb_files/dp0/SYS/MECH/file.rst,5308416,50f5049b126448fff107bc83852ba42a0041ad35e00dcf823a7a66047c0a1668
+case_002,DP 1,9.074,127.627,raw/case_002.rst,results/wb_files/dp1/SYS/MECH/file.rst,5177344,fb338cedfd87bbb8c6b4bd826b996e50fec943e8f14f824fc9599dcf951e98cc
+case_003,DP 2,10.827,332.996,raw/case_003.rst,results/wb_files/dp2/SYS/MECH/file.rst,5570560,ebeb9565394a0e965b6fb323ce2802ba2a937fca751027794a20797010b4343c
+case_004,DP 3,8.402,389.919,raw/case_004.rst,results/wb_files/dp3/SYS/MECH/file.rst,4849664,607f59d43e8f3342c7f88de13f710bbb25b13f66ddbb6bf5013fd0e7845608fb
+case_005,DP 4,11.910,444.666,raw/case_005.rst,results/wb_files/dp4/SYS/MECH/file.rst,5373952,71b4dc60bb1d2f6b2e51ba710b1814e736233b1323e86b89aa91ae576a8ca8b7
+case_006,DP 5,7.452,252.982,raw/case_006.rst,results/wb_files/dp5/SYS/MECH/file.rst,4521984,569e15ceb623a1fecb9faedf7ecc270afd515d8f52a86b7a7fd91dcc28fe1a12
+case_007,DP 6,10.050,262.884,raw/case_007.rst,results/wb_files/dp6/SYS/MECH/file.rst,5308416,14b4cbccd775a7acf9e1f5a10f0e69fcd2b8d5008e5464b764da91bcf32ba4d1
+case_008,DP 7,8.130,216.780,raw/case_008.rst,results/wb_files/dp7/SYS/MECH/file.rst,4718592,b4ac6e919b318631f653d3a944cf1725e802dfb7de898fc5fec0e79c706a669d
+case_009,DP 8,6.043,499.416,raw/case_009.rst,results/wb_files/dp8/SYS/MECH/file.rst,3801088,e957753367536950f3bc3569dd9598f6521cd09e5638c7c26dddb496882f3bab
+case_010,DP 9,6.753,159.673,raw/case_010.rst,results/wb_files/dp9/SYS/MECH/file.rst,4063232,6da5f4d4a672fcef183880fd80412f797f515955099b6c250322d8ed4e9fdbd8

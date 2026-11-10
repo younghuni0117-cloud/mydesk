@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "case_count": 10,
+  "condition_order": [
+    "thickness_mm",
+    "force_N"
+  ],
+  "condition_units": [
+    "mm",
+    "N"
+  ],
+  "material": "Structural Steel (fixed, not an input variable)",
+  "force_definition": "Positive total force magnitude, direction fixed by the source analysis",
+  "source_fields": {
+    "coords": "VTU points",
+    "globals": "DOE thickness_mm, force_N",
+    "stress": "von_mises_stress",
+    "displacement": "displacement",
+    "node_ids": "node_id"
+  },
+  "units": {
+    "coords": "mm",
+    "stress": "MPa",
+    "displacement": "mm"
+  },
+  "item_shapes": {
+    "coords": [
+      4096,
+      3
+    ],
+    "globals": [
+      2
+    ],
+    "stress": [
+      4096,
+      1
+    ],
+    "displacement": [
+      4096,
+      3
+    ],
+    "node_ids": [
+      4096
+    ]
+  },
+  "batch_shapes": {
+    "coords": [
+      "B",
+      4096,
+      3
+    ],
+    "globals": [
+      "B",
+      2
+    ],
+    "stress": [
+      "B",
+      4096,
+      1
+    ],
+    "displacement": [
+      "B",
+      4096,
+      3
+    ]
+  },
+  "float_dtype": "float32",
+  "node_id_dtype": "int64",
+  "points_per_case": 4096,
+  "sampling_replacement": false,
+  "training_sampling": "set_epoch(epoch) selects deterministic new points per case; same epoch reproduces the same sample",
+  "holdout_sampling": "Fixed validation/test point indices stored in fixed_sample_indices.npz",
+  "normalization": "Z-score with full-node train-only statistics, equal weight per case, ddof=0",
+  "constant_channel_policy": "A standard deviation below 1e-12 uses scale=1; actual std remains recorded",
+  "loader_num_workers": 0,
+  "reason_num_workers_zero": "Portable Windows/Jupyter execution",
+  "mesh_rule": "Coordinates and labels are paired within each case; node IDs are not shared identities across cases",
+  "stress_rule": "Tensor-average corners, interpolate midside tensors, then compute von Mises; derived midside targets remain included",
+  "test_use": "No model selection using test results; fixed test samples are not a full-mesh evaluation",
+  "split_sha256": "5bf4ea887ffc2e1c51640980742d496eba4b371083ede18cafb00d140d26f63d",
+  "stats_sha256": "e1734c49bbbc6140e2d84940aa583e977a866e74f9f515568cac1132442b1d20"
+}

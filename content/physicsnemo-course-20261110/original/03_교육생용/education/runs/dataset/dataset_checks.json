@@ -1,0 +1,144 @@
+{
+  "case_counts": {
+    "train": 6,
+    "validation": 2,
+    "test": 2
+  },
+  "point_count": 4096,
+  "split_disjoint_and_complete": true,
+  "holdout_mutation_does_not_change_statistics": true,
+  "overlapping_split_rejected": true,
+  "train_sample_reproducible_within_epoch": true,
+  "train_sample_changes_between_epochs": true,
+  "holdout_samples_fixed_across_epochs": true,
+  "batch_shapes": {
+    "train": {
+      "coords": [
+        2,
+        4096,
+        3
+      ],
+      "globals": [
+        2,
+        2
+      ],
+      "stress": [
+        2,
+        4096,
+        1
+      ],
+      "displacement": [
+        2,
+        4096,
+        3
+      ],
+      "node_ids": [
+        2,
+        4096
+      ]
+    },
+    "validation": {
+      "coords": [
+        2,
+        4096,
+        3
+      ],
+      "globals": [
+        2,
+        2
+      ],
+      "stress": [
+        2,
+        4096,
+        1
+      ],
+      "displacement": [
+        2,
+        4096,
+        3
+      ],
+      "node_ids": [
+        2,
+        4096
+      ]
+    },
+    "test": {
+      "coords": [
+        2,
+        4096,
+        3
+      ],
+      "globals": [
+        2,
+        2
+      ],
+      "stress": [
+        2,
+        4096,
+        1
+      ],
+      "displacement": [
+        2,
+        4096,
+        3
+      ],
+      "node_ids": [
+        2,
+        4096
+      ]
+    }
+  },
+  "all_batch_fields_finite_float32": true,
+  "sampled_nodes_unique_and_labels_aligned": true,
+  "float32_inverse_max_absolute_error": {
+    "coords": 1.4174746098660762e-05,
+    "globals": 2.5878906228626875e-05,
+    "stress": 1.5328716244766838e-05,
+    "displacement": 1.1340243832869135e-07
+  },
+  "normalized_train_moments": {
+    "coords": {
+      "mean": [
+        -8.615793264018142e-16,
+        5.053827726679098e-16,
+        -2.3277676082974114e-14
+      ],
+      "second_moment": [
+        1.0000000000000007,
+        1.0000000000000024,
+        0.9999999999999724
+      ]
+    },
+    "globals": {
+      "mean": [
+        -2.0354088784794536e-16,
+        2.220446049250313e-16
+      ],
+      "second_moment": [
+        1.0,
+        1.0
+      ]
+    },
+    "stress": {
+      "mean": [
+        -5.551115123125783e-17
+      ],
+      "second_moment": [
+        1.0
+      ]
+    },
+    "displacement": {
+      "mean": [
+        -5.551115123125783e-16,
+        -3.1456319031046104e-16,
+        -1.4456028966473392e-16
+      ],
+      "second_moment": [
+        1.000000000000001,
+        1.0000000000000004,
+        0.9999999999999974
+      ]
+    }
+  },
+  "all_passed": true
+}

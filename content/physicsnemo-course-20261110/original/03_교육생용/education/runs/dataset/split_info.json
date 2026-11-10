@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "seed": 42,
+  "strategy": "Input extrema in training, then greedy farthest-point selection; seeded remaining order for validation/test",
+  "uses_fea_targets_for_selection": false,
+  "condition_order": [
+    "thickness_mm",
+    "force_N"
+  ],
+  "scaling_bounds": {
+    "thickness_mm": [
+      6.0,
+      12.0
+    ],
+    "force_N": [
+      100.0,
+      500.0
+    ]
+  },
+  "train": [
+    "case_002",
+    "case_004",
+    "case_005",
+    "case_007",
+    "case_009",
+    "case_010"
+  ],
+  "validation": [
+    "case_006",
+    "case_001"
+  ],
+  "test": [
+    "case_008",
+    "case_003"
+  ],
+  "holdout_inside_train_convex_hull": {
+    "case_006": true,
+    "case_001": true,
+    "case_008": true,
+    "case_003": true
+  },
+  "split_sha256": "5bf4ea887ffc2e1c51640980742d496eba4b371083ede18cafb00d140d26f63d"
+}

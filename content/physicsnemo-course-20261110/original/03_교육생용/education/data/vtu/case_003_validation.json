@@ -1,0 +1,91 @@
+{
+  "case_id": "case_003",
+  "workbench_design_point": "DP 2",
+  "thickness_mm": 10.827,
+  "force_N": 332.996,
+  "n_nodes": 14286,
+  "n_elements": 8382,
+  "corner_nodes": 2224,
+  "midside_nodes": 12062,
+  "result_set_id": 1,
+  "result_time_s": 1.0,
+  "max_stress_mpa": 70.56189051194441,
+  "workbench_max_stress_mpa": 70.56189051194441,
+  "max_stress_difference_percent": 0.0,
+  "max_displacement_mm": 0.39166348368944653,
+  "workbench_max_displacement_mm": 0.39166348968316717,
+  "max_displacement_difference_percent": 1.5303240635920152e-06,
+  "vtu_file": "vtu/case_003.vtu",
+  "validation": "PASS",
+  "rst_file": "raw/case_003.rst",
+  "rst_sha256": "ebeb9565394a0e965b6fb323ce2802ba2a937fca751027794a20797010b4343c",
+  "vtu_sha256": "f21cb1048522d0b8d2d95980e7eacd37239f0af0ae8740b80931cdbfae56c736",
+  "source_units": {
+    "coordinates": "m",
+    "displacement": "m",
+    "stress": "Pa"
+  },
+  "output_units": {
+    "coordinates": "mm",
+    "displacement": "mm",
+    "stress": "MPa",
+    "force": "N"
+  },
+  "conversion_factors": {
+    "coordinates": 1000,
+    "displacement": 1000,
+    "stress": 1e-06
+  },
+  "source_stress_location": "ElementalNodal, four corner tensors per Tet10",
+  "output_stress_location": "Nodal, all corner and midside nodes",
+  "stress_component_order": [
+    "SX",
+    "SY",
+    "SZ",
+    "SXY",
+    "SYZ",
+    "SXZ"
+  ],
+  "stress_policy": "global tensor average at corners -> midside tensor interpolation -> von Mises",
+  "midside_stress_is_derived": true,
+  "mesh_policy": "Preserve all Tet10 nodes and quadratic VTK type 24 connectivity",
+  "node_id_alignment": "Explicit ID mapping for coordinates and displacement; explicit element ID mapping for stress",
+  "reference_tolerance_percent": 0.01,
+  "max_unaveraged_element_nodal_stress_mpa": 87.34913546689249,
+  "max_stress_node_id": 345,
+  "max_stress_position_mm": [
+    24.87961817,
+    -22.549571489999998,
+    8.827
+  ],
+  "max_displacement_node_id": 32,
+  "bounds_min_mm": [
+    -40.0,
+    -64.99989943,
+    0.0
+  ],
+  "bounds_max_mm": [
+    39.99999966,
+    100.0,
+    10.827
+  ],
+  "thickness_difference_mm": 0.0,
+  "all_fields_finite": true,
+  "complete_stress_coverage": true,
+  "vtu_round_trip_verified": true,
+  "dpf_server_version": "10.0",
+  "dpf_server_context": "Entry (native extraction)",
+  "created_at_utc": "2026-10-01T07:04:08.931509+00:00",
+  "environment": {
+    "python": "3.12.6",
+    "numpy": "2.5.2",
+    "pyvista": "0.48.4",
+    "ansys_dpf_core": "0.16.1"
+  },
+  "converter_sha256": "0215ab8f6aab3ba03f266412de39ddb814cc1ca383eab2f371eeaf96a3e96af0",
+  "references": {
+    "dpf_native_extraction": "https://dpf.docs.pyansys.com/version/stable/getting_started/licensing.html",
+    "mechanical_averaging": "https://ansyshelp.ansys.com/public/Views/Secured/corp/v252/en/wb_sim/ds_Unaveraged_Results.html"
+  },
+  "elapsed_seconds": 0.186
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "cases_converted": 10,
+  "all_passed": true,
+  "result_units": {
+    "coordinates": "mm",
+    "stress": "MPa",
+    "displacement": "mm"
+  },
+  "stress_policy": "global tensor average at corners -> midside tensor interpolation -> von Mises",
+  "case_reports": [
+    "case_001_validation.json",
+    "case_002_validation.json",
+    "case_003_validation.json",
+    "case_004_validation.json",
+    "case_005_validation.json",
+    "case_006_validation.json",
+    "case_007_validation.json",
+    "case_008_validation.json",
+    "case_009_validation.json",
+    "case_010_validation.json"
+  ],
+  "max_stress_difference_percent": 3.373689093401306e-14,
+  "max_displacement_difference_percent": 2.8638815941075225e-06
+}

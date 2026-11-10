@@ -1,0 +1,11 @@
+# Dedicated Windows/Python 3.12 chapter 4 environment.
+# Install via preparation/setup_models_environment.py (CUDA wheels first).
+torch==2.10.0+cu128
+torchvision==0.25.0+cu128
+torch-scatter==2.1.2+pt210cu128
+nvidia-physicsnemo==2.2.2
+torch-geometric==2.7.0
+triton-windows>=3.6,<3.7
+matplotlib
+scipy
+ipykernel

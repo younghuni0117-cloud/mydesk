@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="490" viewBox="0 0 1080 490" role="img" aria-labelledby="title desc">
+  <title id="title">DOE 기반 CAE 데이터 준비와 Omniverse 연계 추론의 작업 흐름</title>
+  <desc id="desc">DOE 조건 계획과 CAE 데이터 준비, 학습 자료 구성, 모델 학습과 저장, 추론과 평가, API 서비스, Omniverse 연결의 여섯 단계</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#397083"/></marker></defs>
+  <rect width="1080" height="490" fill="#fff"/>
+  <g font-family="Malgun Gothic,맑은 고딕,sans-serif" fill="#203243" text-anchor="middle">
+    <text x="540" y="39" font-size="27" font-weight="700">DOE → CAE 데이터 → AI 모델 → Omniverse 추론</text>
+    <g stroke="#7294a2" stroke-width="2">
+      <rect x="20" y="75" width="310" height="145" rx="10" fill="#eef5fa"/>
+      <rect x="385" y="75" width="310" height="145" rx="10" fill="#eef5fa"/>
+      <rect x="750" y="75" width="310" height="145" rx="10" fill="#eef5fa"/>
+      <rect x="20" y="295" width="310" height="145" rx="10" fill="#f2f7f2"/>
+      <rect x="385" y="295" width="310" height="145" rx="10" fill="#f2f7f2"/>
+      <rect x="750" y="295" width="310" height="145" rx="10" fill="#fff5e8"/>
+    </g>
+    <g font-size="24" font-weight="700">
+      <text x="175" y="116">1. DOE/데이터 준비</text><text x="540" y="116">2. 학습 자료 구성</text><text x="905" y="116">3. 모델 학습/저장</text>
+      <text x="175" y="336">4. 추론/평가</text><text x="540" y="336">5. API 서비스</text><text x="905" y="336">6. Omniverse 연결</text>
+    </g>
+    <g font-size="22">
+      <text x="175" y="159">변수/범위/조건 조합</text><text x="175" y="192">조건표/CAE 결과</text>
+      <text x="540" y="159">입력과 정답 연결</text><text x="540" y="192">분할/정규화</text>
+      <text x="905" y="159">예측 관계 학습</text><text x="905" y="192">모델/통계 저장</text>
+      <text x="175" y="379">저장 모델로 예측</text><text x="175" y="412">해석 정답과 비교</text>
+      <text x="540" y="379">예측 요청 수신</text><text x="540" y="412">모델 계산/결과 전달</text>
+      <text x="905" y="379">조건 선택/예측 요청</text><text x="905" y="412">결과와 출처 확인</text>
+    </g>
+    <text x="540" y="478" font-size="20">각 단계에서 데이터/조건/모델/통계/단위가 일치하는지 확인</text>
+  </g>
+  <g fill="none" stroke="#397083" stroke-width="3" marker-end="url(#arrow)">
+    <path d="M340 148 H372"/><path d="M705 148 H737"/>
+    <path d="M905 230 V256 H175 V282"/>
+    <path d="M340 368 H372"/><path d="M705 368 H737"/>
+  </g>
+</svg>
