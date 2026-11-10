@@ -1,4 +1,4 @@
-import {drawTrainingStatus} from './robot-training-view.mjs?v=robot60';
+import {drawTrainingStatus} from './robot-training-view.mjs?v=robot61';
 import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=robot60';
 import {normalizeGround} from './robot-training-ground.mjs?v=robot60';
 import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=robot60';
@@ -85,8 +85,8 @@ function renderChart(){if(!model)return;get('chart-dot').style.display=model.eva
  get('chart-dot').setAttribute('cx',X(end));get('chart-dot').setAttribute('cy',Y(current));get('chart-title').textContent=STAGES[stage].label+' · 평균 보상'+(old?' · 이전 기준':'');get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('x-min').textContent=start.toLocaleString();get('x-mid').textContent=Math.round((start+end)/2).toLocaleString();get('x-max').textContent=end.toLocaleString()+'회';get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} ${old?'이전':'현재'} 보상 ${current.toFixed(1)}점. 학습 ${start}~${end}회. 보상 기준이 다른 기록은 구분합니다.`);
 }
 const groundFields=['changeEvery','slopeMax','stepMax','frictionMin','frictionMax','massVariation','pushProbability','pushInterval','pushMax'];
-const groundPercent=new Set(['massVariation','pushProbability']);
-function syncGroundControls(){get('mix-mode').value=options.trainingGround.mixMode;for(const k of groundFields)get('ground-'+k).value=String(options.trainingGround[k]*(groundPercent.has(k)?100:1));}
+const groundPercent=new Set(['massVariation','pushProbability','stepMax']);
+function syncGroundControls(){get('mix-mode').value=options.trainingGround.mixMode;for(const k of groundFields)get('ground-'+k).value=String(Number((options.trainingGround[k]*(groundPercent.has(k)?100:1)).toFixed(6)));}
 async function changeGround(){if(initializing||training)return;const raw={mixMode:get('mix-mode').value};for(const k of groundFields){const input=get('ground-'+k);if(!input.checkValidity()){input.reportValidity();return;}raw[k]=Number(input.value)/(groundPercent.has(k)?100:1);}if(raw.frictionMin>raw.frictionMax){status('마찰계수의 최소·최대 범위를 확인하세요.');return;}options.trainingGround=normalizeGround(raw);saveOptions();actuationDirty=true;await configure(model);}
 for(const k of groundFields)get('ground-'+k).onchange=changeGround;get('mix-mode').onchange=changeGround;syncGroundControls();
 get('graph-range').onchange=()=>{options.graphRange=get('graph-range').value;get('graph-custom-row').hidden=options.graphRange!=='custom';saveOptions();renderChart();};
