@@ -1,19 +1,19 @@
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=robot59';
-import {taskEnvironment} from './robot-task-settings.mjs?v=robot59';
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=robot59';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot59';
-import {distalActivity} from './robot-attention.mjs?v=robot59';
-import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=robot59';
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot59';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot59';
-import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot59';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot59';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=robot60';
+import {taskEnvironment} from './robot-task-settings.mjs?v=robot60';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=robot60';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot60';
+import {distalActivity} from './robot-attention.mjs?v=robot60';
+import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=robot60';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot60';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot60';
+import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot60';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot60';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot59';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot60';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot59';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot59';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot59';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot60';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot60';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot60';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '일어나기', speed: 0, duration: 10 },

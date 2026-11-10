@@ -1,5 +1,5 @@
-import {mergeTravelRecord} from './robot-study.mjs?v=robot59';
-import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot59';
+import {mergeTravelRecord} from './robot-study.mjs?v=robot60';
+import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot60';
 
 export const ROBOT_CACHE_KEY='mydesk.robot.v9';
 const CACHE_KEY=ROBOT_CACHE_KEY,MAX_BYTES=8*1024*1024;
