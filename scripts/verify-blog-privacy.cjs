@@ -1,0 +1,34 @@
+// Fully mocked APIs; no real credentials or published posts are changed.
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+(async()=>{const {DEFAULT_MENUS}=await import('../navigation-data.mjs');
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+ const key='A'.repeat(43),base=process.env.PAGE_BASE||'http://127.0.0.1:8000',errors=[];
+ let row={id:'privacy-test',menu_id:'physicsnemo',category:'structural',topic:'PhysicsNeMo',title:'비공개 테스트',summary:'소개 보존',body:'<p>원래 본문 보존</p>',is_private:false,created_at:'2026-11-09T00:00:00Z',revision:1},secret=null,saves=0;
+ const publicRow=()=>row.is_private?{...row,summary:'',body:''}:row;
+ async function page(admin=false){const ctx=await browser.newContext({viewport:{width:390,height:844}});await ctx.route('**/rest/v1/**',async route=>{
+  const req=route.request(),url=new URL(req.url()),auth=req.headers()['x-client-info']==='mydesk-blog/'+key;
+  if(url.pathname.endsWith('/site_navigation'))return route.fulfill({json:[{id:'main',menus:DEFAULT_MENUS,revision:0}]});
+  if(url.pathname.endsWith('/blog_management_status'))return route.fulfill({json:{connected:auth,password_set:false}});
+  if(url.pathname.endsWith('/blog_management_logout'))return route.fulfill({json:true});
+  if(url.pathname.endsWith('/blog_post_save')){assert.ok(auth);const a=req.postDataJSON();saves++;assert.equal(a.expected_revision,row.revision);if(a.payload.is_private){if(a.post_password)secret=a.post_password;assert.ok(secret);}else secret=null;row={...a.payload,created_at:row.created_at,revision:row.revision+1};return route.fulfill({json:{ok:true,post:publicRow()}});}
+  if(url.pathname.endsWith('/blog_post_read')){const a=req.postDataJSON();assert.equal(a.post_id,row.id);return route.fulfill({json:!row.is_private||auth||a.post_password===secret?{ok:true,post:row}:{ok:false,message:'비밀번호가 맞지 않습니다.'}});}
+  assert.ok(url.pathname.endsWith('/blog_posts'));assert.equal(req.method(),'GET');return route.fulfill({json:[publicRow()]});
+ });const p=await ctx.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(base+'/blog.html?post=privacy-test'+(admin?'#manage='+key:''));await p.locator('.blog-post-heading').waitFor();return p;}
+ try{
+ const author=await page(true);await author.locator('[data-edit]').click();await author.locator('#blog-editor').waitFor({state:'visible'});assert.equal(await author.locator('#post-private').isChecked(),false);assert.equal(await author.locator('#post-password-fields').isVisible(),false);
+ await author.locator('#post-private').check();await author.locator('#post-password').fill('Private-test-123');await author.locator('#post-password-confirm').fill('Mismatch-123');await author.locator('#post-save').click();await author.waitForFunction(()=>document.getElementById('blog-status').textContent.includes('일치하지'));assert.equal(saves,0);
+ await author.locator('#post-password-confirm').fill('Private-test-123');await author.locator('#post-save').click();await author.waitForURL('**/blog.html?post=privacy-test');await author.locator('.blog-article').waitFor();assert.match(await author.locator('.blog-article').textContent(),/원래 본문/);assert.equal(row.created_at,'2026-11-09T00:00:00Z');assert.equal(await author.locator('.post-lock').count(),1);
+ const reader=await page();assert.equal(await reader.locator('.blog-article').count(),0);assert.ok(!(await reader.locator('#blog-content').textContent()).includes('원래 본문'));assert.equal(await reader.locator('#post-unlock-form').isVisible(),true);
+ await reader.locator('#post-unlock-password').fill('wrong-password');await reader.locator('#post-unlock-form button').click();await reader.waitForFunction(()=>document.getElementById('post-unlock-error').textContent.includes('맞지'));assert.equal(await reader.locator('.blog-article').count(),0);
+ for(const width of [320,390,690,1440]){await reader.setViewportSize({width,height:844});assert.ok(await reader.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'overflow '+width);}
+ await reader.setViewportSize({width:390,height:844});await reader.waitForTimeout(400);await reader.screenshot({path:'/tmp/blog-private-reader.png',fullPage:true});
+ await reader.locator('#post-unlock-password').fill('Private-test-123');await reader.locator('#post-unlock-form button').click();await reader.locator('.blog-article').waitFor();assert.match(await reader.locator('.blog-article').textContent(),/원래 본문/);
+ assert.equal(await reader.evaluate(()=>JSON.stringify(localStorage).includes('Private-test-123')),false);await reader.reload();await reader.locator('#post-unlock-form').waitFor();
+ await reader.goto(base+'/blog.html?menu=physicsnemo');await reader.locator('.blog-card').waitFor();assert.equal(await reader.locator('.blog-card .post-lock').count(),1);assert.ok(!(await reader.locator('.blog-card').textContent()).includes('소개 보존'));
+ await author.locator('[data-edit]').click();await author.locator('#blog-editor').waitFor({state:'visible'});assert.equal(await author.locator('#post-private').isChecked(),true);assert.equal(await author.locator('#post-password').inputValue(),'');assert.match(await author.locator('#post-password-note').textContent(),/유지/);assert.equal(await author.locator('#post-summary').inputValue(),'소개 보존');await author.locator('#post-title').fill('제목 수정');await author.locator('#post-save').click();await author.locator('.blog-post-heading h2').filter({hasText:'제목 수정'}).waitFor();assert.equal(secret,'Private-test-123');
+ await author.locator('[data-edit]').click();await author.locator('#blog-editor').waitFor({state:'visible'});await author.locator('#post-password').fill('Changed-test-456');await author.locator('#post-password-confirm').fill('Changed-test-456');await author.locator('#post-save').click();await author.locator('.blog-post-heading').waitFor();assert.equal(secret,'Changed-test-456');
+ await author.locator('[data-edit]').click();await author.locator('#blog-editor').waitFor({state:'visible'});await author.locator('#post-private').uncheck();assert.equal(await author.locator('#post-password').isDisabled(),true);await author.locator('#post-save').click();await author.locator('.blog-article').waitFor();assert.equal(await author.locator('.post-lock').count(),0);assert.equal(secret,null);
+ await reader.goto(base+'/blog.html?post=privacy-test');await reader.locator('.blog-article').waitFor();assert.match(await reader.locator('.blog-article').textContent(),/원래 본문/);assert.match(await reader.locator('.blog-post-heading').textContent(),/소개 보존/);
+ assert.deepEqual(errors,[]);console.log('PASS: optional per-post privacy, mismatch, private edit, title lock, hidden body/summary, wrong/correct password, no browser password persistence, reload relock, password retention/rotation, republish preserving body/date, mobile layout.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1)});

@@ -4,7 +4,14 @@ const fs=require('fs'),assert=require('node:assert/strict');
 const seed=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'../blog-seed.json'))).map(p=>({...p,created_at:'2026-11-09T00:00:00Z',updated_at:'2026-11-09T00:00:00Z',revision:0}));
 (async()=>{const {DEFAULT_MENUS}=await import('../navigation-data.mjs');const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{
  const errors=[];const ctx=await b.newContext();let rows=structuredClone(seed),writes=[],mode='normal';
- await ctx.route('**/rest/v1/**',async route=>{const req=route.request();if(req.url().includes('/site_navigation'))return route.fulfill({json:[{id:'main',menus:DEFAULT_MENUS,revision:0}]});if(req.url().includes('/rpc/blog_management_status'))return route.fulfill({json:{connected:req.headers()['x-client-info']==='mydesk-blog/'+'A'.repeat(43),password_set:false}});assert.ok(req.url().includes('/blog_posts'),'must not access existing user data');
+ await ctx.route('**/rest/v1/**',async route=>{const req=route.request();if(req.url().includes('/site_navigation'))return route.fulfill({json:[{id:'main',menus:DEFAULT_MENUS,revision:0}]});if(req.url().includes('/rpc/blog_management_status'))return route.fulfill({json:{connected:req.headers()['x-client-info']==='mydesk-blog/'+'A'.repeat(43),password_set:false}});if(req.url().includes('/rpc/blog_post_save')){
+   assert.equal(req.headers()['x-client-info'],'mydesk-blog/'+'A'.repeat(43));
+   if(mode==='conflict')return route.fulfill({json:{ok:false,message:'다른 기기에서 글이 변경되었습니다.'}});
+   const args=req.postDataJSON(),existing=rows.find(p=>p.id===args.payload.id);writes.push(existing?'PATCH':'POST');
+   const saved={...args.payload,created_at:existing?.created_at||'2026-11-09T04:00:00Z',updated_at:'2026-11-10T00:00:00Z',revision:existing?existing.revision+1:0};
+   rows=rows.filter(p=>p.id!==saved.id).concat(saved);return route.fulfill({json:{ok:true,post:saved}});
+  }
+  assert.ok(req.url().includes('/blog_posts'),'must not access existing user data');
   if(mode==='offline')return route.fulfill({status:503,body:'unavailable'});
   const url=new URL(req.url()),id=url.searchParams.get('id')?.slice(3),revision=Number(url.searchParams.get('revision')?.slice(3));
   if(req.method()==='GET')return route.fulfill({json:rows});
@@ -37,7 +44,7 @@ const seed=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'../bl
  let before=rows.length;p.once('dialog',d=>d.dismiss());await p.locator('[data-delete]').click();assert.equal(rows.length,before);p.once('dialog',d=>d.accept());await p.locator('[data-delete]').click();await p.waitForURL('**/blog.html?menu=reinforcement-learning');await p.locator('.blog-card').first().waitFor();assert.equal(rows.length,before-1);
  // Legacy deep links and author access survive page reload.
  await p.goto(base+'/physicsnemo.html#structural');await p.locator('#structural-title').waitFor();assert.match(p.url(),/blog.html\?post=physicsnemo#structural/);assert.ok(await p.locator('[data-edit]').isVisible());
- mode='offline';await p.reload();await p.locator('.guide-section').first().waitFor();assert.match(await p.locator('#blog-status').textContent(),/既存|기존/);await p.locator('[data-edit]').click();assert.equal(await p.locator('#blog-editor').isVisible(),false);mode='normal';
+ mode='offline';await p.reload();await p.waitForFunction(()=>document.getElementById('blog-status').textContent.includes('불러오지 못했습니다'));assert.equal(await p.locator('.guide-section').count(),0);assert.equal(await p.locator('#blog-editor').isVisible(),false);mode='normal';
  await p.goto(base+'/blog.html?category=ai');await p.locator('.blog-card').first().waitFor();await p.screenshot({path:'/tmp/blog-mobile.png',fullPage:true});
  await p.goto(base+'/index.html');await p.waitForFunction(()=>document.querySelector('.resource-list .row-category')?.textContent==='PhysicsNeMo');assert.equal(await p.locator('.resource-list>a').count(),3);
  assert.deepEqual(errors,[]);console.log('PASS: category, article, dates, responsive widths, mobile menu, sanitizer, CRUD, persistence, conflict, delete confirmation, legacy links, offline, no robot/calendar API calls');
