@@ -87,7 +87,7 @@ function renderChart(){if(!model)return;get('chart-dot').style.display=model.eva
 }
 const groundFields=['changeEvery','slopeMax','stepMax','frictionMin','frictionMax','massVariation','pushProbability','pushInterval','pushMax','rockMin','rockMax'];
 const groundPercent=new Set(['massVariation','pushProbability','stepMax','rockMin','rockMax']);
-function syncGroundControls(){get('mix-mode').value=options.trainingGround.mixMode;for(const k of groundFields)get('ground-'+k).value=String(Number((options.trainingGround[k]*(groundPercent.has(k)?100:1)).toFixed(6)));}
+function syncGroundControls(){get('mix-mode').value=options.trainingGround.mixMode;for(const k of groundFields)get('ground-'+k).value=['frictionMin','frictionMax'].includes(k)?options.trainingGround[k].toFixed(2):String(Number((options.trainingGround[k]*(groundPercent.has(k)?100:1)).toFixed(6)));}
 async function changeGround(){if(initializing||training)return;const raw={mixMode:get('mix-mode').value};for(const k of groundFields){const input=get('ground-'+k);if(!input.checkValidity()){input.reportValidity();return;}raw[k]=Number(input.value)/(groundPercent.has(k)?100:1);}if(raw.rockMin>raw.rockMax){status('돌 크기의 최소·최대 범위를 확인하세요.');return;}if(raw.frictionMin>raw.frictionMax){status('마찰계수의 최소·최대 범위를 확인하세요.');return;}options.trainingGround=normalizeGround(raw);saveOptions();actuationDirty=true;await configure(model);}
 for(const k of groundFields)get('ground-'+k).onchange=changeGround;get('mix-mode').onchange=changeGround;syncGroundControls();
 get('graph-range').onchange=()=>{options.graphRange=get('graph-range').value;get('graph-custom-row').hidden=options.graphRange!=='custom';saveOptions();renderChart();};
