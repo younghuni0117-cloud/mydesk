@@ -214,3 +214,9 @@ body[data-page=robot].robot-wide-fit .robot-experiment{grid-template-rows:minmax
 .robot-stage-tools [hidden],.robot-log-panel[hidden]{display:none!important}
 .robot-data-actions{display:grid;gap:6px}
 body[data-page=robot] .robot-data-actions>button{width:100%;min-height:34px;margin:0;padding:6px 9px;border:1px solid #d5deea;border-radius:5px;background:#fff;color:#536d89;font:inherit;font-size:11px;cursor:pointer}
+
+/* Keep scene measurements as readable as the ability table. */
+body[data-page=robot] .robot-controls .robot-metrics :is(span,strong,small){font-family:inherit;font-size:var(--robot-data-font-size);line-height:var(--robot-data-line-height);font-variant-numeric:tabular-nums}
+body[data-page=robot] .robot-controls .robot-metrics{display:flex;flex-wrap:wrap;justify-content:space-between;column-gap:8px;row-gap:4px;margin:6px 0}
+body[data-page=robot] .robot-controls .robot-metrics>div{flex-wrap:nowrap;column-gap:4px;row-gap:0}
+body[data-page=robot] .robot-controls>.robot-chart{margin-top:0;margin-bottom:8px}

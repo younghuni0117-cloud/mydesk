@@ -151,29 +151,28 @@ canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;c
 function release(e){if(drag&&drag.id===e.pointerId&&drag.mode==='push'&&e.type==='pointerup'){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(pickingTarget){const rect=canvas.getBoundingClientRect(),x=clamp(cameraX+(e.clientX-rect.left-rect.width/2)/drawScale,-30,30);setPicking(false);applyCommand({...command,mode:'position',position:Math.round(x*10)/10});}else if(Math.hypot(dx,dy)>8)pushAt(Math.atan2(-dy,dx)*180/Math.PI,Math.hypot(dx,dy)/90,drag.point);}pointers.delete(e.pointerId);drag=null;pinch=null;}
 canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
 function sourceFrame(){
- if(mode==='live'&&live){const actors=liveRobots.map((w,i)=>({frame:interpolateFrame(previousFrames[i],currentFrames[i],w.done?1:accumulator/DT),meta:{...geometry,obstacles:w.obstacles,terrain:w.terrain,pushPlan:w.pushes},offset:0}));return {...actors[0],actors};}
+ if(mode==='live'&&live){const actors=liveRobots.map((w,i)=>({frame:interpolateFrame(previousFrames[i],currentFrames[i],w.done?1:accumulator/DT),meta:{...geometry,obstacles:w.obstacles,terrain:w.terrain,pushPlan:w.pushes},offset:i*2.2}));return {...actors[0],actors};}
  if(!scene?.trace?.length)return null;
- const scenes=scene.teamScenes||[scene],actors=scenes.flatMap((s,i)=>{if(!s?.trace?.length)return [];const frame=playbackFrame(s,traceTime,stage);if(stage==='balance'&&i===0)frame.rewardEvents=[...(frame.rewardEvents||[]),...carryRewardEvents];return [{frame,meta:s,offset:0}];});
+ const scenes=scene.teamScenes||[scene],actors=scenes.flatMap((s,i)=>{if(!s?.trace?.length)return [];const frame=playbackFrame(s,traceTime,stage);if(stage==='balance'&&i===0)frame.rewardEvents=[...(frame.rewardEvents||[]),...carryRewardEvents];return [{frame,meta:s,offset:i*2.2}];});
  return actors.length?{...actors[0],actors}:null;
 }
 
 function draw(data){
  const rect=canvas.getBoundingClientRect(),ratio=Math.min(window.matchMedia('(pointer: coarse)').matches?1.5:2,window.devicePixelRatio||1),w=Math.max(1,Math.round(rect.width*ratio)),h=Math.max(1,Math.round(rect.height*ratio));
  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}ctx.setTransform(ratio,0,0,ratio,0,0);const W=w/ratio,H=h/ratio;ctx.clearRect(0,0,W,H);if(!data)return;
- const {frame,meta}=data,actors=data.actors||[{frame,meta,offset:0}],root=frame.parts[0],camera=follow?root[0]:panX;
+ const {frame,meta}=data,actors=data.actors||[{frame,meta,offset:0}],root=frame.parts[0],span=(actors.length-1)*2.2,camera=(follow?root[0]:panX)+span/2;
  // Anchor high hills to their starting floor so a tenfold slope does not hide the robot.
  terrainDatum=meta.terrain?.kind==='hills'?terrainHeight(meta.terrain.segments,0):0;
  const datum=follow&&meta.terrain?.kind==='hills'?terrainHeight(meta.terrain.segments,root[0]):terrainDatum;
  const relief=Math.max(0,...(meta.terrain?.segments||[]).filter(s=>s.x1>camera-2/zoom&&s.x0<camera+2/zoom).flatMap(s=>[s.y0-datum,s.y1-datum]));
- const scale=Math.min(H/(2.6+relief*1.2),W/3.3)*zoom,ground=(follow?H*.5+(root[1]-.1)*scale:H*.88+terrainDatum*scale)+panY*scale;drawScale=scale;cameraX=camera;groundPixel=ground;
+ const scale=Math.min(H/(2.6+relief*1.2),W/(3.3+span))*zoom,ground=(follow?H*.5+(root[1]-.1)*scale:H*.88+terrainDatum*scale)+panY*scale;drawScale=scale;cameraX=camera;groundPixel=ground;
  const X=x=>W/2+(x-camera)*scale,Y=y=>ground-y*scale;
  drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:meta.terrain,obstacles:meta.obstacles||[],X,Y});
  if(liveSource==='best'&&command.mode==='position'){const x=X(command.position),y=Y(terrainHeight(meta.terrain.segments,command.position));ctx.strokeStyle='#527aa4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-36);ctx.lineTo(x+14,y-30);ctx.lineTo(x,y-24);ctx.stroke();ctx.fillStyle='#466989';ctx.font='10px sans-serif';ctx.fillText(command.position.toFixed(1)+'m',x+4,y-40);}
  const r=knownTravel;drawFurthestFlag(ctx,r?{furthestX:r.x,furthestDistance:r.distance,contactY:r.terrain===meta.terrain.kind&&r.variant===meta.terrain.variant?r.y:undefined}:null,x=>terrainHeight(meta.terrain.segments,x),X,Y,0);
- // Ghosts share the same world origin and do not collide with the representative.
- // Only real collected frames are replayed; sensors/scores belong to the front robot.
- for(const actor of actors.slice(1).reverse()){ctx.save();ctx.globalAlpha=.18;drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,X,Y,scale,skin);ctx.restore();}
- const actor=actors[0];drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,X,Y,scale,skin);
+ // Independent environments are displayed about one robot height apart.
+ for(const actor of actors){const Xlocal=x=>X(x+actor.offset);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Y,scale,skin);}
+ const actor=actors[0];
  if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,X,Y,scale);}
  for(const effect of hammerEffects(actor.frame,actor.meta))drawHammer(ctx,effect,X,Y,scale);drawRewardPopups(ctx,actor.frame,X,Y,{parts:actor.meta.parts,width:W,height:H,skin});
  if(pushArrow){const a=pushArrow,dx=Math.cos(a.angle)*(.3+a.strength/25)*scale,dy=-Math.sin(a.angle)*(.3+a.strength/25)*scale,x=X(a.x),y=Y(a.y);ctx.strokeStyle='#bf875c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx,y+dy);ctx.stroke();ctx.beginPath();const angle=Math.atan2(dy,dx);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle-.45),y+dy-10*Math.sin(angle-.45));ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-10*Math.cos(angle+.45),y+dy-10*Math.sin(angle+.45));ctx.stroke();}
