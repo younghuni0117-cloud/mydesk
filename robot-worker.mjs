@@ -1,46 +1,60 @@
-import {loadTaskSettings} from './robot-task-settings.mjs?v=robot52';
-import {observationScene} from './robot-transfer.mjs?v=robot52';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot52';
-import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot52';
-import {STAGES} from './robot-core.mjs?v=robot52';
-let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null,rollouts=null;
+import {normalizeRobotCount} from './robot-training-options.mjs?v=robot53';
+import {loadTaskSettings} from './robot-task-settings.mjs?v=robot53';
+import {observationScene} from './robot-transfer.mjs?v=robot53';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot53';
+import {ParallelRollouts} from './robot-rollouts.mjs?v=robot53';
+import {STAGES} from './robot-core.mjs?v=robot53';
+let learner=null,stage='balance',focus='balance',initToken=0,job=null,interval=20,lastCandidate=null,lastTrial=null,rollouts=null,robotCount=1,lastScenes=[];
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
-function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:observationScene(lastTrial?.scene),endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,trainingSeconds:lastTrial?.trainingSeconds,terrainVariant:lastTrial?.terrainVariant,spawnRange:lastTrial?.spawnRange});}
+function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:lastScenes[0]||null,scenes:lastScenes.slice(0,robotCount),team:robotCount,endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,trainingSeconds:lastTrial?.trainingSeconds,terrainVariant:lastTrial?.terrainVariant,spawnRange:lastTrial?.spawnRange});}
 async function initialize(data,token){
- rollouts?.close();rollouts=new ParallelRollouts(typeof data.parallel==='boolean'?{enabled:data.parallel}:{});environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);if(data.taskSettings)learner.taskSettings=loadTaskSettings({taskSettings:data.taskSettings});learner.onPhase=(phase,details)=>postMessage({type:'phase',phase,...details});stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
- await rollouts.start();if(token!==initToken)return;sendModel();preview();postMessage({type:'ready',parallelism:rollouts.ready?2:1});
+ rollouts?.close();robotCount=normalizeRobotCount(data.robotCount);lastCandidate=null;lastTrial=null;lastScenes=[];
+ rollouts=new ParallelRollouts({count:robotCount,enabled:robotCount>1&&data.parallel!==false});
+ learner=new RobotLearner(data.saved||null,data.seed??Date.now(),data.environment||{});learner.samplingRobots=robotCount;
+ if(data.taskSettings)learner.taskSettings=loadTaskSettings({taskSettings:data.taskSettings});
+ learner.onPhase=(phase,details)=>postMessage({type:'phase',phase,...details});stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
+ await rollouts.start();if(token!==initToken)return;sendModel();preview();postMessage({type:'ready',parallelism:rollouts.concurrency,robots:robotCount});
 }
 self.onmessage=async({data})=>{
  try{
   if(data.type==='stop'){if(job)job.cancelled=true;return;}
   if(data.type==='settings'){interval=[10,20,50,100].includes(data.interval)?data.interval:interval;return;}
   if(data.type==='init'){if(job)job.cancelled=true;job=null;await initialize(data,++initToken);return;}
-  if(data.type==='goal'){stage=STAGES[data.stage]?data.stage:stage;lastCandidate=null;lastTrial=null;preview();postMessage({type:'goal',stage});return;}
+  if(data.type==='goal'){stage=STAGES[data.stage]?data.stage:stage;lastCandidate=null;lastTrial=null;lastScenes=[];preview();postMessage({type:'goal',stage});return;}
   if(data.type==='preview'){if(learner)preview();return;}
   if(data.type!=='train'||!learner||job)return;
   const target=Number(data.count);if(!(ALLOWED_ATTEMPTS.includes(target)||(data.internalTeam&&Number.isInteger(target)&&target>0&&target<=100000)))throw Error('지원하는 시도 횟수를 선택해 주세요.');
-  if(data.taskSettings)learner.taskSettings=loadTaskSettings({taskSettings:data.taskSettings});focus=STAGES[data.focus]?data.focus:focus;learner.setFocus(focus);learner.setAlgorithm(data.algorithm||learner.algorithm);learner.setCurriculum(data.curriculum);learner.setBalanceTrainingSettings(data.balanceTraining);learner.setTrainingPushSettings(data.trainingPush);learner.setTrainingCommand(data.trainingCommand);sendModel();const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
+  if(data.taskSettings)learner.taskSettings=loadTaskSettings({taskSettings:data.taskSettings});
+  focus=STAGES[data.focus]?data.focus:focus;learner.setFocus(focus);learner.samplingRobots=robotCount;learner.setAlgorithm(data.algorithm||learner.algorithm);learner.setCurriculum(data.curriculum);learner.setBalanceTrainingSettings(data.balanceTraining);learner.setTrainingPushSettings(data.trainingPush);learner.setTrainingCommand(data.trainingCommand);
+  sendModel();const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
   while(completed<target&&job===current&&!current.cancelled){
-   // Never prepare beyond a CEM update boundary: both trial policies must use
-   // exactly the same distribution as their sequential counterparts.
-   if(learner.pending.length>=learner.batchSize){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);if(job!==current)return;sendModel();if(current.cancelled)break;}
-   const slots=Math.min(rollouts.ready?2:1,target-completed,learner.batchSize-learner.pending.length),prepared=[];
-   for(let i=0;i<slots;i++){const next=completed+i+1;prepared.push(learner.prepareTrial({record:next===1||next%interval===0||next===target},i));}
-   const remote=slots===2?rollouts.run(prepared[1]):null,first=executeTrial(prepared[0]),trials=[first];if(remote)trials.push(await remote);
-   if(job!==current)return;
+   if(learner.pending.length>=learner.batchSize){await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,false);if(job!==current)return;sendModel();if(current.cancelled)break;}
+   const slots=Math.min(robotCount,target-completed,learner.batchSize-learner.pending.length);
+   const record=completed===0||Math.floor((completed+slots)/interval)>Math.floor(completed/interval)||completed+slots===target;
+   // Freeze one actor for the entire collection group. CEM keeps its paired
+   // candidate schedule; all sampling/updates/counters belong to this learner.
+   const prepared=Array.from({length:slots},(_,i)=>{
+    const p=learner.prepareTrial({record},i);
+    if(p.algorithm==='ppo'&&robotCount>1){p.seed=(p.seed+Math.imul(p.index+1,104729))>>>0;if(Number.isFinite(p.options.spawnTilt))p.options.spawnTilt*=.8+i*.1;}
+    return p;
+   });
+   const trials=await rollouts.batch(prepared);if(job!==current)return;
    for(let i=0;i<trials.length;i++){
-    if(i>0&&current.cancelled)break;
-    const result=learner.completeTrial(prepared[i],trials[i]);lastCandidate=result.weights;lastTrial=result;completed++;
-    postMessage({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},algorithmAttempts:{...learner.algorithmAttempts},task:focus,score:result.score,travelRecord:learner.travelRecord,summary:prepared[i].options.record?{attempt:learner.attempts,time:trials[i].metrics.time,reward:trials[i].metrics.reward,pushes:trials[i].metrics.pushes,terminationReason:trials[i].metrics.terminationReason}:null,remainingMs:(Date.now()-started)/completed*(target-completed)});
-    if(learner.pending.length>=learner.batchSize){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);if(job!==current)return;sendModel();}
-    if(completed===1||completed%interval===0||completed===target)preview();
+    if(!trials[i])throw Error('로봇의 경험 수집이 중단되었습니다.');
+    const result=learner.completeTrial(prepared[i],trials[i]);completed++;
+    if(i===0){lastCandidate=result.weights;lastTrial=result;}
+    if(record)lastScenes[i]=observationScene(trials[i]);
+    postMessage({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},algorithmAttempts:{...learner.algorithmAttempts},task:focus,score:result.score,robotCount,travelRecord:learner.travelRecord,summary:record?{attempt:learner.attempts,time:trials[i].metrics.time,reward:trials[i].metrics.reward,pushes:trials[i].metrics.pushes,terminationReason:trials[i].metrics.terminationReason}:null,remainingMs:(Date.now()-started)/completed*(target-completed)});
    }
+   if(record)preview();
+   if(!current.cancelled&&learner.pending.length>=learner.batchSize){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);if(job!==current)return;sendModel();}
    await yieldControl();
   }
   if(job!==current)return;
-  // Preserve counters even if a validation pass was interrupted.
-  if(!current.cancelled&&(learner.pending.length||learner.validationBank)){postMessage({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);}
-  sendModel();preview();job=null;postMessage({type:'done',completed,target,cancelled:current.cancelled});
+  if(!current.cancelled&&(learner.pending.length||learner.validationBank)){await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);if(job!==current)return;}
+  // Completed in-flight episodes are all counted, even after stop. Drain a
+  // large cohort before persistence so public snapshots stay compact.
+  learner.flushLargePPOBuffer();sendModel();preview();job=null;postMessage({type:'done',completed,target,cancelled:current.cancelled});
  }catch(error){job=null;postMessage({type:'error',message:error.message||'학습 오류가 발생했습니다.'});}
 };

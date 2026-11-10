@@ -1,27 +1,59 @@
-import {taskEnvironment} from './robot-task-settings.mjs?v=robot52';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot52';
-import {packRollout} from './robot-transfer.mjs?v=robot52';
-import {episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=robot52';
-import {COMMAND_CASES} from './robot-goals.mjs?v=robot52';
-import {ppoEpisode} from './robot-ppo.mjs?v=robot52';
+import {normalizeRobotCount} from './robot-training-options.mjs?v=robot53';
+import {taskEnvironment} from './robot-task-settings.mjs?v=robot53';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot53';
+import {packRollout} from './robot-transfer.mjs?v=robot53';
+import {episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=robot53';
+import {COMMAND_CASES} from './robot-goals.mjs?v=robot53';
+import {ppoEpisode} from './robot-ppo.mjs?v=robot53';
 export const executeTrial=p=>packRollout(p.algorithm==='ppo'?ppoEpisode(p):episode(p.weights,p.task,p.seed,p.options),p);
-// One extra physics worker at most: the existing learner computes the other trial.
-// The learner alone owns sampling, order, counters and all model updates.
+// One learner/coordinator computes the first rollout; up to four physics-only
+// workers compute the others. Results always return in prepared index order.
 export class ParallelRollouts {
- constructor({enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=robot52',import.meta.url),{type:'module'})}={}){
-  this.worker=null;this.ready=false;this.pending=null;this.nextId=0;this.waitingReady=new Promise(resolve=>this.resolveReady=resolve);
-  if(!enabled){this.resolveReady(false);return;}
-  try{this.worker=factory();this.worker.onmessage=({data})=>{if(!this.worker)return;if(data.type==='ready'){this.ready=true;this.resolveReady(true);return;}if(!this.pending||data.id!==this.pending.id)return;const pending=this.pending;this.pending=null;if(data.type==='result')pending.resolve(data.trial);else{this.disable();pending.resolve(executeTrial(pending.prepared));}};this.worker.onerror=event=>{event.preventDefault?.();this.disable();};this.worker.onmessageerror=()=>this.disable();}
-  catch{this.disable();}
+ constructor({count=2,enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=robot53',import.meta.url),{type:'module'})}={}){
+  this.width=enabled?normalizeRobotCount(count):1;this.lanes=[];this.nextId=0;
+  for(let i=1;i<this.width;i++){
+   const lane={worker:null,ready:false,pending:null};lane.waiting=new Promise(resolve=>lane.resolveReady=resolve);this.lanes.push(lane);
+   try{
+    lane.worker=factory();lane.worker.onmessage=({data})=>{
+     if(!lane.worker)return;
+     if(data.type==='ready'){lane.ready=true;lane.resolveReady(true);return;}
+     if(!lane.pending||data.id!==lane.pending.id)return;
+     if(data.type==='result'){const pending=lane.pending;lane.pending=null;pending.resolve(data.trial);}
+     else this.disableLane(lane);
+    };
+    lane.worker.onerror=event=>{event.preventDefault?.();this.disableLane(lane);};lane.worker.onmessageerror=()=>this.disableLane(lane);
+   }catch{this.disableLane(lane);}
+  }
  }
- async start(){if(!this.worker)return false;let timer;const result=await Promise.race([this.waitingReady,new Promise(resolve=>{timer=setTimeout(()=>{this.disable();resolve(false);},2500);})]);clearTimeout(timer);return result;}
- disable(){this.ready=false;this.worker?.terminate();this.worker=null;this.resolveReady(false);if(this.pending){const pending=this.pending;this.pending=null;pending.resolve(executeTrial(pending.prepared));}}
- run(prepared){if(!this.ready)return Promise.resolve(executeTrial(prepared));if(this.pending)throw Error('동시에 하나의 보조 계산만 실행할 수 있습니다.');return new Promise(resolve=>{this.pending={id:++this.nextId,prepared,resolve};try{this.worker.postMessage({type:'rollout',id:this.nextId,prepared});}catch{this.disable();}});}
- async pair(first,second){const remote=second?this.run(second):null,local=executeTrial(first);return second?[local,await remote]:[local];}
- async ability(weights,stage,environment={},active=()=>true,validationCases=VALIDATION_CASES){environment=taskEnvironment(environment,stage);
-  const cases=[];for(let i=0;i<validationCases.length;i+=2){if(!active())return null;const specs=validationCases.slice(i,i+2).map(c=>({weights,task:stage,seed:c.seed,options:{...environment,observationSeconds:c.seconds??normalizeEvaluationSettings(environment).validationSeconds,pushes:c.pushes,disturbances:false,summaryOnly:true}})),trials=await this.pair(...specs);if(!active())return null;for(let j=0;j<trials.length;j++){const c=validationCases[i+j],metrics=trials[j].metrics;cases.push({id:c.id,label:c.label,passed:passedStage(metrics,stage,c.seconds??normalizeEvaluationSettings(environment).validationSeconds),reward:metrics.reward,metrics});}}
-  return {meanReward:cases.reduce((sum,c)=>sum+c.reward,0)/cases.length,passRate:cases.filter(c=>c.passed).length/cases.length,cases};
+ get ready(){return this.lanes.some(l=>l.ready);}
+ get concurrency(){return 1+this.lanes.filter(l=>l.ready).length;}
+ get worker(){return this.lanes.find(l=>l.worker)?.worker||null;}
+ async start(){await Promise.all(this.lanes.map(async lane=>{let timer;await Promise.race([lane.waiting,new Promise(resolve=>{timer=setTimeout(()=>{this.disableLane(lane);resolve(false);},2500);})]);clearTimeout(timer);}));return this.ready;}
+ disableLane(lane,discard=false){lane.ready=false;lane.worker?.terminate();lane.worker=null;lane.resolveReady(false);if(lane.pending){const pending=lane.pending;lane.pending=null;try{pending.resolve(discard?null:executeTrial(pending.prepared));}catch(error){pending.reject(error);}}}
+ disable(){for(const lane of this.lanes)this.disableLane(lane);}
+ run(prepared){
+  const lane=this.lanes.find(l=>l.ready&&!l.pending);
+  if(!lane)return Promise.resolve(executeTrial(prepared));
+  return new Promise((resolve,reject)=>{lane.pending={id:++this.nextId,prepared,resolve,reject};try{lane.worker.postMessage({type:'rollout',id:this.nextId,prepared});}catch{this.disableLane(lane);}});
  }
- async commands(weights,environment={},active=()=>true){environment=taskEnvironment(environment,'walk');let total=0;for(let i=0;i<COMMAND_CASES.length;i+=2){if(!active())return null;const specs=COMMAND_CASES.slice(i,i+2).map(c=>({weights,task:'walk',seed:71,options:{...environment,observationSeconds:normalizeEvaluationSettings(environment).validationSeconds,disturbances:false,pushes:[],command:null,commandSchedule:c.schedule,summaryOnly:true}})),trials=await this.pair(...specs);if(!active())return null;for(const trial of trials)total+=trial.metrics.reward;}return total/COMMAND_CASES.length;}
- close(){this.disable();}
+ async batch(prepared){if(!prepared.length)return [];const remote=[];try{for(const p of prepared.slice(1))remote.push(this.run(p));const first=executeTrial(prepared[0]);return [first,...await Promise.all(remote)];}catch(error){await Promise.allSettled(remote);throw error;}}
+ async pair(first,second){return this.batch(second?[first,second]:[first]);}
+ async ability(weights,stage,environment={},active=()=>true,validationCases=VALIDATION_CASES){
+  environment=taskEnvironment(environment,stage);const cases=[];
+  for(let i=0;i<validationCases.length;i+=this.width){
+   if(!active())return null;const group=validationCases.slice(i,i+this.width),specs=group.map(c=>({weights,task:stage,seed:c.seed,options:{...environment,observationSeconds:c.seconds??normalizeEvaluationSettings(environment).validationSeconds,pushes:c.pushes,disturbances:false,summaryOnly:true}})),trials=await this.batch(specs);
+   if(!active()||trials.some(t=>!t))return null;
+   for(let j=0;j<trials.length;j++){const c=group[j],metrics=trials[j].metrics;cases.push({id:c.id,label:c.label,passed:passedStage(metrics,stage,c.seconds??normalizeEvaluationSettings(environment).validationSeconds),reward:metrics.reward,metrics});}
+  }
+  return {meanReward:cases.reduce((s,c)=>s+c.reward,0)/cases.length,passRate:cases.filter(c=>c.passed).length/cases.length,cases};
+ }
+ async commands(weights,environment={},active=()=>true){
+  environment=taskEnvironment(environment,'walk');let total=0;
+  for(let i=0;i<COMMAND_CASES.length;i+=this.width){
+   if(!active())return null;const specs=COMMAND_CASES.slice(i,i+this.width).map(c=>({weights,task:'walk',seed:71,options:{...environment,observationSeconds:normalizeEvaluationSettings(environment).validationSeconds,disturbances:false,pushes:[],command:null,commandSchedule:c.schedule,summaryOnly:true}})),trials=await this.batch(specs);
+   if(!active()||trials.some(t=>!t))return null;for(const trial of trials)total+=trial.metrics.reward;
+  }
+  return total/COMMAND_CASES.length;
+ }
+ close(){for(const lane of this.lanes)this.disableLane(lane,true);}
 }

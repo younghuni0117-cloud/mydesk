@@ -1,4 +1,4 @@
-import {walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot52';
+import {walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot53';
 export const REWARD_VERSION=9;
 export const REWARDS=Object.freeze({gaze:.3,distalMotion:.35,distalChange:.06,walkUpright:.2,walkQuality:.5,walkSpeed:4,walkForward:10,walkFall:30,walkDown:8,upright:2,balanceUpright:10,balanceUnstable:2,balanceFall:30,balanceDown:8,balanceQuality:8,motionQuality:4,lowQuality:4,remainingFailure:6,alive:.1,speed:2,speedVariance:.3,tilt:1.2,lowHeight:.8,heightReference:.9,drift:.8,forward:5,crawl:.1,maxStepDistance:.08,rise:2,recovery:8,fall:12,pushStanding:1.5,pushDown:.5,pushWindow:1.5,impact:.5,impactImpulse:.06,impactCap:4,effort:.003,obstacle:10,obstacleClearance:.2,arrival:2,posture:2,lowPostureHeight:.62,impactSpeed:.6,impactEnergy:.06,recoveryProgress:6,postureProgress:2});
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));

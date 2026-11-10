@@ -1,14 +1,14 @@
-import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=robot52';
-import {normalizeActuation} from './robot-actuation.mjs?v=robot52';
-import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush} from './robot-training-options.mjs?v=robot52';
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=robot52';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot52';
-import {compareAbilities} from './robot-performance.mjs?v=robot52';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot52';
-import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=robot52';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot52';
-import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot52';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot52';
+import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=robot53';
+import {normalizeActuation} from './robot-actuation.mjs?v=robot53';
+import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=robot53';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=robot53';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot53';
+import {compareAbilities} from './robot-performance.mjs?v=robot53';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot53';
+import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=robot53';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot53';
+import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot53';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot53';
 export const MODEL_VERSION=8;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -52,7 +52,8 @@ export class RobotLearner {
  }
  record(candidate,accepted,candidateAbilities=this.abilities,validationComplete=true){const row={attempts:this.attempts,taskAttempts:{...this.taskAttempts},task:this.focus,rewardVersion:REWARD_VERSION,environment:JSON.stringify(this.environment),overall:this.bestReward,candidate,accepted,validationComplete,rewards:Object.fromEntries(stages.map(s=>[s,this.abilities[s].meanReward])),candidateRewards:validationComplete?Object.fromEntries(Object.entries(candidateAbilities).map(([s,a])=>[s,a.meanReward])):undefined,partialCandidateRewards:validationComplete?undefined:Object.fromEntries(Object.entries(candidateAbilities).map(([s,a])=>[s,a.meanReward]))};if(this.history.at(-1)?.attempts===this.attempts&&this.history.at(-1)?.rewardVersion===REWARD_VERSION&&this.history.at(-1)?.environment===JSON.stringify(this.environment))this.history[this.history.length-1]=row;else this.history.push(row);this.history=compactHistory(this.history);}
  setFocus(stage){if(STAGES[stage]&&stage!==this.focus){if(this.algorithm==='ppo'&&this.ppo?.buffer.length){const optimizer=new PPOOptimizer(this.weights,this.searchSeed,this.ppo);optimizer.update(this.random);this.ppo=optimizer.snapshot();}this.validationBank=null;this.searchState.lastResetAttempt=this.attempts;this.focus=stage;this.pending=[];this.cohortStart=this.attempts;}}
- get batchSize(){if(this.algorithm!=='ppo')return 32;const hz=['walk','run'].includes(this.focus)?10:20;return Math.max(1,Math.min(8,Math.floor(3840/(this.trainingBalance.trainingSeconds*hz))));}
+ get batchSize(){if(this.algorithm!=='ppo')return 32;const hz=['walk','run'].includes(this.focus)?10:20;return samplingBatchSize(this.trainingBalance.trainingSeconds,hz,this.samplingRobots||1);}
+ flushLargePPOBuffer(){if(this.algorithm!=='ppo'||!this.ppo||this.ppo.buffer.length<=4096)return;const optimizer=new PPOOptimizer(this.weights,this.searchSeed,this.ppo);optimizer.update(this.random);this.ppo=optimizer.snapshot();this.pending=[];this.cohortStart=this.attempts;}
  setAlgorithm(algorithm){const next=algorithm==='ppo'?'ppo':'cem',changed=next!==this.algorithm;
   if(changed){if(this.algorithm==='ppo'&&this.ppo?.buffer.length){const optimizer=new PPOOptimizer(this.weights,this.searchSeed,this.ppo);optimizer.update(this.random);this.ppo=optimizer.snapshot();}this.pending=[];this.cohortStart=this.attempts;this.validationBank=null;this.algorithm=next;this.searchState.lastResetAttempt=this.attempts;}
   if(next==='ppo'&&!this.ppo)this.ppo=new PPOOptimizer(this.weights,this.searchSeed).snapshot();
