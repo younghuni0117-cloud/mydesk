@@ -1,10 +1,11 @@
 // Display order reflects increasing default terrain difficulty; seeds remain independent.
-export const TERRAINS={meadow:'초원',desert:'사막',stones:'돌길',hills:'언덕',stairs:'계단',construction:'공사장',ice:'빙판',cave:'동굴 탐험'};
+export const TERRAINS={training:'강화학습 훈련소',meadow:'초원',desert:'사막',stones:'돌길',hills:'언덕',stairs:'계단',construction:'공사장',ice:'빙판',cave:'동굴 탐험'};
 const terrainSeeds={meadow:0,hills:1,stones:2,stairs:3,construction:4,desert:5,ice:6,cave:7};
 export function terrainHeight(segments,x){let low=0,high=segments.length-1;while(low<=high){const mid=(low+high)>>1,s=segments[mid];if(x<s.x0)high=mid-1;else if(x>s.x1)low=mid+1;else return s.y0+(s.y1-s.y0)*(x-s.x0)/(s.x1-s.x0);}return 0;}
 const cache=new Map();
 export function makeTerrain(name='meadow',variant=0){
  variant=Number.isInteger(variant)&&variant>=0&&variant<4?variant:0;
+ if(name==='training')name='meadow';
  const kind=name==='rockyhills'?'desert':TERRAINS[name]?name:'meadow';const cacheKey=kind+':'+variant;if(cache.has(cacheKey))return cache.get(cacheKey);
  let seed=28541+terrainSeeds[kind]*7919+variant*104729;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;},range=(a,b)=>a+(b-a)*random();
  const segments=[],obstacles=[],decorations=[],ceilings=[],puddles=[],base=.16;

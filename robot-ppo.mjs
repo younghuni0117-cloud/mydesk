@@ -1,6 +1,6 @@
-import {TERRAIN_SENSOR_COUNT as S} from './robot-sensors.mjs?v=robot55';
-import {RobotWorld,DT,robotGeometry,seeded,clamp} from './robot-core.mjs?v=robot55';
-import {POLICY_INPUTS as I,POLICY_BODY_INPUTS as B,POLICY_HIDDEN as H,POLICY_OUTPUTS as O,POLICY_SIZE,initialPolicy,feedbackFeatures,FEEDBACK_START,ACTION_EXPLORATION_SCALES} from './robot-policy.mjs?v=robot55';
+import {TERRAIN_SENSOR_COUNT as S} from './robot-sensors.mjs?v=robot56';
+import {RobotWorld,DT,robotGeometry,seeded,clamp} from './robot-core.mjs?v=robot56';
+import {POLICY_INPUTS as I,POLICY_BODY_INPUTS as B,POLICY_HIDDEN as H,POLICY_OUTPUTS as O,POLICY_SIZE,initialPolicy,feedbackFeatures,FEEDBACK_START,ACTION_EXPLORATION_SCALES} from './robot-policy.mjs?v=robot56';
 export const MAX_PPO_EXPERIENCES=16384;
 export const PPO_CONFIG=Object.freeze({gamma:.995,lambda:.97,clip:.2,epochs:4,minibatch:64,actorRate:.0003,valueRate:.001,entropy:.01,maxKL:.04});
 const baseSize=outputs=>B*H+H+H*outputs+outputs+(outputs===O?O*6:0),size=outputs=>baseSize(outputs)+H*S,normal=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -31,5 +31,5 @@ export class PPOOptimizer{
 export function ppoEpisode(prepared){const {weights,task,seed,options}=prepared,sim=new RobotWorld(task,{...(task==='balance'?{command:{mode:'hold'}}:{}),seed,...options}),random=seeded((prepared.noiseSeed??seed)^0x7f4a7c15),trace=[],experience=[];let row=null,actions=null;const stride=sim.controlStride;
  while(!sim.done){if(sim.steps%stride===0){sim.applyScheduledCommands();const obs=sim.observations(),value=networkForward(prepared.critic,obs,1).z[0];if(row){row.nextValue=value;experience.push(row);}const mean=networkForward(weights,obs).z,latent=mean.map((m,i)=>m+Math.exp(prepared.logStd[i])*normal(random));actions=latent.map(Math.tanh);row={obs,latent,oldLogP:gaussianLogProbability(latent,mean,prepared.logStd),value,reward:0,nextValue:0,done:false};}
   const before=sim.reward;sim.step(weights,false,actions);row.reward+=sim.reward-before;if(options.record&&sim.steps%2===0)trace.push(sim.snapshot());
- }if(row){row.truncated=sim.terminationReason==='duration';row.done=!row.truncated;row.nextValue=row.truncated?networkForward(prepared.critic,sim.observations(),1).z[0]:0;experience.push(row);}if(options.record&&trace.at(-1)?.time!==sim.time)trace.push(sim.snapshot());return {metrics:sim.metrics(),pushPlan:sim.pushes.map(p=>({...p})),commandSchedule:structuredClone(sim.commandSchedule),trace,...(options.summaryOnly?{}:robotGeometry(sim)),obstacles:sim.obstacles,terrain:sim.terrain,experience};
+ }if(row){row.truncated=sim.terminationReason==='duration';row.done=!row.truncated;row.nextValue=row.truncated?networkForward(prepared.critic,sim.observations(),1).z[0]:0;experience.push(row);}if(options.record&&trace.at(-1)?.time!==sim.time)trace.push(sim.snapshot());return {task:sim.stage,metrics:sim.metrics(),pushPlan:sim.pushes.map(p=>({...p})),commandSchedule:structuredClone(sim.commandSchedule),trace,...(options.summaryOnly?{}:robotGeometry(sim)),obstacles:sim.obstacles,terrain:sim.terrain,experience};
 }

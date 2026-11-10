@@ -1,8 +1,8 @@
-import {normalizeActuation} from './robot-actuation.mjs?v=robot55';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=robot55';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot55';
+import {normalizeActuation} from './robot-actuation.mjs?v=robot56';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=robot56';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot56';
 
-const common={algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
+const common={algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({
  balance:Object.freeze({...common,trainingSeconds:10,validationSeconds:10,monitorSeconds:30,observationSeconds:30,interval:20,balanceEarlyStop:true,balanceFullTrials:true,pushMin:1,pushMax:6}),
  recover:Object.freeze({...common,trainingSeconds:30,validationSeconds:30,monitorSeconds:60,observationSeconds:60,autoPush:false,pushMax:2}),
@@ -22,7 +22,7 @@ export function taskProfile(task,raw={}){
  p.attemptCount=[100,200,500,1000,2000,5000,10000,100000].includes(Number(p.attemptCount))?Number(p.attemptCount):d.attemptCount;
  p.targetSpeed=integer(p.targetSpeed,30,720,d.targetSpeed);
  p.interval=[10,20,50,100].includes(Number(p.interval))?Number(p.interval):d.interval;
- p.algorithm=p.algorithm==='cem'?'cem':'ppo';p.curriculum=p.curriculum!==false;p.autoPush=p.autoPush!==false;
+ p.algorithm='ppo';p.curriculum=p.curriculum!==false;p.autoPush=p.autoPush!==false;
  const lo=Number(p.pushMin),hi=Number(p.pushMax);if(Number.isFinite(lo)&&Number.isFinite(hi)&&lo>=.1&&hi<=30&&lo<=hi){p.pushMin=lo;p.pushMax=hi;}else{p.pushMin=d.pushMin;p.pushMax=d.pushMax;}
  p.pushInterval=[0,.5,1,2,3,5,10,30].includes(Number(p.pushInterval))?Number(p.pushInterval):0;
  Object.assign(p,normalizeBalanceTraining(p),normalizeEvaluationSettings(p),normalizeActuation(p));delete p.actuationVersion;

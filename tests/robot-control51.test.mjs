@@ -20,7 +20,7 @@ test('response profiles change actual restoring torque without changing mass or 
  }
  assert.ok(Math.abs(results.soft/results.standard-.65)<1e-12);
  assert.ok(Math.abs(results.firm/results.standard-1.35)<1e-12);
- assert.deepEqual(normalizeActuation({servoProfile:'invalid',targetSpeed:900}),{servoProfile:'standard',targetSpeed:180,actuationVersion:2});
+ assert.deepEqual(normalizeActuation({servoProfile:'invalid',targetSpeed:900}),{servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,actuationVersion:3});
 });
 
 test('target slew stays within the selected physical speed, including substeps and reversals',()=>{
@@ -47,7 +47,7 @@ test('one-way joints use both exploration signs without a prescribed bend at zer
   }
  }
  const ppo=new PPOOptimizer(Array(POLICY_SIZE).fill(0),42);
- assert.equal(ACTION_EXPLORATION_SCALES.length,12);
+ assert.equal(ACTION_EXPLORATION_SCALES.length,36);
  assert.ok(ppo.logStd[JOINTS.indexOf('neck')]>ppo.logStd[JOINTS.indexOf('leftShoulder')]);
 });
 

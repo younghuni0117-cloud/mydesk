@@ -62,7 +62,7 @@ test('all real robot joints resist angle error even with zero learned outputs',(
 
 test('retired models and controller archives cannot enter the new angle model',()=>{
  const fresh=new RobotLearner(null,42,{validationSeconds:6,monitorSeconds:6}).snapshot();
- assert.equal(fresh.version,8);assert.equal(fresh.attempts,0);assert.equal(fresh.travelRecord,null);
+ assert.equal(fresh.version,9);assert.equal(fresh.attempts,0);assert.equal(fresh.travelRecord,null);
  assert.ok(fresh.weights.every(v=>v===0));assert.equal(fresh.ppo,null);assert.ok(!('controllerArchive' in fresh));
  assert.ok(fresh.history.every(r=>r.attempts===0));
  for(const old of [{...fresh,version:6,physicsVersion:5,policyKind:'direct-torque-12joint-mlp-v6'},{...fresh,version:7,policyKind:'joint-target-pd-12joint-mlp-v7'},{...fresh,controllerArchive:{model:{}}}])assert.equal(migrateModel(old),null);
@@ -84,7 +84,7 @@ test('PPO and CEM rollouts, observations and shared reload use the same angle co
  local.setItem('mydesk.robot.options','settings');local.setItem('mydesk.robot.skin','tin');local.setItem('calendar.test','keep');
  let deleted=0;const indexed={deleteDatabase(name){assert.equal(name,'mydesk.robot.local');deleted++;const request={};queueMicrotask(()=>request.onsuccess());return request;}};
  const a=new RobotSharedStorage(migrateModel,{local,indexed,fetcher:api.fetch,url:'https://example.test/rest/v1/model',key:'test'});
- const loaded=await a.load();assert.equal(loaded.blocked,false);assert.equal(loaded.model.version,8);assert.equal(loaded.model.attempts,2);assert.equal(deleted,1);
+ const loaded=await a.load();assert.equal(loaded.blocked,false);assert.equal(loaded.model.version,9);assert.equal(loaded.model.attempts,2);assert.equal(deleted,1);
  assert.equal(local.getItem('mydesk.robot.v6'),null);assert.equal(local.getItem('mydesk.robot.archive.original'),null);
  assert.equal(local.getItem('mydesk.robot.options'),'settings');assert.equal(local.getItem('mydesk.robot.skin'),'tin');assert.equal(local.getItem('calendar.test'),'keep');
  assert.ok(api.requests.every(r=>r.options.method!=='POST'),'retired pending caches must not upload');

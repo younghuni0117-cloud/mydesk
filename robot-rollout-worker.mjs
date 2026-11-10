@@ -1,4 +1,4 @@
-import {executeTrial} from './robot-rollouts.mjs?v=robot55';
+import {executeTrial} from './robot-rollouts.mjs?v=robot56';
 self.onmessage=({data})=>{
  if(data.type!=='rollout')return;
  try{const p=data.prepared;postMessage({type:'result',id:data.id,trial:executeTrial(p)});}

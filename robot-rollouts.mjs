@@ -1,15 +1,16 @@
-import {normalizeRobotCount} from './robot-training-options.mjs?v=robot55';
-import {taskEnvironment} from './robot-task-settings.mjs?v=robot55';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot55';
-import {packRollout} from './robot-transfer.mjs?v=robot55';
-import {episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=robot55';
-import {COMMAND_CASES} from './robot-goals.mjs?v=robot55';
-import {ppoEpisode} from './robot-ppo.mjs?v=robot55';
+import {groundTestSpec,validationGround} from './robot-training-ground.mjs?v=robot56';
+import {normalizeRobotCount} from './robot-training-options.mjs?v=robot56';
+import {taskEnvironment} from './robot-task-settings.mjs?v=robot56';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot56';
+import {packRollout} from './robot-transfer.mjs?v=robot56';
+import {episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=robot56';
+import {COMMAND_CASES} from './robot-goals.mjs?v=robot56';
+import {ppoEpisode} from './robot-ppo.mjs?v=robot56';
 export const executeTrial=p=>packRollout(p.algorithm==='ppo'?ppoEpisode(p):episode(p.weights,p.task,p.seed,p.options),p);
 // One learner/coordinator computes the first rollout; up to four physics-only
 // workers compute the others. Results always return in prepared index order.
 export class ParallelRollouts {
- constructor({count=2,enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=robot55',import.meta.url),{type:'module'})}={}){
+ constructor({count=2,enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=robot56',import.meta.url),{type:'module'})}={}){
   this.width=enabled?normalizeRobotCount(count):1;this.lanes=[];this.nextId=0;
   for(let i=1;i<this.width;i++){
    const lane={worker:null,ready:false,pending:null};lane.waiting=new Promise(resolve=>lane.resolveReady=resolve);this.lanes.push(lane);
@@ -41,7 +42,7 @@ export class ParallelRollouts {
  async ability(weights,stage,environment={},active=()=>true,validationCases=VALIDATION_CASES){
   environment=taskEnvironment(environment,stage);const cases=[];
   for(let i=0;i<validationCases.length;i+=this.width){
-   if(!active())return null;const group=validationCases.slice(i,i+this.width),specs=group.map(c=>({weights,task:stage,seed:c.seed,options:{...environment,observationSeconds:c.seconds??normalizeEvaluationSettings(environment).validationSeconds,pushes:c.pushes,disturbances:false,summaryOnly:true}})),trials=await this.batch(specs);
+   if(!active())return null;const group=validationCases.slice(i,i+this.width),specs=group.map((c,j)=>({weights,task:stage,seed:c.seed,options:{...environment,...(environment.terrain==='training'?{trainingSpec:validationGround(c,i+j)}:{}),observationSeconds:c.seconds??normalizeEvaluationSettings(environment).validationSeconds,pushes:c.pushes,disturbances:false,summaryOnly:true}})),trials=await this.batch(specs);
    if(!active()||trials.some(t=>!t))return null;
    for(let j=0;j<trials.length;j++){const c=group[j],metrics=trials[j].metrics;cases.push({id:c.id,label:c.label,passed:passedStage(metrics,stage,c.seconds??normalizeEvaluationSettings(environment).validationSeconds),reward:metrics.reward,metrics});}
   }

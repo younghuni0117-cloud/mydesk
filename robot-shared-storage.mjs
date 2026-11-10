@@ -1,7 +1,7 @@
-import {mergeTravelRecord} from './robot-study.mjs?v=robot55';
-import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot55';
+import {mergeTravelRecord} from './robot-study.mjs?v=robot56';
+import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot56';
 
-export const ROBOT_CACHE_KEY='mydesk.robot.v8';
+export const ROBOT_CACHE_KEY='mydesk.robot.v9';
 const CACHE_KEY=ROBOT_CACHE_KEY,MAX_BYTES=8*1024*1024;
 class InvalidSharedModel extends Error {}
 

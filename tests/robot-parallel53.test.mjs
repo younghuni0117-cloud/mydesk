@@ -9,7 +9,7 @@ class BrowserWorker {
  constructor(){this.worker=new Worker(new URL('./robot-rollout-harness.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.({error,preventDefault(){}}));}
  postMessage(data){this.worker.postMessage(data);} terminate(){this.worker.terminate();}
 }
-const env={validationSeconds:6,monitorSeconds:10};
+const env={validationSeconds:6,monitorSeconds:10,trainingGround:{focusRatio:1}};
 test('one to five environments fit complete actor cohorts, including maximum horizons',()=>{
  assert.equal(normalizeRobotCount(undefined),1);assert.equal(normalizeRobotCount(9),5);assert.equal(normalizeRobotCount(2.5),1);
  for(let n=1;n<=5;n++)for(const seconds of [1,10,30,60,120])for(const hz of [10,20]){
