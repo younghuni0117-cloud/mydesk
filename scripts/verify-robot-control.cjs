@@ -2,7 +2,7 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 (async()=>{
  const {RobotLearner}=await import('../robot-learning.mjs'),{DEFAULT_MENUS}=await import('../navigation-data.mjs');
- const fixture=new RobotLearner(null,42,{terrain:'meadow',courseVersion:10,visionVersion:3,bodyVersion:6,validationSeconds:6,monitorSeconds:10}).snapshot();
+ const {loadTaskSettings,taskEnvironments}=await import('../robot-task-settings.mjs'),taskSettings=loadTaskSettings({focus:'balance',validationSeconds:6,monitorSeconds:10});const fixture=new RobotLearner(null,42,{terrain:'meadow',courseVersion:10,visionVersion:3,bodyVersion:6,validationSeconds:10,monitorSeconds:30,taskEnvironments:taskEnvironments(taskSettings)}).snapshot();fixture.taskSettings=taskSettings;
  fixture.attempts=12;fixture.taskAttempts.balance=12;fixture.algorithmAttempts.ppo=12;
  let row={id:'main',model:fixture,revision:1};
  const base=process.env.ROBOT_BASE_URL||'http://127.0.0.1:8000',proxy=base.startsWith('https:')?(process.env.HTTPS_PROXY||process.env.HTTP_PROXY):null;
@@ -34,9 +34,9 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
   assert.ok((await p.locator('#rb-full-trial-note').textContent()).includes('실제 8회'));
   assert.ok((await p.locator('#rb-full-trial-note').textContent()).includes('좌우 2회'));
   await p.locator('#rb-servo-profile').selectOption('firm');await ready();
-  assert.equal(row.model.environment.servoProfile,'firm');assert.equal(row.model.attempts,12);assert.deepEqual(row.model.weights,fixture.weights);
+  assert.equal(row.model.environment.taskEnvironments.balance.servoProfile,'firm');assert.equal(row.model.attempts,12);assert.deepEqual(row.model.weights,fixture.weights);
   await p.locator('#rb-target-speed').fill('90');await p.locator('#rb-target-speed').dispatchEvent('change');await ready();
-  assert.equal(row.model.environment.targetSpeed,90);assert.equal(row.model.attempts,12);
+  assert.equal(row.model.environment.taskEnvironments.balance.targetSpeed,90);assert.equal(row.model.attempts,12);
   assert.equal(await p.locator('#rb-graph-version option[value="previous"]').evaluate(e=>e.disabled),false);
   await p.locator('#rb-graph-version').selectOption('previous');assert.ok((await p.locator('#rb-chart-title').textContent()).includes('이전 기준'));
   await p.locator('#rb-graph-version').selectOption('current');
@@ -44,7 +44,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
   assert.equal(await p.locator('#rb-servo-profile').inputValue(),'firm');assert.equal(await p.locator('#rb-target-speed').inputValue(),'90');
   assert.equal(row.model.attempts,12);
   // A model updated on another device controls its replay settings here too.
-  const updated=new RobotLearner(row.model,42,{...row.model.environment,servoProfile:'soft',targetSpeed:120}).snapshot();row={id:'main',model:updated,revision:row.revision+1};
+  const updated=new RobotLearner(row.model,42,{...row.model.environment,taskEnvironments:{...row.model.environment.taskEnvironments,balance:{...row.model.environment.taskEnvironments.balance,servoProfile:'soft',targetSpeed:120}}}).snapshot();row={id:'main',model:updated,revision:row.revision+1};
   await p.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
   await p.waitForFunction(()=>document.querySelector('#rb-servo-profile').value==='soft',null,{timeout:30000});await ready();
   assert.equal(await p.locator('#rb-target-speed').inputValue(),'120');

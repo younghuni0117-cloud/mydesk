@@ -1,17 +1,18 @@
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=robot51';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot51';
-import {distalActivity} from './robot-attention.mjs?v=robot51';
-import {sampleEnvironment} from './robot-sensors.mjs?v=robot51';
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot51';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot51';
-import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot51';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot51';
+import {taskEnvironment} from './robot-task-settings.mjs?v=robot52';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=robot52';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot52';
+import {distalActivity} from './robot-attention.mjs?v=robot52';
+import {sampleEnvironment} from './robot-sensors.mjs?v=robot52';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot52';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot52';
+import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot52';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot52';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot51';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot52';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot51';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot51';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot51';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot52';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot52';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot52';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '넘어졌다 일어서기', speed: 0, duration: 10 },
@@ -29,7 +30,7 @@ export function seeded(seed) { return () => {seed=(Math.imul(seed,1664525)+10139
 const wrap = a => Math.atan2(Math.sin(a),Math.cos(a));
 export class RobotWorld {
   constructor(stage='balance', options={}) {
-    this.actuation=normalizeActuation(options);this.distalLocked=false;this.stage = STAGES[stage] ? stage : 'balance'; this.task=STAGES[this.stage];this.controlStride=['walk','run'].includes(this.stage)?6:3;
+    options=taskEnvironment(options,stage);this.actuation=normalizeActuation(options);this.distalLocked=false;this.stage = STAGES[stage] ? stage : 'balance'; this.task=STAGES[this.stage];this.controlStride=['walk','run'].includes(this.stage)?6:3;
     this.duration=Number.isInteger(options.observationSeconds)&&options.observationSeconds>=1&&options.observationSeconds<=3600?options.observationSeconds:this.task.duration;
     this.rewardFeedback=options.record||options.rewardEffects?new RewardFeedback():null;this.rewardContactPoints=[];
     this.seed=options.seed??1;this.random=seeded(this.seed);this.time=0;this.reward=0;this.energy=0;this.steps=0;
@@ -202,12 +203,13 @@ export const VALIDATION_CASES = [
  {id:'strong',label:'앞뒤 6 N·s',seed:4093,pushes:[{time:1.8,strength:6,direction:0,location:'shoulder'},{time:4.8,strength:6,direction:180,location:'torso'}]},
 ];
 export function evaluateAbility(weights,stage,environment={},validationCases=VALIDATION_CASES){
+ environment=taskEnvironment(environment,stage);
  const cases=validationCases.map(c=>{const metrics=episode(weights,stage,c.seed,{...environment,observationSeconds:c.seconds??normalizeEvaluationSettings(environment).validationSeconds,pushes:c.pushes,disturbances:false,summaryOnly:true}).metrics;return {id:c.id,label:c.label,passed:passedStage(metrics,stage,c.seconds??normalizeEvaluationSettings(environment).validationSeconds),reward:metrics.reward,metrics};});
  return {meanReward:cases.reduce((s,c)=>s+c.reward,0)/cases.length,passRate:cases.filter(c=>c.passed).length/cases.length,cases};
 }
 export function evaluateAbilities(weights,environment={}){return Object.fromEntries(Object.keys(STAGES).map(stage=>[stage,evaluateAbility(weights,stage,environment)]));}
 
-export function evaluateCommands(weights,environment={}){return COMMAND_CASES.reduce((total,c)=>total+episode(weights,'walk',71,{...environment,observationSeconds:normalizeEvaluationSettings(environment).validationSeconds,disturbances:false,pushes:[],command:null,commandSchedule:c.schedule,summaryOnly:true}).metrics.reward,0)/COMMAND_CASES.length;}
+export function evaluateCommands(weights,environment={}){environment=taskEnvironment(environment,'walk');return COMMAND_CASES.reduce((total,c)=>total+episode(weights,'walk',71,{...environment,observationSeconds:normalizeEvaluationSettings(environment).validationSeconds,disturbances:false,pushes:[],command:null,commandSchedule:c.schedule,summaryOnly:true}).metrics.reward,0)/COMMAND_CASES.length;}
 
 // Monitoring only: never used to select the integrated model.
 export const MONITOR_CASES=monitorCases();

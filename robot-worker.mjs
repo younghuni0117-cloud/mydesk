@@ -1,13 +1,14 @@
-import {observationScene} from './robot-transfer.mjs?v=robot51';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot51';
-import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot51';
-import {STAGES} from './robot-core.mjs?v=robot51';
+import {loadTaskSettings} from './robot-task-settings.mjs?v=robot52';
+import {observationScene} from './robot-transfer.mjs?v=robot52';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot52';
+import {ParallelRollouts,executeTrial} from './robot-rollouts.mjs?v=robot52';
+import {STAGES} from './robot-core.mjs?v=robot52';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,environment={},interval=20,lastCandidate=null,lastTrial=null,rollouts=null;
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
 function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],scene:observationScene(lastTrial?.scene),endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,trainingSeconds:lastTrial?.trainingSeconds,terrainVariant:lastTrial?.terrainVariant,spawnRange:lastTrial?.spawnRange});}
 async function initialize(data,token){
- rollouts?.close();rollouts=new ParallelRollouts(typeof data.parallel==='boolean'?{enabled:data.parallel}:{});environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);learner.onPhase=(phase,details)=>postMessage({type:'phase',phase,...details});stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
+ rollouts?.close();rollouts=new ParallelRollouts(typeof data.parallel==='boolean'?{enabled:data.parallel}:{});environment=data.environment||{};learner=new RobotLearner(data.saved||null,data.seed??Date.now(),environment);if(data.taskSettings)learner.taskSettings=loadTaskSettings({taskSettings:data.taskSettings});learner.onPhase=(phase,details)=>postMessage({type:'phase',phase,...details});stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
  await rollouts.start();if(token!==initToken)return;sendModel();preview();postMessage({type:'ready',parallelism:rollouts.ready?2:1});
 }
 self.onmessage=async({data})=>{
@@ -19,7 +20,7 @@ self.onmessage=async({data})=>{
   if(data.type==='preview'){if(learner)preview();return;}
   if(data.type!=='train'||!learner||job)return;
   const target=Number(data.count);if(!(ALLOWED_ATTEMPTS.includes(target)||(data.internalTeam&&Number.isInteger(target)&&target>0&&target<=100000)))throw Error('지원하는 시도 횟수를 선택해 주세요.');
-  focus=STAGES[data.focus]?data.focus:focus;learner.setFocus(focus);learner.setAlgorithm(data.algorithm||learner.algorithm);learner.setCurriculum(data.curriculum);learner.setBalanceTrainingSettings(data.balanceTraining);learner.setTrainingPushSettings(data.trainingPush);learner.setTrainingCommand(data.trainingCommand);sendModel();const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
+  if(data.taskSettings)learner.taskSettings=loadTaskSettings({taskSettings:data.taskSettings});focus=STAGES[data.focus]?data.focus:focus;learner.setFocus(focus);learner.setAlgorithm(data.algorithm||learner.algorithm);learner.setCurriculum(data.curriculum);learner.setBalanceTrainingSettings(data.balanceTraining);learner.setTrainingPushSettings(data.trainingPush);learner.setTrainingCommand(data.trainingCommand);sendModel();const current={cancelled:false};job=current;let completed=0;const started=Date.now();postMessage({type:'training',active:true});
   while(completed<target&&job===current&&!current.cancelled){
    // Never prepare beyond a CEM update boundary: both trial policies must use
    // exactly the same distribution as their sequential counterparts.
