@@ -1,1 +1,0 @@
-python education/preparation/check_triton_gpu.py

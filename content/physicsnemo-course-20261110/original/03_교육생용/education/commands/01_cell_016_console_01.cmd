@@ -1,1 +1,0 @@
-python education/preparation/setup_models_environment.py
