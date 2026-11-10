@@ -1,6 +1,6 @@
-import {normalizeActuation} from './robot-actuation.mjs?v=robot60';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=robot60';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot60';
+import {normalizeActuation} from './robot-actuation.mjs?v=robot64';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=robot64';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot64';
 
 const common={algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({
@@ -23,7 +23,7 @@ export function taskProfile(task,raw={}){
  p.targetSpeed=integer(p.targetSpeed,30,720,d.targetSpeed);
  p.interval=[10,20,50,100].includes(Number(p.interval))?Number(p.interval):d.interval;
  p.algorithm='ppo';p.curriculum=p.curriculum!==false;p.autoPush=p.autoPush!==false;
- const lo=Number(p.pushMin),hi=Number(p.pushMax);if(Number.isFinite(lo)&&Number.isFinite(hi)&&lo>=.1&&hi<=30&&lo<=hi){p.pushMin=lo;p.pushMax=hi;}else{p.pushMin=d.pushMin;p.pushMax=d.pushMax;}
+ const lo=Number(p.pushMin),hi=Number(p.pushMax);if(Number.isFinite(lo)&&Number.isFinite(hi)&&lo>=.1&&hi<=100&&lo<=hi){p.pushMin=lo;p.pushMax=hi;}else{p.pushMin=d.pushMin;p.pushMax=d.pushMax;}
  p.pushInterval=[0,.5,1,2,3,5,10,30].includes(Number(p.pushInterval))?Number(p.pushInterval):0;
  Object.assign(p,normalizeBalanceTraining(p),normalizeEvaluationSettings(p),normalizeActuation(p));delete p.actuationVersion;
  return p;

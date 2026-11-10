@@ -1,19 +1,19 @@
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=robot60';
-import {taskEnvironment} from './robot-task-settings.mjs?v=robot60';
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=robot60';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot60';
-import {distalActivity} from './robot-attention.mjs?v=robot60';
-import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=robot60';
-import {PUSH_PARTS} from './robot-impact.mjs?v=robot60';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot60';
-import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot60';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot60';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=robot64';
+import {taskEnvironment} from './robot-task-settings.mjs?v=robot64';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=robot64';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=robot64';
+import {distalActivity} from './robot-attention.mjs?v=robot64';
+import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=robot64';
+import {PUSH_PARTS} from './robot-impact.mjs?v=robot64';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot64';
+import {motionQuality,walkingSupport,WALK_CRITERIA} from './robot-performance.mjs?v=robot64';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=robot64';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot60';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=robot64';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot60';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot60';
-export {POLICY_SIZE} from './robot-policy.mjs?v=robot60';
+import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=robot64';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=robot64';
+export {POLICY_SIZE} from './robot-policy.mjs?v=robot64';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '일어나기', speed: 0, duration: 10 },
@@ -25,7 +25,7 @@ export const LOCKED_DISTAL_JOINTS=Object.freeze([]);
 export const JOINTS = ['waist','neck','leftHip','leftKnee','leftAnkle','rightHip','rightKnee','rightAnkle','leftShoulder','leftElbow','rightShoulder','rightElbow'];
 export const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 export const PUSH_INTERVALS=Object.freeze([0,.5,1,2,3,5,10,30]);
-export function normalizePushSettings(raw={}){const low=Number(raw?.pushMin),high=Number(raw?.pushMax),valid=Number.isFinite(low)&&Number.isFinite(high)&&low>=.1&&high<=30&&low<=high;return {autoPush:raw?.autoPush!==false,pushMin:valid?low:1,pushMax:valid?high:6,pushInterval:PUSH_INTERVALS.includes(Number(raw?.pushInterval))?Number(raw.pushInterval):0};}
+export function normalizePushSettings(raw={}){const low=Number(raw?.pushMin),high=Number(raw?.pushMax),valid=Number.isFinite(low)&&Number.isFinite(high)&&low>=.1&&high<=100&&low<=high;return {autoPush:raw?.autoPush!==false,pushMin:valid?low:1,pushMax:valid?high:6,pushInterval:PUSH_INTERVALS.includes(Number(raw?.pushInterval))?Number(raw.pushInterval):0};}
 export const WAIST_RESISTANCE=Object.freeze({stiffness:55,damping:9,maxTorque:110});
 export function seeded(seed) { return () => {seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}; }
 const wrap = a => Math.atan2(Math.sin(a),Math.cos(a));
@@ -53,7 +53,7 @@ export class RobotWorld {
     this.pushes = options.pushes ? options.pushes.map(p=>({...p})) : [];
     const pushSettings=normalizePushSettings(this.trainingSpec?{...options,autoPush:this.trainingSpec.pushEnabled,pushInterval:this.trainingSpec.pushInterval,pushMin:.1,pushMax:this.trainingSpec.pushMax}:options);
     if(options.disturbances!==false&&pushSettings.autoPush&&!options.pushes){
-      const interval=pushSettings.pushInterval;let time=interval>0?.6+this.random()*.4:.9+this.random()*Math.max(.1,this.duration-2.4);
+      const interval=this.trainingSpec?this.trainingSpec.pushInterval:pushSettings.pushInterval;let time=interval>0?.6+this.random()*.4:.9+this.random()*Math.max(.1,this.duration-2.4);
       do{this.pushes.push({time,strength:pushSettings.pushMin+this.random()*(pushSettings.pushMax-pushSettings.pushMin),direction:this.random()*360,location:PUSH_PARTS[Math.floor(this.random()*PUSH_PARTS.length)],duration:0});time+=interval;}while(interval>0&&time<this.duration-.1);
     }
     this.impactEvents=[];this.pushSequence=0;this.nextPushIndex=0;this.pushesApplied=0;this.pushRecoveryTime=0;this.lastPushAt=-Infinity;this.obstacleHeight=options.obstacleHeight??.14;
