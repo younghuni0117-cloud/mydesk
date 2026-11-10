@@ -1,26 +1,27 @@
-import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=robot58';
-import {normalizeGround} from './robot-training-ground.mjs?v=robot58';
-import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=robot58';
-import {normalizeActuation} from './robot-actuation.mjs?v=robot58';
-import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=robot58';
-import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=robot58';
-import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=robot58';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot58';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot58';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot58';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot58';
-import {abilitySummary} from './robot-performance.mjs?v=robot58';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot58';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=robot58';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot58';
-import {rewardHelp} from './robot-rewards.mjs?v=robot58';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot58';
-import {RobotTeam} from './robot-team.mjs?v=robot58';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot58';
-import {drawRobotSkin} from './robot-skin.mjs?v=robot58';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=robot58';
-import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot58';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot58';
+import {drawTrainingStatus} from './robot-training-view.mjs?v=robot59';
+import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=robot59';
+import {normalizeGround} from './robot-training-ground.mjs?v=robot59';
+import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=robot59';
+import {normalizeActuation} from './robot-actuation.mjs?v=robot59';
+import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=robot59';
+import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=robot59';
+import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=robot59';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=robot59';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=robot59';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=robot59';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot59';
+import {abilitySummary} from './robot-performance.mjs?v=robot59';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=robot59';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=robot59';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=robot59';
+import {rewardHelp} from './robot-rewards.mjs?v=robot59';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=robot59';
+import {RobotTeam} from './robot-team.mjs?v=robot59';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=robot59';
+import {drawRobotSkin} from './robot-skin.mjs?v=robot59';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=robot59';
+import {RobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=robot59';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=robot59';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=readTravelRecord(model?.travelRecord);
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -83,8 +84,8 @@ function renderChart(){if(!model)return;get('chart-dot').style.display=model.eva
  for(const [id,k]of [['chart-best','overall'],['chart-current','candidate']]){let connected=false;get(id).setAttribute('d',rows.map(r=>{if(!Number.isFinite(r[k])){connected=false;return '';}const point=`${connected?'L':'M'}${X(r.attempts)} ${Y(r[k])}`;connected=true;return point;}).join(' '));}
  get('chart-dot').setAttribute('cx',X(end));get('chart-dot').setAttribute('cy',Y(current));get('chart-title').textContent=STAGES[stage].label+' · 평균 보상'+(old?' · 이전 기준':'');get('y-max').textContent=max.toFixed(1);get('y-mid').textContent=((max+min)/2).toFixed(1);get('y-min').textContent=min.toFixed(1);get('chart-min').textContent=min.toFixed(1);get('chart-max').textContent=max.toFixed(1);get('x-min').textContent=start.toLocaleString();get('x-mid').textContent=Math.round((start+end)/2).toLocaleString();get('x-max').textContent=end.toLocaleString()+'회';get('chart-svg').setAttribute('aria-label',`${STAGES[stage].label} ${old?'이전':'현재'} 보상 ${current.toFixed(1)}점. 학습 ${start}~${end}회. 보상 기준이 다른 기록은 구분합니다.`);
 }
-const groundFields=['changeEvery','slopeMax','stepMax','frictionMin','frictionMax','massVariation','motorVariation','delayMax','pushProbability','pushInterval','pushMax'];
-const groundPercent=new Set(['massVariation','motorVariation','pushProbability']);
+const groundFields=['changeEvery','slopeMax','stepMax','frictionMin','frictionMax','massVariation','pushProbability','pushInterval','pushMax'];
+const groundPercent=new Set(['massVariation','pushProbability']);
 function syncGroundControls(){get('mix-mode').value=options.trainingGround.mixMode;for(const k of groundFields)get('ground-'+k).value=String(options.trainingGround[k]*(groundPercent.has(k)?100:1));}
 async function changeGround(){if(initializing||training)return;const raw={mixMode:get('mix-mode').value};for(const k of groundFields){const input=get('ground-'+k);if(!input.checkValidity()){input.reportValidity();return;}raw[k]=Number(input.value)/(groundPercent.has(k)?100:1);}if(raw.frictionMin>raw.frictionMax){status('마찰계수의 최소·최대 범위를 확인하세요.');return;}options.trainingGround=normalizeGround(raw);saveOptions();actuationDirty=true;await configure(model);}
 for(const k of groundFields)get('ground-'+k).onchange=changeGround;get('mix-mode').onchange=changeGround;syncGroundControls();
@@ -97,7 +98,7 @@ get('curriculum').onchange=()=>{options.curriculum=get('curriculum').checked;sav
 get('reward-commands').textContent=rewardHelp(STAGES).commands;
 const rewardDetails={};const rewardInfo=rewardHelp(STAGES);for(const key of ['standing','speed','penalties','push','attention']){const p=document.createElement('p');p.textContent=rewardInfo[key];get('reward-common').append(p);}for(const task of rewardInfo.tasks){const details=document.createElement('details'),summary=document.createElement('summary');details.open=task.id===stage;summary.textContent=`${task.label} · 목표 ${task.target}m/s`;details.append(summary);for(const [label,key]of [['상점','positive'],['벌점','negative'],['검증 통과 기준','validation']]){const p=document.createElement('p');p.textContent=label+': '+task[key];details.append(p);}get('reward-tasks').append(details);rewardDetails[task.id]=details;}
 const worker=new RobotTeam();
-function configure(saved=model){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;carryRewardEvents=[];traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};resolveReady?.(false);const ready=new Promise(resolve=>{resolveReady=resolve;});controls();worker.postMessage({type:'init',stage,focus:stage,saved,taskSettings:structuredClone(taskSettings),environment:{terrain:options.terrain,courseVersion:12,trainingGround:options.trainingGround,visionVersion:VISION_VERSION,bodyVersion:6,...normalizeActuation(),...normalizeEvaluationSettings(),taskEnvironments:taskEnvironments(taskSettings)},robotCount:1});return ready;}
+function configure(saved=model){initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;carryRewardEvents=[];traceTime=0;viewPaused=false;const initial=new RobotWorld(stage,{...options,seed:31,disturbances:false});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};resolveReady?.(false);const ready=new Promise(resolve=>{resolveReady=resolve;});controls();worker.postMessage({type:'init',stage,focus:stage,saved,taskSettings:structuredClone(taskSettings),environment:{terrain:options.terrain,courseVersion:13,solverVersion:2,trainingGround:options.trainingGround,visionVersion:VISION_VERSION,bodyVersion:6,...normalizeActuation(),...normalizeEvaluationSettings(),taskEnvironments:taskEnvironments(taskSettings)},robotCount:1});return ready;}
 function settings(){worker.postMessage({type:'settings',interval:options.interval});}
 worker.onmessage=async({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}knownTravel=data.model.id===model?.id?mergeTravelRecord(knownTravel,data.model.travelRecord):readTravelRecord(data.model.travelRecord);model=data.model;model.travelRecord=knownTravel;if(model.policyVersion>lastModelVersion){writeLog(`통합 모델 갱신 · v${model.policyVersion} · 검증을 거친 후보 채택`);lastModelVersion=model.policyVersion;}renderModel();persist();if(training&&model.attempts>trainingStartAttempt)void storage.publish(model);progress(lastRequest.completed,lastRequest.target,'학습');return;}
@@ -106,7 +107,7 @@ worker.onmessage=async({data})=>{
  if(data.type==='goal'){if(!training){if(!live)startLive();controls();status(`${TERRAINS[options.terrain]} · 준비 완료`);}return;}
  if(data.type==='evaluation'){if(!data.active&&actuationDirty){const result=await storage.publish(model,{force:true});if(result.ok)actuationDirty=false;}if(!training&&!initializing)status(data.active?'지형 준비 완료 · 성능 지표 계산 중':`${TERRAINS[options.terrain]} · 준비 완료`);return;}
  if(data.type==='phase'){const text={'environment-validation':'학습 전 성능 기준 계산 · 화면 관찰과 지형 선택은 먼저 준비됩니다.',validation:'학습 묶음 비교 · 후보 평가 또는 정책 갱신 준비','candidate-validation':`후보 검증 · ${data.seconds}초씩 같은 조건에서 성능 비교`,'full-validation':'전체 운동 능력 검증 · 각 운동의 설정 시간으로 기존 능력을 확인','terrain-validation':'훈련소 지형별 유지 성능 확인 · 평지·오르막·내리막·계단·돌길 비교',monitor:`개선된 통합 모델 추가 시험 · ${data.seconds}초 · 여러 방향의 밀기에 대응하는지 확인`}[data.phase];if(text)writeLog(text,'phase-'+data.phase,3000);return;}
- if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(data.algorithmAttempts)model.algorithmAttempts=data.algorithmAttempts;if(Date.now()-lastProgressHud>1000){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();renderChart();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}if(data.summary?.trainingSpec){const p=data.summary.trainingSpec;writeLog(`훈련소 · ${p.label} · 마찰 ${p.friction.toFixed(2)} · 모터 ${Math.round(p.motorScale*100)}% · 지연 ${p.delaySteps}회`,'ground',800);}if(data.summary)writeLog(trialDescription(data.summary,STAGES[data.task].label));return;}
+ if(data.type==='progress'){progress(data.completed,data.target,'학습 중',data.attempts);if(model){model.attempts=data.attempts;model.taskAttempts=data.taskAttempts;if(data.algorithmAttempts)model.algorithmAttempts=data.algorithmAttempts;if(Date.now()-lastProgressHud>1000){for(const k of Object.keys(STAGES))cells[k][0].textContent=model.taskAttempts[k].toLocaleString();lastProgressHud=Date.now();renderChart();}if(Date.now()-lastPersist>1000){persist();lastPersist=Date.now();}}if(data.summary?.trainingSpec){const p=data.summary.trainingSpec;writeLog(`훈련소 · ${p.label} · 마찰 ${p.friction.toFixed(2)}`,'ground',800);}if(data.summary)writeLog(trialDescription(data.summary,STAGES[data.task].label));return;}
  if(data.type==='preview'){if(data.stage!==stage)return;latestPreview=data;if(viewSource==='candidate'&&(!viewPaused||live?.done))showRecent();return;}
  if(data.type==='done'){const finishedId=model?.id;await persist();const shared=await storage.publish(model,{force:true});if(model?.id!==finishedId)return;progress(data.completed,data.target,data.cancelled?'중지':'완료',model?.attempts||0,true);training=false;if(viewSource==='candidate'&&mode==='trace'&&latestPreview)showRecent();controls();if(recoveryBlocked){status('공용 모델을 읽을 수 없습니다.');return;}status(`${data.cancelled?'학습 중지':'학습 완료'} · ${data.completed.toLocaleString()}/${data.target.toLocaleString()}회 · ${shared.ok?'공용 모델 저장 완료':'공용 저장 연결 대기'}`);return;}
  if(data.type==='error'){resolveReady?.(false);resolveReady=null;training=false;initializing=false;controls();status(data.message);}
@@ -186,7 +187,7 @@ function draw(data){
  if(liveSource==='best'&&command.mode==='position'){const x=X(command.position),y=Y(terrainHeight(meta.terrain.segments,command.position));ctx.strokeStyle='#527aa4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-36);ctx.lineTo(x+14,y-30);ctx.lineTo(x,y-24);ctx.stroke();ctx.fillStyle='#466989';ctx.font='10px sans-serif';ctx.fillText(command.position.toFixed(1)+'m',x+4,y-40);}
 
  // Independent environments are displayed about one robot height apart.
- for(const [i,actor]of actors.entries()){const Xlocal=x=>X(x+actor.offset),shift=terrainHeight(actor.meta.terrain.segments,0)-terrainHeight(meta.terrain.segments,0),Ylocal=y=>Y(y-shift);if(meta.terrain.kind==='training'&&actors.length>1){ctx.save();const left=i===0?0:X(actor.offset-1.1),right=i===actors.length-1?W:X(actor.offset+1.1);ctx.beginPath();ctx.rect(left,0,right-left,H);ctx.clip();drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:actor.meta.terrain,obstacles:actor.meta.obstacles||[],X:Xlocal,Y:Ylocal});ctx.restore();}drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Ylocal,scale,skin);if(actor.meta.terrain.kind==='training'){ctx.fillStyle='#536d80';ctx.font='11px sans-serif';ctx.fillText((actor.meta.terrain.label||'훈련소')+' · '+(STAGES[actor.meta.task||stage]?.label||''),Math.max(6,X(actor.offset)-45),18);}}
+ for(const [i,actor]of actors.entries()){const Xlocal=x=>X(x+actor.offset),shift=terrainHeight(actor.meta.terrain.segments,0)-terrainHeight(meta.terrain.segments,0),Ylocal=y=>Y(y-shift);if(meta.terrain.kind==='training'&&actors.length>1){ctx.save();const left=i===0?0:X(actor.offset-1.1),right=i===actors.length-1?W:X(actor.offset+1.1);ctx.beginPath();ctx.rect(left,0,right-left,H);ctx.clip();drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:actor.meta.terrain,obstacles:actor.meta.obstacles||[],X:Xlocal,Y:Ylocal});ctx.restore();}drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Ylocal,scale,skin);if(actor.meta.terrain.kind==='training')drawTrainingStatus(ctx,actor.frame,actor.meta,Xlocal,Ylocal,scale,W,H);}
  const actor=actors[0];
  if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,X,Y,scale);}
  for(const robot of actors){const Xlocal=x=>X(x+robot.offset),shift=terrainHeight(robot.meta.terrain.segments,0)-terrainHeight(meta.terrain.segments,0),Ylocal=y=>Y(y-shift);for(const effect of hammerEffects(robot.frame,robot.meta))drawHammer(ctx,effect,Xlocal,Ylocal,scale);}
