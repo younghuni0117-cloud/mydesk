@@ -1,6 +1,6 @@
-import {executeTrial} from './robot-rollouts.mjs?v=robot48';
-import {episode} from './robot-core.mjs?v=robot48';
-import {ppoEpisode} from './robot-ppo.mjs?v=robot48';
+import {executeTrial} from './robot-rollouts.mjs?v=robot49';
+import {episode} from './robot-core.mjs?v=robot49';
+import {ppoEpisode} from './robot-ppo.mjs?v=robot49';
 self.onmessage=({data})=>{
  if(data.type!=='rollout')return;
  try{const p=data.prepared;postMessage({type:'result',id:data.id,trial:executeTrial(p)});}
