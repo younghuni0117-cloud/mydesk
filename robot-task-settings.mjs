@@ -1,6 +1,6 @@
-import {normalizeActuation} from './robot-actuation.mjs?v=robot56';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=robot56';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot56';
+import {normalizeActuation} from './robot-actuation.mjs?v=robot57';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=robot57';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=robot57';
 
 const common={algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({

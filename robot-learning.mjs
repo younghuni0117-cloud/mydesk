@@ -1,15 +1,15 @@
-import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=robot56';
-import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=robot56';
-import {normalizeActuation} from './robot-actuation.mjs?v=robot56';
-import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=robot56';
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=robot56';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot56';
-import {compareAbilities} from './robot-performance.mjs?v=robot56';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot56';
-import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=robot56';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot56';
-import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot56';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot56';
+import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=robot57';
+import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=robot57';
+import {normalizeActuation} from './robot-actuation.mjs?v=robot57';
+import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=robot57';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=robot57';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot57';
+import {compareAbilities} from './robot-performance.mjs?v=robot57';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot57';
+import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=robot57';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot57';
+import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot57';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot57';
 export const MODEL_VERSION=9;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -41,7 +41,7 @@ export class RobotLearner {
   if(this.mean.slice(0,BIAS_START).every(v=>v===0)){const tail=this.mean.slice(BIAS_START);this.mean=initialPolicy(this.searchSeed);this.mean.splice(BIAS_START,tail.length,...tail);}
   const visionChanged=!!saved&&saved.environment?.visionVersion!==environment.visionVersion,locksChanged=!!saved&&saved.environment?.distalLocked!==environment.distalLocked;const actuationChanged=!!saved&&(saved.environment?.actuationVersion!==3||JSON.stringify(normalizeActuation(saved.environment))!==JSON.stringify(normalizeActuation(environment))||environmentSignature(saved.environment?.taskEnvironments)!==environmentSignature(environment.taskEnvironments));if(visionChanged||locksChanged||actuationChanged){if(this.ppo)this.ppo.buffer=[];if(this.searchArchive?.ppo)this.searchArchive.ppo.buffer=[];}
   for(const row of this.history)if(typeof row.environment==='string')try{row.environment=environmentSignature(JSON.parse(row.environment));}catch{}
-  this.environmentChanged=!!saved&&environmentSignature(saved.environment)!==environmentSignature(environment);if(this.environmentChanged){this.terrainReview=null;this.generalization=null;this.validationBank=null;this.pending=[];this.cohortStart=this.attempts;}
+  this.environmentChanged=!!saved&&environmentSignature(saved.environment)!==environmentSignature(environment);if(this.environmentChanged){if(this.ppo)this.ppo.buffer=[];this.terrainReview=null;this.generalization=null;this.validationBank=null;this.pending=[];this.cohortStart=this.attempts;}
   this.abilities=evaluateAbilities(this.weights,this.environment);this.goalReward=evaluateCommands(this.weights,this.environment);this.bestReward=modelScore(this);
   if(!this.history.length||this.environmentChanged||this.history.at(-1)?.rewardVersion!==REWARD_VERSION||!this.history.some(r=>r.rewards&&r.taskAttempts)){this.record(this.bestReward,false);this.history.at(-1).baseline=true;}
  }

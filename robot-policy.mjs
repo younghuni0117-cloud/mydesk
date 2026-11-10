@@ -1,5 +1,5 @@
-import {TERRAIN_SENSOR_COUNT} from './robot-sensors.mjs?v=robot56';
-import {CONTROL_KIND,jointExplorationScale} from './robot-actuation.mjs?v=robot56';
+import {TERRAIN_SENSOR_COUNT} from './robot-sensors.mjs?v=robot57';
+import {CONTROL_KIND,jointExplorationScale} from './robot-actuation.mjs?v=robot57';
 export const POLICY_KIND=CONTROL_KIND;
 export const POLICY_BODY_INPUTS=80,POLICY_INPUTS=80+TERRAIN_SENSOR_COUNT,POLICY_HIDDEN=12,POLICY_OUTPUTS=36;
 export const OUTPUT_START=POLICY_BODY_INPUTS*POLICY_HIDDEN+POLICY_HIDDEN;

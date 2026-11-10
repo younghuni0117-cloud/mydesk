@@ -1,15 +1,14 @@
-import {normalizeRobotCount} from './robot-training-options.mjs?v=robot56';
-import {loadTaskSettings} from './robot-task-settings.mjs?v=robot56';
-import {observationScene} from './robot-transfer.mjs?v=robot56';
-import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot56';
-import {ParallelRollouts} from './robot-rollouts.mjs?v=robot56';
-import {STAGES} from './robot-core.mjs?v=robot56';
+import {loadTaskSettings} from './robot-task-settings.mjs?v=robot57';
+import {observationScene} from './robot-transfer.mjs?v=robot57';
+import {RobotLearner,ALLOWED_ATTEMPTS} from './robot-learning.mjs?v=robot57';
+import {ParallelRollouts} from './robot-rollouts.mjs?v=robot57';
+import {STAGES} from './robot-core.mjs?v=robot57';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,interval=20,lastCandidate=null,lastTrial=null,rollouts=null,robotCount=1,lastScenes=[];
 const sendModel=()=>postMessage({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
 function preview(){postMessage({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],observedTask:lastTrial?.task||stage,trainingSpec:lastTrial?.trainingSpec,scene:lastScenes[0]||null,scenes:lastScenes.slice(0,robotCount),team:robotCount,endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,trainingSeconds:lastTrial?.trainingSeconds,terrainVariant:lastTrial?.terrainVariant,spawnRange:lastTrial?.spawnRange});}
 async function initialize(data,token){
- rollouts?.close();robotCount=normalizeRobotCount(data.robotCount);lastCandidate=null;lastTrial=null;lastScenes=[];
+ rollouts?.close();robotCount=1;lastCandidate=null;lastTrial=null;lastScenes=[];
  rollouts=new ParallelRollouts({count:robotCount,enabled:robotCount>1&&data.parallel!==false});
  learner=new RobotLearner(data.saved||null,data.seed??Date.now(),data.environment||{});learner.samplingRobots=robotCount;
  if(data.taskSettings)learner.taskSettings=loadTaskSettings({taskSettings:data.taskSettings});
