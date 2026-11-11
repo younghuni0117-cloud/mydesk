@@ -1,12 +1,12 @@
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
-import {DEFAULT_MENUS,visibleMenus,validateMenus,menuPath,legacyMenuId,safeMenuHref} from './navigation-data.mjs?v=update69';
+import {DEFAULT_MENUS,visibleMenus,validateMenus,menuPath,legacyMenuId,safeMenuHref,withSwingMenu} from './navigation-data.mjs?v=swing1';
 const endpoint=SHARED_MODEL_URL.replace(/robot_shared_model$/,'site_navigation'),key='mydesk.navigation.v1';
 let state={id:'main',menus:structuredClone(DEFAULT_MENUS),revision:0,online:false},loading=null,selection;
-try{const cached=JSON.parse(localStorage.getItem(key)||'null');if(cached){validateMenus(cached.menus);state={...cached,online:false};}}catch{}
+try{const cached=JSON.parse(localStorage.getItem(key)||'null');if(cached){validateMenus(cached.menus);state={...cached,menus:withSwingMenu(cached.menus),online:false};}}catch{}
 export const navigationState=()=>state;
 function saveCache(){try{localStorage.setItem(key,JSON.stringify(state));}catch{}}
 export function selectNavigationMenu(id){selection=id;renderNavigation();}
-export function acceptNavigation(row){validateMenus(row.menus);state={...row,online:true};saveCache();renderNavigation();window.dispatchEvent(new CustomEvent('navigation-updated',{detail:state}));return state;}
+export function acceptNavigation(row){validateMenus(row.menus);state={...row,menus:withSwingMenu(row.menus),online:true};saveCache();renderNavigation();window.dispatchEvent(new CustomEvent('navigation-updated',{detail:state}));return state;}
 export async function loadNavigation(refresh=false){
  if(loading&&!refresh)return loading;
  loading=(async()=>{try{const response=await fetch(endpoint+'?id=eq.main&select=id,menus,revision,updated_at',{headers:{apikey:SHARED_MODEL_KEY}});if(!response.ok)throw Error('Unavailable');const [row]=await response.json();if(!row)throw Error('Missing');return acceptNavigation(row);}catch{state.online=false;renderNavigation();return state;}})();return loading;

@@ -11,7 +11,8 @@ export const DEFAULT_MENUS=[
  {id:'experiments',parent_id:null,label:'강화학습 체험',kind:'folder',href:null},
  {id:'maze',parent_id:'experiments',label:'미로 탐험',kind:'link',href:'maze.html'},
  {id:'cartpole',parent_id:'experiments',label:'카트폴',kind:'link',href:'cartpole.html'},
- {id:'robot',parent_id:'experiments',label:'로봇 강화학습',kind:'link',href:'robot.html'}
+ {id:'robot',parent_id:'experiments',label:'로봇 강화학습',kind:'link',href:'robot.html'},
+ {id:'swing',parent_id:'experiments',label:'그네타기 강화학습',kind:'link',href:'swing.html'}
 ];
 export function safeMenuHref(href){
  if(typeof href!=='string'||/\s/.test(href))return false;
@@ -56,3 +57,12 @@ export function postMenuId(post){return post.menu_id||(post.category==='ai'?'rei
 export function locationFields(menus,id){const menu=menus.find(m=>m.id===id);if(!menu||menu.kind!=='folder')throw Error('글을 저장할 메뉴를 선택해 주세요.');return {menu_id:id,category:menuPath(menus,id).some(m=>m.id==='ai')?'ai':'structural',topic:menu.label};}
 export function reorderMenu(menus,id,direction){const copy=structuredClone(menus),item=copy.find(m=>m.id===id),siblings=copy.filter(m=>m.parent_id===item.parent_id),index=siblings.findIndex(m=>m.id===id),other=siblings[index+direction];if(!other)return copy;const a=copy.findIndex(m=>m.id===id),b=copy.findIndex(m=>m.id===other.id);[copy[a],copy[b]]=[copy[b],copy[a]];return copy;}
 export function removeMenu(menus,id){const item=menus.find(m=>m.id===id);return menus.filter(m=>m.id!==id).map(m=>m.parent_id===id?{...m,parent_id:item.parent_id}:m);}
+
+// Introduce the new experiment to older shared/cached navigation without replacing custom menus.
+export function withSwingMenu(menus){
+ if(menus.some(m=>m.id==='swing'||m.href==='swing.html'))return menus;
+ const robot=menus.find(m=>m.id==='robot'||m.href==='robot.html');
+ if(!robot)return menus;
+ const next=menus.slice();next.splice(next.indexOf(robot)+1,0,{id:'swing',parent_id:robot.parent_id,label:'그네타기 강화학습',kind:'link',href:'swing.html'});
+ return next;
+}
