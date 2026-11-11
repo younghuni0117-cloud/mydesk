@@ -25,6 +25,11 @@ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['-
  const created=navigation.menus.find(m=>m.label==='새 학습 자료');assert.equal(created.parent_id,'learning');
  let row=p.locator(`.menu-row[data-id="${created.id}"]`);await row.locator('[data-action="edit"]').click();await p.locator('#menu-label').fill('시험 자료');await p.locator('#menu-parent').selectOption('simulation');await p.locator('#menu-save').click();await p.locator('#menu-edit-dialog').waitFor({state:'hidden'});assert.equal(navigation.menus.find(m=>m.id===created.id).parent_id,'simulation');
  await row.locator('[data-action="up"]').click();await p.waitForFunction(()=>document.getElementById('menu-status').textContent.includes('순서'));assert.equal(navigation.menus.filter(m=>m.parent_id==='simulation')[0].id,created.id);
+ // Visibility persists without deleting descendants or posts; edit preserves it.
+ await p.locator('[data-visibility="career"]').check();await p.waitForFunction(()=>document.querySelector('[data-visibility="career"]')?.checked&&!document.querySelector('[data-visibility="career"]').disabled);
+ assert.equal(navigation.menus.find(m=>m.id==='career').hidden,true);assert.ok(navigation.menus.some(m=>m.id==='experienced-jobs'));assert.equal(await p.locator('#sidebar [data-menu-id="career"]').count(),0);
+ await p.locator('.menu-row[data-id="career"] [data-action="edit"]').click();assert.equal(await p.locator('#menu-hidden').isChecked(),true);await p.locator('#menu-save').click();await p.locator('#menu-edit-dialog').waitFor({state:'hidden'});assert.equal(navigation.menus.find(m=>m.id==='career').hidden,true);
+ await p.locator('[data-visibility="career"]').uncheck();await p.locator('#sidebar [data-menu-id="career"]').waitFor({state:'attached'});assert.equal(navigation.menus.find(m=>m.id==='career').hidden,false);
  // A second browser sees the same saved hierarchy.
  const second=await newPage();await second.goto(base+'/menus.html');await second.locator(`.menu-row[data-id="${created.id}"]`).waitFor();assert.match(await second.locator(`.menu-row[data-id="${created.id}"]`).textContent(),/시험 자료/);
  // Moving a blog post changes its menu only, preserving content and dates.

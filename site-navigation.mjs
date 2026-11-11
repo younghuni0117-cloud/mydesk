@@ -1,5 +1,5 @@
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
-import {DEFAULT_MENUS,validateMenus,menuPath,legacyMenuId,safeMenuHref} from './navigation-data.mjs?v=career1';
+import {DEFAULT_MENUS,visibleMenus,validateMenus,menuPath,legacyMenuId,safeMenuHref} from './navigation-data.mjs?v=update69';
 const endpoint=SHARED_MODEL_URL.replace(/robot_shared_model$/,'site_navigation'),key='mydesk.navigation.v1';
 let state={id:'main',menus:structuredClone(DEFAULT_MENUS),revision:0,online:false},loading=null,selection;
 try{const cached=JSON.parse(localStorage.getItem(key)||'null');if(cached){validateMenus(cached.menus);state={...cached,online:false};}}catch{}
@@ -20,7 +20,7 @@ export async function saveNavigation(menus,token,postMoves=[]){
 function makeLink(label,href,active=false){const a=document.createElement('a');a.className='nav-item';a.textContent=label;a.href=href;if(active){a.classList.add('is-current');a.setAttribute('aria-current','page');}if(href.startsWith('https://')&&new URL(href).origin!==location.origin){a.target='_blank';a.rel='noopener noreferrer';}return a;}
 export function renderNavigation(){
  const nav=document.querySelector('#sidebar nav');if(!nav)return;
- const open=new Set([...nav.querySelectorAll('details[open]')].map(el=>el.dataset.menuId)),menus=state.menus,query=new URLSearchParams(location.search),selected=selection??legacyMenuId(query,menus),ancestors=new Set(menuPath(menus,selected).map(m=>m.id));
+ const open=new Set([...nav.querySelectorAll('details[open]')].map(el=>el.dataset.menuId)),menus=visibleMenus(state.menus),query=new URLSearchParams(location.search),selected=selection??legacyMenuId(query,menus),ancestors=new Set(menuPath(menus,selected).map(m=>m.id));
  const currentFile=location.pathname.split('/').pop()||'index.html';
  function build(parent){const fragment=document.createDocumentFragment();for(const m of menus.filter(m=>m.parent_id===parent)){
   const href=m.kind==='folder'?'blog.html?menu='+encodeURIComponent(m.id):m.href;

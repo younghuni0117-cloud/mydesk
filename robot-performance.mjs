@@ -1,4 +1,6 @@
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+export const RECOVERY_CRITERIA=Object.freeze({height:.75,angle:.5,speed:.3,angularSpeed:1,settleSeconds:2});
+export function recoveryStanding(s){const c=RECOVERY_CRITERIA;return s.height>c.height&&Math.abs(s.angle)<c.angle&&s.footDown&&!s.bodyDown&&Math.hypot(s.vx,s.vy)<=c.speed&&Math.abs(s.angularSpeed)<=c.angularSpeed;}
 export const WALK_CRITERIA=Object.freeze({speed:.55,minSpeed:.15,distanceRatio:.5,supportedRatio:.4,movingRatio:.5,uprightRatio:.8,settleSeconds:2});
 export function walkingSupport(s){return s.down||s.newFall||s.bodyDown?0:clamp(s.motionQuality??s.quality??(s.upright?1:0));}
 // Measures outcomes; these scores never choose joint angles or motor commands.

@@ -1,6 +1,6 @@
-import {BlogManagement} from './blog-auth.mjs?v=menus1';
-import {loadNavigation,navigationState,selectNavigationMenu} from './site-navigation.mjs?v=career1';
-import {folderOptions,descendantIds,legacyMenuId,postMenuId,locationFields} from './navigation-data.mjs?v=career1';
+import {BlogManagement} from './blog-auth.mjs?v=update69';
+import {loadNavigation,navigationState,selectNavigationMenu} from './site-navigation.mjs?v=update69';
+import {folderOptions,visibleMenus,descendantIds,legacyMenuId,postMenuId,locationFields} from './navigation-data.mjs?v=update69';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 import {sanitizeHTML,textHTML as esc,displayDate,safeURL} from './blog-content.mjs?v=crash1';
 const $=id=>document.getElementById(id),endpoint=SHARED_MODEL_URL.replace(/robot_shared_model$/,'blog_posts');
@@ -50,7 +50,7 @@ function render(){
   if(location.hash){try{document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();}catch{}}
  }else{
   if(id&&!menu){$('blog-content').innerHTML='<p class="blog-empty">이 메뉴는 이동하거나 삭제되었습니다. <a href="blog.html">전체 글 보기</a></p>';return;}
-  const allowed=id?descendantIds(menus,id):null,visible=posts.filter(p=>!allowed||allowed.has(postMenuId(p))),children=menus.filter(m=>m.parent_id===id);
+  const allowed=id?descendantIds(menus,id):null,visible=posts.filter(p=>!allowed||allowed.has(postMenuId(p))),children=visibleMenus(menus).filter(m=>m.parent_id===id);
   const submenus=children.length?`<nav class="blog-submenus" aria-label="하위 메뉴">${children.map(m=>`<a href="${m.kind==='folder'?'blog.html?menu='+encodeURIComponent(m.id):esc(m.href)}"${m.href?.startsWith('https://')?' target="_blank" rel="noopener noreferrer"':''}>${esc(m.label)}</a>`).join('')}</nav>`:'';
   $('blog-content').innerHTML=submenus+(visible.length?`<div class="blog-grid">${visible.map(p=>`<article class="blog-card"><a href="blog.html?post=${encodeURIComponent(p.id)}"><h2>${postTitle(p)}</h2></a><p>${esc(p.summary)}</p><div class="blog-date">${dates(p)}</div>${controls(p)}</article>`).join('')}</div>`:'<p class="blog-empty">아직 등록된 글이 없습니다.</p>');
  }

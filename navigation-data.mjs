@@ -26,6 +26,7 @@ export function validateMenus(menus){
   if(typeof menu.label!=='string'||!menu.label.trim()||menu.label.length>80)throw Error('메뉴 이름은 1~80자로 입력해 주세요.');
   if(!['folder','link'].includes(menu.kind)||(menu.kind==='link'&&!safeMenuHref(menu.href)))throw Error('페이지 주소는 .html 경로나 https 주소로 입력해 주세요.');
   if(menu.parent_id!==null&&typeof menu.parent_id!=='string')throw Error('상위 메뉴를 선택해 주세요.');
+  if(menu.hidden!==undefined&&typeof menu.hidden!=='boolean')throw Error('숨김 설정이 올바르지 않습니다.');
   ids.set(menu.id,menu);
  }
  for(const menu of menus){
@@ -41,6 +42,7 @@ export function validateMenus(menus){
  return menus;
 }
 export function menuPath(menus,id){const path=[],seen=new Set();let m=menus.find(m=>m.id===id);while(m&&!seen.has(m.id)){seen.add(m.id);path.unshift(m);m=menus.find(p=>p.id===m.parent_id);}return path;}
+export function visibleMenus(menus){return menus.filter(m=>!menuPath(menus,m.id).some(p=>p.hidden===true));}
 export function descendantIds(menus,id){const ids=new Set([id]);for(let n=0;n<menus.length;n++){let changed=false;for(const m of menus)if(ids.has(m.parent_id)&&!ids.has(m.id)){ids.add(m.id);changed=true;}if(!changed)break;}return ids;}
 export function orderedMenus(menus,parent=null,depth=0){return menus.filter(m=>m.parent_id===parent).flatMap(m=>[{...m,depth},...orderedMenus(menus,m.id,depth+1)]);}
 export function folderOptions(menus,excluded=new Set()){return orderedMenus(menus).filter(m=>m.kind==='folder'&&!excluded.has(m.id)).map(m=>({id:m.id,label:menuPath(menus,m.id).map(p=>p.label).join(' / ')}));}

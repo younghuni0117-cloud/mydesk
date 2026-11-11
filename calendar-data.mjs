@@ -1,4 +1,4 @@
-import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=robot31';
+import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=update69';
 export const CATEGORIES=Object.freeze({family:{label:'공통',color:'#4285f4',soft:'#eaf2ff'},personal:{label:'영훈',color:'#8e63ce',soft:'#f2ebfc'},school:{label:'서정',color:'#df9130',soft:'#fff3df'},medical:{label:'하경',color:'#289c83',soft:'#e6f5f0'},other:{label:'하윤',color:'#788594',soft:'#edf0f4'}});
 export function todaySeoul(now=new Date()){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`;}
 export const dateUTC=iso=>new Date(iso+'T00:00:00Z');

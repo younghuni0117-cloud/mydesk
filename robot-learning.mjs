@@ -1,15 +1,15 @@
-import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=robot68';
-import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=robot64';
-import {normalizeActuation} from './robot-actuation.mjs?v=robot64';
-import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=robot64';
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=robot64';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=robot64';
-import {compareAbilities} from './robot-performance.mjs?v=robot64';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=robot64';
-import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=robot68';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=robot64';
-import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=robot64';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=robot68';
+import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update69';
+import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update69';
+import {normalizeActuation} from './robot-actuation.mjs?v=update69';
+import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update69';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update69';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update69';
+import {compareAbilities} from './robot-performance.mjs?v=update69';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update69';
+import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update69';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update69';
+import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update69';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update69';
 export const MODEL_VERSION=9;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -17,7 +17,16 @@ const vector=a=>Array.isArray(a)&&a.length===POLICY_SIZE&&a.every(v=>Number.isFi
 const abilityRecord=(a,n)=>a&&Number.isFinite(a.meanReward)&&Math.abs(a.meanReward)<1e6&&Number.isFinite(a.passRate)&&a.passRate>=0&&a.passRate<=1&&Array.isArray(a.cases)&&a.cases.length===n&&a.cases.every(c=>c&&typeof c.passed==='boolean'&&(!c.metrics||['time','upright'].every(k=>Number.isFinite(c.metrics[k]))));
 export const overallScore=abilities=>stages.reduce((sum,s)=>sum+Math.tanh(abilities[s].meanReward/40),0)*20;
 export const modelScore=model=>overallScore(model.abilities)+20*Math.tanh((model.goalReward||0)/40);
-export function migrateModel(raw){return RobotLearner.valid(raw)?raw:null;}
+export function migrateModel(raw){
+ if(RobotLearner.valid(raw))return raw;
+ if(raw?.version===MODEL_VERSION&&raw.rewardVersion===9){
+  const next=structuredClone(raw);next.rewardVersion=REWARD_VERSION;next.evaluationPending=true;
+  next.generalization=null;next.terrainReview=null;next.validationBank=null;next.pending=[];next.cohortStart=next.attempts;
+  if(next.ppo)next.ppo.buffer=[];if(next.searchArchive?.ppo)next.searchArchive.ppo.buffer=[];
+  return RobotLearner.valid(next)?next:null;
+ }
+ return null;
+}
 export const preservesAbility=(previous,next)=>previous.cases.every((c,i)=>(!c.passed||next.cases[i].passed)&&(c.metrics?.terminationReason!=='duration'||next.cases[i].metrics?.terminationReason==='duration'))&&((previous.passRate??previous.cases.filter(c=>c.passed).length/previous.cases.length)<.5||next.meanReward>=previous.meanReward-Math.max(2,Math.abs(previous.meanReward)*.05));
 export function preservesAbilities(previous,next){return stages.every(s=>preservesAbility(previous[s],next[s]));}
 

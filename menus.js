@@ -1,6 +1,6 @@
-import {BlogManagement} from './blog-auth.mjs?v=menus1';
-import {loadNavigation,navigationState,saveNavigation} from './site-navigation.mjs?v=career1';
-import {orderedMenus,menuPath,folderOptions,descendantIds,reorderMenu,removeMenu,safeMenuHref} from './navigation-data.mjs?v=career1';
+import {BlogManagement} from './blog-auth.mjs?v=update69';
+import {loadNavigation,navigationState,saveNavigation} from './site-navigation.mjs?v=update69';
+import {orderedMenus,menuPath,folderOptions,descendantIds,reorderMenu,removeMenu,safeMenuHref} from './navigation-data.mjs?v=update69';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 const $=id=>document.getElementById(id);let token='',posts=[],editingId=null,deletingId=null,busy=false;
 const state=()=>navigationState(),menus=()=>state().menus;
@@ -12,7 +12,7 @@ function render(){
  for(const m of orderedMenus(menus())){
   const row=document.createElement('div');row.className='menu-row';row.dataset.id=m.id;row.style.setProperty('--depth',m.depth);
   const info=document.createElement('div');info.className='menu-row-info';const label=document.createElement('strong');label.textContent=m.label;const small=document.createElement('small'),count=posts.filter(p=>p.menu_id===m.id).length;small.textContent=m.kind==='folder'?`글 메뉴 · 직접 등록 ${count}개`:m.href;info.append(label,small);row.append(info);
-  if(token){const actions=document.createElement('div');actions.className='menu-row-actions';const siblings=menus().filter(n=>n.parent_id===m.parent_id),index=siblings.findIndex(n=>n.id===m.id);
+  if(token){const visibility=document.createElement('label'),check=document.createElement('input');visibility.className='menu-visibility';check.type='checkbox';check.checked=m.hidden===true;check.disabled=busy;check.dataset.visibility=m.id;check.setAttribute('aria-label',m.label+' 숨김');visibility.append(check,document.createTextNode('숨김'));row.append(visibility);const actions=document.createElement('div');actions.className='menu-row-actions';const siblings=menus().filter(n=>n.parent_id===m.parent_id),index=siblings.findIndex(n=>n.id===m.id);
    for(const [action,text,disabled] of [['up','↑',index===0],['down','↓',index===siblings.length-1],['edit','수정·이동',false],...(m.kind==='folder'?[['add','하위 추가',false]]:[]),['delete','삭제',false]]){
     const button=document.createElement('button');button.type='button';button.textContent=text;button.dataset.action=action;button.disabled=busy||disabled;button.setAttribute('aria-label',m.label+' '+({up:'위로 이동',down:'아래로 이동'}[action]||text));actions.append(button);
    }row.append(actions);
@@ -26,7 +26,7 @@ async function refresh(){
  render();
 }
 function edit(id=null,parent=null){
- const m=menus().find(n=>n.id===id);editingId=m?.id||null;$('menu-edit-title').textContent=m?'메뉴 수정·이동':'메뉴 추가';$('menu-label').value=m?.label||'';$('menu-kind').value=m?.kind||'folder';$('menu-href').value=m?.href||'';
+ const m=menus().find(n=>n.id===id);editingId=m?.id||null;$('menu-edit-title').textContent=m?'메뉴 수정·이동':'메뉴 추가';$('menu-label').value=m?.label||'';$('menu-kind').value=m?.kind||'folder';$('menu-href').value=m?.href||'';$('menu-hidden').checked=m?.hidden===true;
  const excluded=m?descendantIds(menus(),m.id):new Set();selectOptions($('menu-parent'),[{id:'',label:'최상위 메뉴'},...folderOptions(menus(),excluded)],m?.parent_id||parent||'');updateKind();$('menu-edit-error').textContent='';$('menu-edit-dialog').showModal();$('menu-label').focus();
 }
 function updateKind(){const link=$('menu-kind').value==='link';$('menu-href-label').hidden=!link;$('menu-href').required=link;}
@@ -37,9 +37,14 @@ $('menu-edit-form').addEventListener('submit',async e=>{
  e.preventDefault();if(busy)return;const kind=$('menu-kind').value,href=kind==='link'?$('menu-href').value.trim():null;
  if(kind==='link'&&!safeMenuHref(href)){$('menu-edit-error').textContent='페이지 주소는 .html 경로나 https 주소로 입력해 주세요.';return;}
  if(kind==='link'&&editingId&&(menus().some(m=>m.parent_id===editingId)||posts.some(p=>p.menu_id===editingId))){$('menu-edit-error').textContent='하위 메뉴와 글을 다른 곳으로 옮긴 뒤 페이지 연결로 바꿀 수 있습니다.';return;}
- const item={id:editingId||crypto.randomUUID(),parent_id:$('menu-parent').value||null,label:$('menu-label').value.trim(),kind,href};const next=editingId?menus().map(m=>m.id===editingId?item:m):[...menus(),item];
+ const item={...menus().find(m=>m.id===editingId),hidden:$('menu-hidden').checked,id:editingId||crypto.randomUUID(),parent_id:$('menu-parent').value||null,label:$('menu-label').value.trim(),kind,href};const next=editingId?menus().map(m=>m.id===editingId?item:m):[...menus(),item];
  busy=true;$('menu-save').disabled=true;
  try{await save(next);$('menu-edit-dialog').close();status('메뉴를 저장했습니다.');}catch(error){$('menu-edit-error').textContent=error.message;}finally{busy=false;$('menu-save').disabled=false;render();}
+});
+$('menu-tree').addEventListener('change',async e=>{
+ const check=e.target.closest('input[data-visibility]');if(!check||busy)return;
+ const next=menus().map(m=>m.id===check.dataset.visibility?{...m,hidden:check.checked}:m);
+ busy=true;render();try{await save(next);status('숨김 설정을 저장했습니다.');}catch(error){status(error.message,true);}finally{busy=false;render();}
 });
 $('menu-tree').addEventListener('click',async e=>{
  const button=e.target.closest('button[data-action]');if(!button||busy)return;const id=button.closest('[data-id]').dataset.id,action=button.dataset.action;
