@@ -1,6 +1,6 @@
-import {normalizeActuation} from './robot-actuation.mjs?v=update69';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update69';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update69';
+import {normalizeActuation} from './robot-actuation.mjs?v=update70';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update70';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update70';
 
 const common={algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({
@@ -8,7 +8,10 @@ export const TASK_DEFAULTS=Object.freeze({
  recover:Object.freeze({...common,trainingSeconds:30,validationSeconds:30,monitorSeconds:60,observationSeconds:60,autoPush:false,pushMax:2}),
  walk:Object.freeze({...common,trainingSeconds:15,validationSeconds:15,monitorSeconds:45,observationSeconds:45}),
  run:Object.freeze({...common,trainingSeconds:20,validationSeconds:20,monitorSeconds:60,observationSeconds:60,targetSpeed:240,pushMax:4}),
- obstacles:Object.freeze({...common,trainingSeconds:30,validationSeconds:30,monitorSeconds:60,observationSeconds:60,autoPush:false}),
+ punch:Object.freeze({...common,trainingSeconds:15,validationSeconds:10,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:1080,targetVelocity:1200,residualTorque:.35}),
+ kick:Object.freeze({...common,trainingSeconds:15,validationSeconds:10,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:900,targetVelocity:1080,residualTorque:.35}),
+ defend:Object.freeze({...common,trainingSeconds:20,validationSeconds:15,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:720,targetVelocity:900}),
+ fight:Object.freeze({...common,trainingSeconds:30,validationSeconds:20,monitorSeconds:45,observationSeconds:120,autoPush:false,targetSpeed:1080,targetVelocity:1200,residualTorque:.35}),
 });
 export const TASK_SETTING_KEYS=Object.freeze(Object.keys(TASK_DEFAULTS.balance));
 const integer=(x,lo,hi,fallback)=>Number.isInteger(Number(x))&&Number(x)>=lo&&Number(x)<=hi?Number(x):fallback;
@@ -20,7 +23,7 @@ export function taskProfile(task,raw={}){
  p.monitorSeconds=integer(p.monitorSeconds,10,3600,d.monitorSeconds);
  p.observationSeconds=integer(p.observationSeconds,1,3600,d.observationSeconds);
  p.attemptCount=[100,200,500,1000,2000,5000,10000,100000].includes(Number(p.attemptCount))?Number(p.attemptCount):d.attemptCount;
- p.targetSpeed=integer(p.targetSpeed,30,720,d.targetSpeed);
+ p.targetSpeed=integer(p.targetSpeed,30,1440,d.targetSpeed);
  p.interval=[10,20,50,100].includes(Number(p.interval))?Number(p.interval):d.interval;
  p.algorithm='ppo';p.curriculum=p.curriculum!==false;p.autoPush=p.autoPush!==false;
  const lo=Number(p.pushMin),hi=Number(p.pushMax);if(Number.isFinite(lo)&&Number.isFinite(hi)&&lo>=.1&&hi<=100&&lo<=hi){p.pushMin=lo;p.pushMax=hi;}else{p.pushMin=d.pushMin;p.pushMax=d.pushMax;}

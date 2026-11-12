@@ -7,8 +7,8 @@ import {RobotLearner} from '../robot-learning.mjs';
 
 test('each ability has its own suitable duration, disturbance and motion defaults',()=>{
  const map=loadTaskSettings({});
- assert.deepEqual(Object.values(map).map(p=>[p.trainingSeconds,p.validationSeconds,p.monitorSeconds]),[[10,10,30],[30,30,60],[15,15,45],[20,20,60],[30,30,60]]);
- assert.equal(map.recover.autoPush,false);assert.equal(map.obstacles.autoPush,false);
+ assert.deepEqual(Object.values(map).map(p=>[p.trainingSeconds,p.validationSeconds,p.monitorSeconds]),[[10,10,30],[30,30,60],[15,15,45],[20,20,60],[15,10,30],[15,10,30],[20,15,30],[30,20,45]]);
+ assert.equal(map.recover.autoPush,false);assert.equal(map.fight.autoPush,false);
  assert.equal(map.balance.autoPush,true);assert.equal(map.run.targetSpeed,240);
  assert.ok(Object.values(map).every(p=>p.algorithm==='ppo'&&p.attemptCount===10000&&p.monitorSeconds>=p.validationSeconds));
  map.recover.trainingSeconds=45;assert.equal(map.balance.trainingSeconds,10);assert.equal(TASK_DEFAULTS.recover.trainingSeconds,30);
@@ -21,7 +21,7 @@ test('legacy edits migrate only to their selected task and per-task settings sur
  assert.equal(map.balance.trainingSeconds,10);assert.equal(map.walk.trainingSeconds,15);
  assert.deepEqual(loadTaskSettings(JSON.parse(JSON.stringify({taskSettings:map,focus:'walk',trainingSeconds:99}))),map);
  const otherDevice=loadTaskSettings({},map);assert.equal(otherDevice.recover.trainingSeconds,47);
- assert.equal(taskProfile('run',{targetSpeed:999}).targetSpeed,240);
+ assert.equal(taskProfile('run',{targetSpeed:1600}).targetSpeed,240);
  assert.equal(taskProfile('recover',{trainingSeconds:0}).trainingSeconds,30);
 });
 
@@ -50,5 +50,5 @@ test('profile metadata and per-task validation settings preserve one integrated 
  const env={taskEnvironments:taskEnvironments(map),trainingGround:{focusRatio:1}},l=new RobotLearner(null,42,env);l.taskSettings=map;
  const id=l.id;for(const task of Object.keys(map)){l.setFocus(task);l.setBalanceTrainingSettings(map[task]);l.setCurriculum(false);assert.equal(l.prepareTrial().options.observationSeconds,map[task].trainingSeconds);assert.equal(l.id,id);}
  l.setFocus('recover');l.setBalanceTrainingSettings({trainingSeconds:2});l.setTrainingPushSettings({autoPush:false});for(const algorithm of ['ppo','cem']){l.setAlgorithm(algorithm);const result=l.trainOne();assert.ok(Number.isFinite(result.score));assert.ok(result.trainingSeconds===2);}
- const saved=l.snapshot();saved.ppo.buffer=[{obs:Array(106).fill(0),latent:Array(36).fill(0),value:0,reward:1,nextValue:0,oldLogP:0,done:false}];const reorder=v=>Array.isArray(v)?v.map(reorder):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).reverse().map(([k,x])=>[k,reorder(x)])):v;const loaded=new RobotLearner(reorder(saved),42,reorder(env));assert.equal(loaded.environmentChanged,false);assert.deepEqual(loaded.ppo.buffer,saved.ppo.buffer);assert.deepEqual(loaded.taskSettings,map);assert.deepEqual(loaded.weights,l.weights);assert.equal(loaded.attempts,l.attempts);assert.equal(loaded.id,id);
+ const saved=l.snapshot();saved.ppo.buffer=[{obs:Array(141).fill(0),latent:Array(36).fill(0),value:0,reward:1,nextValue:0,oldLogP:0,done:false}];const reorder=v=>Array.isArray(v)?v.map(reorder):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).reverse().map(([k,x])=>[k,reorder(x)])):v;const loaded=new RobotLearner(reorder(saved),42,reorder(env));assert.equal(loaded.environmentChanged,false);assert.deepEqual(loaded.ppo.buffer,saved.ppo.buffer);assert.deepEqual(loaded.taskSettings,map);assert.deepEqual(loaded.weights,l.weights);assert.equal(loaded.attempts,l.attempts);assert.equal(loaded.id,id);
 });

@@ -9,7 +9,7 @@ test('stone heights stay inside the configured range with reproducible variation
  assert.ok(terrain.obstacles.length>50);assert.ok(terrain.obstacles.every(o=>o.height>=.12&&o.height<=.35));assert.ok(new Set(terrain.obstacles.map(o=>o.height)).size>20);
  assert.deepEqual(makeTrainingTerrain(spec),terrain);
  const small=makeTrainingTerrain({...spec,rockMin:.01,rockMax:.01}),big=makeTrainingTerrain({...spec,rockMin:.3,rockMax:.3});assert.ok(big.obstacles.reduce((s,o)=>s+o.width,0)>small.obstacles.reduce((s,o)=>s+o.width,0));
- const world=new RobotWorld('walk',{terrain:'training',trainingSpec:spec,disturbances:false});assert.equal(world.obstacles.length,terrain.obstacles.length);assert.equal(world.observations().length,106);
+ const world=new RobotWorld('walk',{terrain:'training',trainingSpec:spec,disturbances:false});assert.equal(world.obstacles.length,terrain.obstacles.length);assert.equal(world.observations().length,141);
  }
  const defaults=normalizeGround();assert.equal(defaults.rockMin,.015);assert.equal(defaults.rockMax,.1);assert.equal(normalizeGround({rockMin:.2,rockMax:.1}).rockMax,.2);
 });

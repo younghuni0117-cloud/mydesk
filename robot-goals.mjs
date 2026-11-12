@@ -1,9 +1,10 @@
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const number=(v,fallback)=>Number.isFinite(Number(v))?Number(v):fallback;
-export function normalizeCommand(raw={}){return {mode:['hold','move','position'].includes(raw.mode)?raw.mode:'hold',direction:Number(raw.direction)===-1?-1:1,speed:clamp(number(raw.speed,.55),.05,2.5),position:clamp(number(raw.position,3),-30,30),posture:raw.posture==='low'?'low':'free'};}
-export function commandLabel(raw){const c=normalizeCommand(raw);return (c.mode==='hold'?'제자리 유지':c.mode==='move'?`${c.direction>0?'앞으로':'뒤로'} ${c.speed.toFixed(2)}m/s`:`목표 ${c.position.toFixed(1)}m · 최대 ${c.speed.toFixed(2)}m/s`)+(c.posture==='low'?' · 낮은 자세':'');}
+export function normalizeCommand(raw={}){return {mode:['hold','move','position','fight'].includes(raw.mode)?raw.mode:'hold',direction:Number(raw.direction)===-1?-1:1,speed:clamp(number(raw.speed,.55),.05,2.5),position:clamp(number(raw.position,3),-30,30),posture:raw.posture==='low'?'low':'free'};}
+export function commandLabel(raw){const c=normalizeCommand(raw);return c.mode==='fight'?'격투하기':(c.mode==='hold'?'제자리 유지':c.mode==='move'?`${c.direction>0?'앞으로':'뒤로'} ${c.speed.toFixed(2)}m/s`:`목표 ${c.position.toFixed(1)}m · 최대 ${c.speed.toFixed(2)}m/s`)+(c.posture==='low'?' · 낮은 자세':'');}
 // Goals set desired outcomes only. No joint angles, poses, forces or motion sequences.
 export function commandState(command,x,anchor,defaultSpeed=0,normalized=false){
+ if(command?.mode==='fight')return {target:0,error:0,positioned:false,low:false,distance:x-anchor};
  if(!command)return {target:defaultSpeed,error:0,positioned:false,low:false,distance:x-anchor};
  const c=normalized?command:normalizeCommand(command),targetX=c.mode==='hold'?anchor:c.position,error=targetX-x,positioned=c.mode!=='move';
  return {target:c.mode==='move'?c.direction*c.speed:c.mode==='hold'||Math.abs(error)<.15?0:clamp(error*1.5,-c.speed,c.speed),error:positioned?error:0,positioned,low:c.posture==='low',distance:positioned?-error:x-anchor};

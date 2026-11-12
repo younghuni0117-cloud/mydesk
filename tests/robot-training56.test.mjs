@@ -7,7 +7,7 @@ import {jointTargetTorque,normalizeActuation} from '../robot-actuation.mjs';
 import {RobotLearner,migrateModel} from '../robot-learning.mjs';
 const zero=Array(POLICY_SIZE).fill(0);
 test('36 outputs and previous-action/task inputs agree across actor, critic, gradients and physical control',()=>{
- const w=new RobotWorld('walk'),obs=w.observations();assert.equal(obs.length,POLICY_INPUTS);assert.equal(POLICY_OUTPUTS,36);assert.equal(POLICY_SIZE,1968);assert.deepEqual(obs.slice(75,80),[0,0,1,0,0]);
+ const w=new RobotWorld('walk'),obs=w.observations();assert.equal(obs.length,POLICY_INPUTS);assert.equal(POLICY_OUTPUTS,36);assert.equal(POLICY_SIZE,4524);assert.deepEqual(obs.slice(75,83),[0,0,1,0,0,0,0,0]);
  const weights=initialPolicy(31).map((v,i)=>v+.015*Math.sin(i)),delta=Array.from({length:36},(_,i)=>Math.cos(i)),forward=networkForward(weights,obs).z.map(Math.tanh);assert.equal(forward.length,36);policyActions(weights,obs).forEach((x,i)=>assert.ok(Math.abs(x-forward[i])<1e-12));
  const gradient=networkGradient(weights,obs,delta),f=weights=>networkForward(weights,obs).z.reduce((sum,v,i)=>sum+v*delta[i],0);
  for(const k of [0,950,960,1000,BIAS_START,BIAS_START+23,POLICY_SIZE-1]){const a=[...weights],b=[...weights];a[k]+=1e-6;b[k]-=1e-6;assert.ok(Math.abs((f(a)-f(b))/2e-6-gradient[k])<1e-6,`gradient ${k}`);}
@@ -18,10 +18,10 @@ test('36 outputs and previous-action/task inputs agree across actor, critic, gra
 test('course proportions, change period, mixtures and bounded domains are reproducible',()=>{
  const specs=Array.from({length:TRAINING_COURSES.length},(_,i)=>trainingCondition(i,42));assert.deepEqual(new Set(specs.map(s=>s.course)),new Set(TRAINING_COURSES));assert.deepEqual(specs[0],trainingCondition(0,42));assert.deepEqual(trainingCondition(0,42,{changeEvery:5}),trainingCondition(4,42,{changeEvery:5}));
  const legacyWeights={weights:{flat:5,uphill:0,downhill:0,slopes:0,stones:0,lowSteps:0,highSteps:0}};assert.equal(new Set(Array.from({length:TRAINING_COURSES.length},(_,i)=>trainingCondition(i,42,legacyWeights).course)).size,TRAINING_COURSES.length);
- const tasks=Array.from({length:10},(_,i)=>mixedTask('walk',i,42));assert.deepEqual(tasks,['walk','run','obstacles','balance','recover','walk','run','obstacles','balance','recover']);
- for(const t of ['balance','recover','walk','run','obstacles'])assert.equal(tasks.filter(x=>x===t).length,2);
+ const tasks=Array.from({length:16},(_,i)=>mixedTask('walk',i,42));assert.deepEqual(tasks,['walk','run','punch','kick','defend','fight','balance','recover','walk','run','punch','kick','defend','fight','balance','recover']);
+ for(const t of ['balance','recover','walk','run','punch','kick','defend','fight'])assert.equal(tasks.filter(x=>x===t).length,2);
  assert.ok(Array.from({length:10},(_,i)=>mixedTask('run',i,42,{mixMode:'selected'})).every(t=>t==='run'));
- const random=Array.from({length:50},(_,i)=>mixedTask('walk',i,42,{mixMode:'random'}));assert.ok(new Set(random).size===5);assert.notDeepEqual(random.slice(0,10),tasks);assert.deepEqual(random,Array.from({length:50},(_,i)=>mixedTask('walk',i,42,{mixMode:'random'})));
+ const random=Array.from({length:50},(_,i)=>mixedTask('walk',i,42,{mixMode:'random'}));assert.ok(new Set(random).size===8);assert.notDeepEqual(random.slice(0,10),tasks);assert.deepEqual(random,Array.from({length:50},(_,i)=>mixedTask('walk',i,42,{mixMode:'random'})));
 
  for(const s of specs){assert.ok(s.massScales.every(v=>v>=.85&&v<=1.15));assert.equal(s.motorScale,undefined);assert.ok(s.friction>=.2&&s.friction<=1.3);assert.equal(s.delaySteps,undefined);}
  assert.equal(normalizeGround({massVariation:20}).massVariation,.3);

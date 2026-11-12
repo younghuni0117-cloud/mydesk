@@ -22,10 +22,10 @@ for(const change of [{finalUpright:false},{recovering:true},{stableTime:.5},{hei
 const learner=new RobotLearner(null,17,{}, {deferEvaluation:true}),saved=learner.snapshot();
 saved.rewardVersion=9;saved.attempts=123;saved.taskAttempts.recover=123;saved.algorithmAttempts.ppo=123;
 const copy=structuredClone(saved),migrated=migrateModel(saved);
-assert.ok(migrated);assert.equal(migrated.rewardVersion,REWARD_VERSION);assert.equal(migrated.evaluationPending,true);
+assert.equal(migrated,null,'retired reward/model data must not constrain the authorized clean combat model');
 assert.deepEqual(saved,copy,'migration cannot mutate original');
 const restored=new RobotLearner(saved,99,{}, {deferEvaluation:true});
-assert.equal(restored.attempts,123);assert.deepEqual(restored.weights,saved.weights);assert.deepEqual(restored.mean,saved.mean);assert.deepEqual(restored.taskAttempts,saved.taskAttempts);assert.equal(restored.evaluationPending,true);
+assert.equal(restored.attempts,0);assert.ok(Object.values(restored.taskAttempts).every(n=>n===0));assert.equal(restored.evaluationPending,true);assert.equal(restored.snapshot().rewardVersion,REWARD_VERSION);
 const hidden=DEFAULT_MENUS.map(m=>m.id==='career'?{...m,hidden:true}:m);
 validateMenus(hidden);assert.ok(!visibleMenus(hidden).some(m=>['career','experienced-jobs'].includes(m.id)));assert.ok(hidden.some(m=>m.id==='experienced-jobs'));
 assert.ok(visibleMenus(DEFAULT_MENUS).some(m=>m.id==='career'));
