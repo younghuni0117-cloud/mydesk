@@ -1,20 +1,20 @@
-import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update71';
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update71';
-import {taskEnvironment} from './robot-task-settings.mjs?v=update71';
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update71';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update71';
-import {distalActivity} from './robot-attention.mjs?v=update71';
-import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update71';
-import {PUSH_PARTS} from './robot-impact.mjs?v=update71';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update71';
-import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update71';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update71';
+import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update72';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update72';
+import {taskEnvironment} from './robot-task-settings.mjs?v=update72';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update72';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update72';
+import {distalActivity} from './robot-attention.mjs?v=update72';
+import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update72';
+import {PUSH_PARTS} from './robot-impact.mjs?v=update72';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update72';
+import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update72';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update72';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint, DistanceJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update71';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update72';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update71';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update71';
-export {POLICY_SIZE} from './robot-policy.mjs?v=update71';
+import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update72';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update72';
+export {POLICY_SIZE} from './robot-policy.mjs?v=update72';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '일어나기', speed: 0, duration: 10 },
@@ -215,10 +215,16 @@ export class CombatWorld extends RobotWorld{
  constructor(stage='fight',options={}){
   super(stage,{...options,spawnX:options.spawnX??-.85,disturbances:false,pushes:[],ccdMode:'always',collisionGroup:-1});
   this.combatOptions=combatSettings(options);this.combatState=freshFighter();this.rivalState=freshFighter();this.avoided=0;this.threats=new Map();this.combatHits=[];this.hitTimes=new Map();this.approaches=new WeakMap();this.decision={done:false,winner:null,reason:null};
-  this.drill=options.combatDrill==='auto'||!options.combatDrill?(['punch','kick'].includes(stage)?'bag':stage==='defend'?'limited':'selfplay'):options.combatDrill;
+  this.drill=['punch','kick'].includes(stage)?'bag':stage==='defend'?'limited':'selfplay';
   this.opponentWeights=options.opponentWeights||null;
   if(this.drill==='bag'||this.drill==='limited'){
-   const x=stage==='defend'?.15:.05,y=this.groundHeight(x)+1.25,anchor=this.world.createBody();const body=this.world.createDynamicBody({position:Vec2(x,y),linearDamping:.08,angularDamping:.1,bullet:true,userData:'combatBag'});body.createFixture(Circle(.23),{density:30,friction:.45,restitution:.12,filterGroupIndex:-2});this.world.createJoint(DistanceJoint({length:1.55,frequencyHz:0,dampingRatio:.05},anchor,body,Vec2(x,y+1.55),body.getPosition()));this.bag={body,anchor:[x,y+1.55],radius:.23};this.combatOpponent=this.bag;this.nextBagSwing=.6;
+   const glove=stage==='defend',x=.05,y=this.groundHeight(x)+1.2,anchor=this.world.createBody();
+   const body=this.world.createDynamicBody({position:Vec2(x,y),gravityScale:glove?0:1,linearDamping:glove?0:.15,angularDamping:.3,bullet:true,userData:glove?'trainingGlove':'combatBag'});
+   body.createFixture(glove?Circle(.14):Box(.22,.48),{density:glove?50:12,friction:.45,restitution:.08,filterGroupIndex:-2});
+   if(!glove)this.world.createJoint(DistanceJoint({length:1.55,frequencyHz:0,dampingRatio:.05},anchor,body,Vec2(x,y+2.03),Vec2(x,y+.48)));
+   this.bag={body,anchor:[x,y+2.03],radius:glove?.14:.22,height:glove?.28:.96,glove};this.combatOpponent=this.bag;this.nextBagSwing=.4;
+   if(glove)body.setPosition(Vec2(4,y));
+
   }else{
    const floor=this.world.getBodyList();let ground=floor;for(let b=floor;b;b=b.getNext())if(b.getUserData()==='ground'){ground=b;break;}
    this.opponent=new RobotWorld(stage,{...options,terrain:'meadow',trainingSpec:null,sharedWorld:this.world,sharedFloor:ground,spawnX:.85,facing:-1,collisionGroup:-2,externalPhysics:true,disturbances:false,pushes:[],ccdMode:'always',seed:(options.seed??31)+101});
@@ -231,8 +237,8 @@ export class CombatWorld extends RobotWorld{
  isCrossContact(a,b){return a.robotOwner&&b.robotOwner&&a.robotOwner!==b.robotOwner||this.bag&&(a===this.bag.body&&b.robotOwner||b===this.bag.body&&a.robotOwner);}
  registerStrike(attacker,target,impulse,approach){
   const owner=attacker.robotOwner,isBag=this.bag?.body===attacker,targetBag=this.bag?.body===target;if(!owner&&!isBag)return;
-  const name=attacker.getUserData(),kind=isBag?'bag':name.endsWith('Forearm')?'punch':name.endsWith('Foot')?'kick':null;if(!kind)return;
-  if(kind==='punch'&&attacker.getLocalPoint(Vec2(...approach.point)).y>-.08)return;
+  const name=attacker.getUserData(),kind=isBag?(this.bag.glove?'punch':'bag'):name.endsWith('Forearm')?'punch':name.endsWith('Foot')?'kick':null;if(!kind)return;
+  if(!isBag&&kind==='punch'&&attacker.getLocalPoint(Vec2(...approach.point)).y>-.08)return;
   const attackerIndex=owner===this||targetBag?0:1,targetIndex=targetBag?1:target.robotOwner===this?0:1;if(attackerIndex===targetIndex&&!targetBag&&!isBag)return;
   const targetName=targetBag?'torso':target.getUserData(),damage=impactDamage({impulse,closing:approach.closing,target:targetName}),key=attackerIndex+':'+name+':'+targetIndex;
   if(!damage||this.time-(this.hitTimes.get(key)??-Infinity)<COMBAT_RULES.contactCooldown)return;this.hitTimes.set(key,this.time);
@@ -241,14 +247,23 @@ export class CombatWorld extends RobotWorld{
   const event={id:this.combatHits.length?this.combatHits.at(-1).id+1:1,time:this.time,point:approach.point,damage,impulse,speed:approach.closing,kind,attacker:attackerIndex,target:targetIndex,blocked:guard};this.combatHits.push(event);if(this.combatHits.length>20)this.combatHits.shift();
   const matching=this.stage==='fight'||this.stage===kind;
   if(attackerIndex===0)this.addCombatReward(matching?damage*2:-damage*.15,'strike');else if(this.opponent)this.addCombatReward(damage*2,'strike',this.opponent);
-  if(targetIndex===0&&!targetBag)this.addCombatReward(-damage*(this.stage==='defend'?2:1.5),'damage');else if(!targetBag&&this.opponent)this.addCombatReward(-damage*1.5,'damage',this.opponent);
+  if(targetIndex===0&&!targetBag)this.addCombatReward(-damage*(this.stage==='defend'?(guard?.5:2):1.5),'damage');else if(!targetBag&&this.opponent)this.addCombatReward(-damage*1.5,'damage',this.opponent);
   if(guard&&targetIndex===0)this.addCombatReward(Math.min(3,impulse*.1),'block');
  }
  addCombatReward(value,key,actor=this){if(!Number.isFinite(value))return;actor.reward+=value;actor.rewardTerms[key]=(actor.rewardTerms[key]||0)+value;if(value>0)actor.positiveRewardTotal+=value;else actor.negativeRewardTotal-=value;if(actor.rewardFeedback)actor.rewardFeedback.collect(this.time,{[key]:value},()=>[{body:'torso',point:[actor.parts.torso.getPosition().x,actor.parts.torso.getPosition().y],weight:1}],true);}
  step(weights=Array(POLICY_SIZE).fill(0),report=true,actions=null){
   if(this.done)return report?this.metrics():undefined;const other=this.opponent,previous=other?.actions;
   if(other){other.control(this.opponentWeights||weights);this.partnerActions=other.actions.map((a,i)=>this.drill==='sparring'?(i%12===10||i%12===11?0:i%12>=2&&i%12<=7?a*.5:a):a);other.actions=this.partnerActions;other.torqueLoad=0;}
-  if(this.bag&&this.drill==='limited'&&this.time>=this.nextBagSwing){const direction=this.random()<.5?-1:1;this.bag.body.applyLinearImpulse(Vec2(direction*(4+this.random()*10),this.random()*3),this.bag.body.getWorldCenter(),true);this.nextBagSwing=this.time+1.5+this.random()*2;}
+  if(this.bag?.glove){
+   const body=this.bag.body;
+   if(this.gloveEnds&&this.time>=this.gloveEnds){body.setLinearVelocity(Vec2(0,0));body.setPosition(Vec2(50,5));this.gloveEnds=0;this.threats.clear();}
+   if(this.time>=this.nextBagSwing){
+    const target=this.parts[this.random()<.5?'head':'torso'].getPosition(),side=this.random()<.5?-1:1,speed=1.5+this.random()*5.5;
+    const start=Vec2(target.x+side*1.5,target.y+(this.random()-.5)*.18),dx=target.x-start.x,dy=target.y-start.y,distance=Math.hypot(dx,dy);
+    body.setPosition(start);body.setLinearVelocity(Vec2(dx/distance*speed,dy/distance*speed));body.setAngularVelocity(0);this.bag.direction=-side;
+    this.gloveEnds=this.time+3.1/speed;this.nextBagSwing=this.gloveEnds+.6+this.random()*1.2;this.threats.clear();
+   }
+  }
   const oldDistance=this.targetDistance(),before=this.reward;super.step(weights,false,actions);
   if(other){other.actions=previous;other.step(this.opponentWeights||weights,false,this.partnerActions);}
   const states=[this.combatState,this.rivalState],robots=[this,other];for(let i=0;i<robots.length;i++){const w=robots[i];if(!w)continue;updateDownState(states[i],{dt:DT,bodyDown:['head','torso','pelvis'].some(n=>(w.contacts.get(n)||0)>0),height:w.parts.pelvis.getPosition().y-w.groundHeight(w.parts.pelvis.getPosition().x),standing:Math.abs(w.parts.torso.getAngle())<.5&&w.parts.pelvis.getPosition().y-w.groundHeight(w.parts.pelvis.getPosition().x)>.75&&['leftFoot','rightFoot'].some(n=>(w.contacts.get(n)||0)>0)&&!['torso','pelvis','head'].some(n=>(w.contacts.get(n)||0)>0)});}
@@ -261,10 +276,10 @@ export class CombatWorld extends RobotWorld{
   if(!Number.isFinite(this.reward-before)){this.done=true;this.terminationReason='numerical';}
   return report?this.metrics():undefined;
  }
- trackThreats(){const head=this.parts.head.getPosition(),velocity=this.parts.head.getLinearVelocity(),bodies=this.bag?[this.bag.body]:['leftForearm','rightForearm','leftFoot','rightFoot'].map(n=>this.opponent.parts[n]);for(let i=0;i<bodies.length;i++){const body=bodies[i],p=body.getPosition(),v=body.getLinearVelocity(),dx=head.x-p.x,dy=head.y-p.y,distance=Math.hypot(dx,dy),closing=((v.x-velocity.x)*dx+(v.y-velocity.y)*dy)/Math.max(.01,distance);let threat=this.threats.get(i);if(!threat&&distance<.9&&closing>1.2){threat={start:this.time,minimum:distance,damage:this.combatState.damageTaken};this.threats.set(i,threat);}if(!threat)continue;threat.minimum=Math.min(threat.minimum,distance);if(closing<0&&distance>threat.minimum+.2&&this.time-threat.start>.1){if(this.combatState.damageTaken===threat.damage){this.avoided++;if(this.stage==='defend'||this.stage==='fight')this.addCombatReward(1,'evade');}this.threats.delete(i);}else if(this.time-threat.start>1.5)this.threats.delete(i);}}
+ trackThreats(){const head=this.parts.head.getPosition(),velocity=this.parts.head.getLinearVelocity(),bodies=this.bag?[this.bag.body]:['leftForearm','rightForearm','leftFoot','rightFoot'].map(n=>this.opponent.parts[n]);for(let i=0;i<bodies.length;i++){const body=bodies[i],p=body.getPosition(),v=body.getLinearVelocity(),dx=head.x-p.x,dy=head.y-p.y,distance=Math.hypot(dx,dy),closing=((v.x-velocity.x)*dx+(v.y-velocity.y)*dy)/Math.max(.01,distance);let threat=this.threats.get(i);if(!threat&&distance<.9&&closing>1.2){threat={start:this.time,minimum:distance,damage:this.combatState.damageTaken,head:[head.x,head.y],blocks:this.combatState.blocks};this.threats.set(i,threat);}if(!threat)continue;threat.minimum=Math.min(threat.minimum,distance);if(closing<0&&distance>threat.minimum+.2&&this.time-threat.start>.1){if(this.combatState.damageTaken===threat.damage&&this.combatState.blocks===threat.blocks&&this.finalUpright&&Math.hypot(head.x-threat.head[0],head.y-threat.head[1])>.08){this.avoided++;if(this.stage==='defend'||this.stage==='fight')this.addCombatReward(1,'evade');}this.threats.delete(i);}else if(this.time-threat.start>1.5)this.threats.delete(i);}}
  targetDistance(){const p=this.parts.pelvis.getPosition(),q=this.opponent?.parts.pelvis.getPosition()||this.bag?.body.getPosition();return q?Math.hypot(q.x-p.x,q.y-p.y):0;}
  metrics(){const m=super.metrics();if(!this.combatState)return m;return {...m,combat:{fighters:[{...this.combatState},{...this.rivalState}],drill:this.drill,winner:this.decision?.winner||null,reason:this.decision?.reason||null,remaining:Math.max(0,this.duration-this.time),avoided:this.avoided,countSeconds:2}};}
- snapshot(){const frame=super.snapshot();return {...frame,facing:1,opponent:this.opponent?{...this.opponent.snapshot(),facing:-1}:null,bag:this.bag?{position:[this.bag.body.getPosition().x,this.bag.body.getPosition().y],angle:this.bag.body.getAngle(),anchor:[...this.bag.anchor],radius:this.bag.radius}:null,combatHits:this.combatHits.filter(e=>this.time-e.time<.4)};}
+ snapshot(){const frame=super.snapshot();return {...frame,facing:1,opponent:this.opponent?{...this.opponent.snapshot(),facing:-1}:null,bag:this.bag?{position:[this.bag.body.getPosition().x,this.bag.body.getPosition().y],angle:this.bag.body.getAngle(),anchor:[...this.bag.anchor],radius:this.bag.radius,height:this.bag.height,glove:this.bag.glove,direction:this.bag.direction||-1}:null,combatHits:this.combatHits.filter(e=>this.time-e.time<.4)};}
 }
 
 export const createRobotWorld=(stage='balance',options={})=>isCombat(stage)?new CombatWorld(stage,options):new RobotWorld(stage,options);

@@ -43,6 +43,7 @@
   });
   dialog.addEventListener('click', event => { if (event.target === dialog) { const box = dialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close(); } });
   dialog.addEventListener('close', () => helpButton.focus({ preventScroll: true }));
+  if(fullscreenButton){
   fullscreenButton.hidden = !document.fullscreenEnabled;
   fullscreenButton.addEventListener('click', async () => {
     try {
@@ -56,6 +57,7 @@
     fullscreenButton.title = expanded ? '전체 화면 종료' : '전체 화면으로 보기';
     scheduleFit();
   });
+  }
   fit();
   if (location.hash === '#how') dialog.showModal();
 })();

@@ -1,30 +1,30 @@
-import {DRILL_LABELS,combatResultText,drawCombatScene} from './robot-combat-view.mjs?v=update71';
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update71';
-import {trainingStatusLines} from './robot-training-view.mjs?v=update71';
-import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=update71';
-import {normalizeGround} from './robot-training-ground.mjs?v=update71';
-import {trainingPreviewSpec} from './robot-training-preview.mjs?v=update71';
-import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=update71';
-import {normalizeActuation} from './robot-actuation.mjs?v=update71';
-import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=update71';
-import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=update71';
-import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=update71';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=update71';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=update71';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=update71';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update71';
-import {abilitySummary} from './robot-performance.mjs?v=update71';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=update71';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=update71';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=update71';
-import {rewardHelp} from './robot-rewards.mjs?v=update71';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=update71';
-import {RobotTeam} from './robot-team.mjs?v=update71';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=update71';
-import {drawRobotSkin} from './robot-skin.mjs?v=update71';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=update71';
-import {RobotWorld,createRobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=update71';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=update71';
+import {DRILL_LABELS,combatResultText,drawCombatScene} from './robot-combat-view.mjs?v=update72';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update72';
+import {trainingStatusLines} from './robot-training-view.mjs?v=update72';
+import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=update72';
+import {normalizeGround} from './robot-training-ground.mjs?v=update72';
+import {trainingPreviewSpec} from './robot-training-preview.mjs?v=update72';
+import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=update72';
+import {normalizeActuation} from './robot-actuation.mjs?v=update72';
+import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=update72';
+import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=update72';
+import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=update72';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=update72';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=update72';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=update72';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update72';
+import {abilitySummary} from './robot-performance.mjs?v=update72';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=update72';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=update72';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=update72';
+import {rewardHelp} from './robot-rewards.mjs?v=update72';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=update72';
+import {RobotTeam} from './robot-team.mjs?v=update72';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=update72';
+import {drawRobotSkin} from './robot-skin.mjs?v=update72';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=update72';
+import {RobotWorld,createRobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=update72';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=update72';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=readTravelRecord(model?.travelRecord);
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -60,7 +60,7 @@ async function refreshShared(){if(syncBusy||training||initializing||document.hid
 let lastRequest={completed:0,target:0},lastRemainingText=0;
 function progress(completed,target,label,total=model?.attempts||0,force=false){lastRequest={completed,target};const ratio=target?Math.min(100,completed/target*100):0;get('progress').value=ratio;get('progress').textContent=Math.round(ratio)+'%';get('progress-label').textContent=target?`${completed.toLocaleString()} / ${target.toLocaleString()}회 · ${Math.floor(ratio)}%`:`누적 ${total.toLocaleString()}회`;}
 
-function controls(){get('ground-settings').hidden=options.terrain!=='training';get('auto-push').closest('fieldset').hidden=options.terrain==='training';get('combat-training').hidden=!isCombat(stage);get('combat-drill').disabled=initializing||training;get('match-seconds').disabled=initializing||training;get('fight-restart').disabled=initializing||training||recoveryBlocked;for(const e of get('ground-settings').querySelectorAll('input'))e.disabled=initializing||training||options.terrain!=='training';get('train').disabled=initializing||recoveryBlocked||syncBusy;get('curriculum').disabled=initializing||training;get('training-seconds').disabled=initializing||training;get('balance-early-stop').disabled=initializing||training||stage!=='balance';get('balance-full-trials').disabled=initializing||training||stage!=='balance'||!options.balanceEarlyStop;get('balance-full-every').disabled=initializing||training||stage!=='balance'||!options.balanceEarlyStop||!options.balanceFullTrials;get('task-defaults').disabled=initializing||training||recoveryBlocked;get('reset').disabled=initializing;get('run').disabled=initializing||recoveryBlocked;for(const id of ['command-mode','command-direction','command-speed','command-position','command-posture','pick-target'])get(id).disabled=initializing||recoveryBlocked;for(const id of ['terrain','validation-seconds','monitor-seconds','servo-profile','target-speed','target-velocity','residual-torque','mix-mode'])get(id).disabled=initializing||training||recoveryBlocked;get('preview').disabled=initializing||recoveryBlocked;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing||recoveryBlocked;get('focus').disabled=training||initializing||recoveryBlocked;get('auto-push').disabled=training||initializing;for(const id of ['push-min','push-max','push-frequency'])get(id).disabled=training||initializing||!options.autoPush;get('pause-view').textContent=viewPaused?'▶':'Ⅱ';get('pause-view').setAttribute('aria-label',viewPaused?'관찰 재개':'관찰 일시정지');get('pause-view').title=viewPaused?'관찰 재개':'관찰 일시정지';get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
+function controls(){get('ground-settings').hidden=options.terrain!=='training';get('auto-push').closest('fieldset').hidden=options.terrain==='training';get('combat-training').hidden=!isCombat(stage);get('match-seconds').disabled=initializing||training;get('fight-restart').disabled=initializing||training||recoveryBlocked;for(const e of get('ground-settings').querySelectorAll('input'))e.disabled=initializing||training||options.terrain!=='training';get('train').disabled=initializing||recoveryBlocked||syncBusy;get('curriculum').disabled=initializing||training;get('training-seconds').disabled=initializing||training;get('balance-early-stop').disabled=initializing||training||stage!=='balance';get('balance-full-trials').disabled=initializing||training||stage!=='balance'||!options.balanceEarlyStop;get('balance-full-every').disabled=initializing||training||stage!=='balance'||!options.balanceEarlyStop||!options.balanceFullTrials;get('task-defaults').disabled=initializing||training||recoveryBlocked;get('reset').disabled=initializing;get('run').disabled=initializing||recoveryBlocked;for(const id of ['command-mode','command-direction','command-speed','command-position','command-posture','pick-target'])get(id).disabled=initializing||recoveryBlocked;for(const id of ['terrain','validation-seconds','monitor-seconds','servo-profile','target-speed','target-velocity','residual-torque','mix-mode'])get(id).disabled=initializing||training||recoveryBlocked;get('preview').disabled=initializing||recoveryBlocked;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing||recoveryBlocked;get('focus').disabled=training||initializing||recoveryBlocked;get('auto-push').disabled=training||initializing;for(const id of ['push-min','push-max','push-frequency'])get(id).disabled=training||initializing||!options.autoPush;get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
 for(const id of ['focus'])for(const [value,s]of Object.entries(STAGES)){const o=document.createElement('option');o.value=value;o.textContent=s.label;get(id).append(o);}
 for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}get('count').value='10000';
 const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
@@ -156,7 +156,7 @@ get('pick-target').onclick=()=>{setPicking(!pickingTarget);if(pickingTarget)stat
 function showRecent(preview=latestPreview,force=false){if(training&&preview?.scene?.trace?.length){if(!force&&mode==='trace'&&liveSource==='candidate'&&scene?.trace?.length&&traceTime<previewWindow(scene,stage)){pendingScene=preview;return;}pendingScene=null;carryRewardEvents=stage==='balance'&&mode==='trace'&&liveSource==='candidate'&&traceTime>=(scene?.trace?.at(-1)?.time??Infinity)?[...(scene.trace.at(-1).rewardEvents||[]),...carryRewardEvents].map(e=>({...e,time:e.time-traceTime})).filter(e=>-e.time<.8):[];scene={...preview.scene,teamScenes:preview.scenes?.length?preview.scenes:[preview.scene]};viewLog={key:null};writeLog('학습 장면 · '+STAGES[preview.observedTask||stage].label,'observed-task',800);live=null;liveRobots=[];liveSource='candidate';liveAttempt=preview.attempts;liveVersion=preview.policyVersion;liveTrial=preview;mode='trace';traceTime=0;viewPaused=false;controls();return;}if(latestPreview)startLive(latestPreview.weights,latestPreview.source,latestPreview.attempts,latestPreview.policyVersion,latestPreview);else worker.postMessage({type:'preview'});}
 get('run').onclick=()=>{viewSource='best';startLive();};
 get('preview').onclick=()=>{viewSource='candidate';viewPaused=false;showRecent(latestPreview,true);controls();};
-get('pause-view').onclick=()=>{viewPaused=!viewPaused;controls();};
+
 function pushAt(direction,factor=1,point=null){if(initializing)return;if(mode!=='live'||!live){if(viewSource==='candidate'&&latestPreview)startLive(latestPreview.weights,'candidate',latestPreview.attempts,latestPreview.policyVersion,latestPreview);else startLive();}else if(liveRobots.every(w=>w.done))startLive(liveWeights,liveSource,liveAttempt,liveVersion,liveTrial);const robot=liveRobots[0],strength=clamp(factor*8,.5,30);robot.push(strength,direction,'torso');viewPaused=false;const p=robot.parts.torso.getPosition();pushArrow={x:p.x,y:p.y,angle:direction*Math.PI/180,strength,remaining:1.1};status(`대표 로봇 · ${strength.toFixed(1)} N·s 밀기`);controls();}
 function setZoom(value){zoom=clamp(value,.04,2.5);saveOptions();}
 
@@ -169,9 +169,9 @@ canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;c
 function release(e){if(drag&&drag.id===e.pointerId&&drag.mode==='push'&&e.type==='pointerup'){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(pickingTarget){const rect=canvas.getBoundingClientRect(),x=clamp(cameraX+(e.clientX-rect.left-rect.width/2)/drawScale,-30,30);setPicking(false);applyCommand({...command,mode:'position',position:Math.round(x*10)/10});}else if(Math.hypot(dx,dy)>8)pushAt(Math.atan2(-dy,dx)*180/Math.PI,Math.hypot(dx,dy)/90,drag.point);}pointers.delete(e.pointerId);drag=null;pinch=null;}
 canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
 for(const side of ['left','right']){const select=get(side+'-character');for(const option of get('character').options)select.append(option.cloneNode(true));if(![...select.options].some(o=>o.value===fighterSkins[side]))fighterSkins[side]=side==='left'?skin:'tin';select.value=fighterSkins[side];select.onchange=()=>{fighterSkins[side]=select.value;saveOptions();};}
-get('match-seconds').value=options.matchSeconds;get('combat-drill').value=options.combatDrill;
+get('match-seconds').value=options.matchSeconds;
 get('match-seconds').onchange=()=>{const input=get('match-seconds');if(!input.checkValidity()){input.reportValidity();return;}options.matchSeconds=Number(input.value);saveOptions();};
-get('combat-drill').onchange=()=>{if(initializing||training)return;options.combatDrill=get('combat-drill').value;saveOptions();configure(model);};
+
 get('fight-restart').onclick=()=>{command=normalizeCommand({...command,mode:'fight'});syncCommandControls();saveOptions();viewSource='best';startLive();};
 function combatHud(frame){const c=frame.metrics?.combat;get('fight-hud').hidden=!c;get('combat-panel').hidden=!c;if(!c)return;get('combat-title').textContent=STAGES[frame.metrics.task]?.label||'격투';get('combat-drill-label').textContent=DRILL_LABELS[c.drill]||'자기 대전';const remaining=Math.ceil(c.remaining);get('fight-clock').textContent=`${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,'0')}`;get('fight-result').textContent=combatResultText(c);for(const [i,side]of ['left','right'].entries()){const f=c.fighters[i];get(side+'-health').value=f.health;get(side+'-health').setAttribute('aria-label',(i?'오른쪽':'왼쪽')+' 체력');get(side+'-health-value').textContent=Math.ceil(f.health);get(side+'-hits').textContent=f.hits;get(side+'-damage').textContent=f.damageDealt.toFixed(1);get(side+'-blocks').textContent=f.blocks+' / '+f.downs;}const hit=frame.combatHits?.at(-1);if(hit)get('last-hit').textContent=`${hit.attacker?'오른쪽':'왼쪽'} ${hit.kind==='punch'?'펀치':hit.kind==='kick'?'발차기':'표적'} · ${hit.speed.toFixed(1)}m/s · ${hit.impulse.toFixed(1)}N·s${hit.blocked?' · 가드 접촉':''}`;}
 

@@ -1,16 +1,16 @@
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update71';
-import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update71';
-import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update71';
-import {normalizeActuation} from './robot-actuation.mjs?v=update71';
-import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update71';
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update71';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update71';
-import {compareAbilities} from './robot-performance.mjs?v=update71';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update71';
-import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update71';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update71';
-import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update71';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update71';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update72';
+import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update72';
+import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update72';
+import {normalizeActuation} from './robot-actuation.mjs?v=update72';
+import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update72';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update72';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update72';
+import {compareAbilities} from './robot-performance.mjs?v=update72';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update72';
+import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update72';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update72';
+import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update72';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update72';
 export const MODEL_VERSION=10;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -108,7 +108,7 @@ export class RobotLearner {
   const trainingSpec=this.environment.terrain==='training'?trainingCondition(index,this.searchSeed,ground,level):null;
   const push=normalizePushSettings({...this.trainingPush,...(this.taskSettings?profile:{})});
   push.pushMax=push.pushMin+(push.pushMax-push.pushMin)*level;push.autoPush=effectiveTrainingPush({stage:task,autoPush:push.autoPush,curriculum:this.trainingCurriculum,horizon,trainingSeconds:seconds});
-  const combat=combatSettings(this.environment),autoDrill=isCombat(task)?task==='fight'?(level<.4?'limited':'selfplay'):task==='defend'?(level<.5?'limited':'sparring'):(level<.5?'bag':'sparring'):undefined,opponentWeights=isCombat(task)?[...(this.opponentPool.length&&index%3!==0?this.opponentPool[index%this.opponentPool.length]:this.weights)]:undefined;
+  const combat=combatSettings(this.environment),autoDrill=isCombat(task)?task==='fight'?'selfplay':task==='defend'?'limited':'bag':undefined,opponentWeights=isCombat(task)?[...(this.opponentPool.length&&index%3!==0?this.opponentPool[index%this.opponentPool.length]:this.weights)]:undefined;
   return {weights:[...this.ppo.actor],critic:[...this.ppo.critic],logStd:[...this.ppo.logStd],task,index,seed,noiseSeed:seed^0x531727,record,algorithm:'ppo',group:this.pending.length+offset,options:{...base,...push,...(isCombat(task)?{combatDrill:combat.combatDrill==='auto'?autoDrill:combat.combatDrill,opponentWeights}:{}),trainingSpec,terrainVariant:Math.floor(index/Math.max(1,ground.changeEvery))%4,observationSeconds:horizon,spawnRange:.025+.075*level,spawnTilt:task==='balance'?(index%2?1:-1)*(.004+.02*level):undefined,disturbances:true,commandSchedule:schedule,record,summaryOnly:!record,endOnFall:task==='balance'&&endBalanceTrialEarly({...this.trainingBalance,...profile},'ppo',this.taskAttempts.balance+offset)}};
  }
  prepareTrial({record=false}={},offset=0){
