@@ -1,6 +1,6 @@
-import {SwingLearner,DT,STEPS} from './swing-engine.mjs?v=swing2';
-import {SwingScene} from './swing-scene.mjs?v=swing2';
-import {SwingChart} from './swing-chart.mjs?v=swing2';
+import {SwingLearner,DT,STEPS} from './swing-engine.mjs?v=swing3';
+import {SwingScene} from './swing-scene.mjs?v=swing3';
+import {SwingChart} from './swing-chart.mjs?v=swing3';
 const $=id=>document.getElementById(id),engine=new SwingLearner(),canvas=$('swingCanvas');
 let scene;try{scene=new SwingScene(canvas);}catch(error){$('swStatus').textContent='3D 화면을 시작하지 못했습니다. 브라우저의 하드웨어 가속을 켠 뒤 새로고침해 주세요.';console.error(error);$('swStart').disabled=$('swEvaluate').disabled=true;}
 const graph=new SwingChart($('swChart'),$('swChartTooltip')),speeds=[1,4,16,64];
