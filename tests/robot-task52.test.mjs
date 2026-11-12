@@ -7,9 +7,9 @@ import {RobotLearner} from '../robot-learning.mjs';
 
 test('each ability has its own suitable duration, disturbance and motion defaults',()=>{
  const map=loadTaskSettings({});
- assert.deepEqual(Object.values(map).map(p=>[p.trainingSeconds,p.validationSeconds,p.monitorSeconds]),[[10,10,30],[30,30,60],[15,15,45],[20,20,60],[15,10,30],[15,10,30],[20,15,30],[30,20,45]]);
+ assert.deepEqual(Object.values(map).map(p=>[p.trainingSeconds,p.validationSeconds,p.monitorSeconds]),[[10,10,30],[30,30,60],[15,15,45],[15,10,30],[15,10,30],[20,15,30],[30,20,45]]);
  assert.equal(map.recover.autoPush,false);assert.equal(map.fight.autoPush,false);
- assert.equal(map.balance.autoPush,true);assert.equal(map.run.targetSpeed,240);
+ assert.equal(map.balance.autoPush,true);assert.equal(map.walk.targetSpeed,180);
  assert.ok(Object.values(map).every(p=>p.algorithm==='ppo'&&p.attemptCount===10000&&p.monitorSeconds>=p.validationSeconds));
  map.recover.trainingSeconds=45;assert.equal(map.balance.trainingSeconds,10);assert.equal(TASK_DEFAULTS.recover.trainingSeconds,30);
  map.walk.trainingSeconds=19;map.recover=taskProfile('recover');assert.equal(map.walk.trainingSeconds,19);assert.equal(map.recover.trainingSeconds,30);
@@ -21,7 +21,7 @@ test('legacy edits migrate only to their selected task and per-task settings sur
  assert.equal(map.balance.trainingSeconds,10);assert.equal(map.walk.trainingSeconds,15);
  assert.deepEqual(loadTaskSettings(JSON.parse(JSON.stringify({taskSettings:map,focus:'walk',trainingSeconds:99}))),map);
  const otherDevice=loadTaskSettings({},map);assert.equal(otherDevice.recover.trainingSeconds,47);
- assert.equal(taskProfile('run',{targetSpeed:1600}).targetSpeed,240);
+ assert.equal(taskProfile('walk',{targetSpeed:1600}).targetSpeed,180);
  assert.equal(taskProfile('recover',{trainingSeconds:0}).trainingSeconds,30);
 });
 

@@ -1,13 +1,12 @@
-import {normalizeActuation} from './robot-actuation.mjs?v=update70';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update70';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update70';
+import {normalizeActuation} from './robot-actuation.mjs?v=update71';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update71';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update71';
 
 const common={algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({
  balance:Object.freeze({...common,trainingSeconds:10,validationSeconds:10,monitorSeconds:30,observationSeconds:30,interval:20,balanceEarlyStop:true,balanceFullTrials:true,pushMin:1,pushMax:6}),
  recover:Object.freeze({...common,trainingSeconds:30,validationSeconds:30,monitorSeconds:60,observationSeconds:60,autoPush:false,pushMax:2}),
  walk:Object.freeze({...common,trainingSeconds:15,validationSeconds:15,monitorSeconds:45,observationSeconds:45}),
- run:Object.freeze({...common,trainingSeconds:20,validationSeconds:20,monitorSeconds:60,observationSeconds:60,targetSpeed:240,pushMax:4}),
  punch:Object.freeze({...common,trainingSeconds:15,validationSeconds:10,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:1080,targetVelocity:1200,residualTorque:.35}),
  kick:Object.freeze({...common,trainingSeconds:15,validationSeconds:10,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:900,targetVelocity:1080,residualTorque:.35}),
  defend:Object.freeze({...common,trainingSeconds:20,validationSeconds:15,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:720,targetVelocity:900}),

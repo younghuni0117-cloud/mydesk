@@ -1,7 +1,9 @@
 # Robot combat model v10
 
 One 141-input / 24-hidden / 36-output PPO actor covers balance, recovery, walk,
-run, punch, kick, defense and fighting. Obstacle clearance is retired. Targets,
+punch, kick, defense and fighting. Obstacle clearance and running are retired.
+The former running observation slot remains zero so existing learned weights and
+other skills retain their meaning; retired attempt counts remain historical metadata. Targets,
 velocities and limited residual torques feed the same bounded PD actuators.
 There are no attack/guard/get-up animations or scripted robot joint sequences.
 

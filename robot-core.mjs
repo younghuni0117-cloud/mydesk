@@ -1,25 +1,24 @@
-import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update70';
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update70';
-import {taskEnvironment} from './robot-task-settings.mjs?v=update70';
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update70';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update70';
-import {distalActivity} from './robot-attention.mjs?v=update70';
-import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update70';
-import {PUSH_PARTS} from './robot-impact.mjs?v=update70';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update70';
-import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update70';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update70';
+import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update71';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update71';
+import {taskEnvironment} from './robot-task-settings.mjs?v=update71';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update71';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update71';
+import {distalActivity} from './robot-attention.mjs?v=update71';
+import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update71';
+import {PUSH_PARTS} from './robot-impact.mjs?v=update71';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update71';
+import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update71';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update71';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint, DistanceJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update70';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update71';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions} from './robot-policy.mjs?v=update70';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update70';
-export {POLICY_SIZE} from './robot-policy.mjs?v=update70';
+import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update71';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update71';
+export {POLICY_SIZE} from './robot-policy.mjs?v=update71';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '일어나기', speed: 0, duration: 10 },
   walk: { label: '앞으로 걷기', speed: .55, duration: 10 },
-  run: { label: '빠르게 달리기', speed: 1.4, duration: 10 },
   punch: {label:'펀치 공격',speed:0,duration:15},
   kick: {label:'발차기 공격',speed:0,duration:15},
   defend: {label:'방어',speed:0,duration:20},
@@ -147,7 +146,7 @@ export class RobotWorld {
   resistWaist(){const j=this.joints.waist,t=clamp(-WAIST_RESISTANCE.stiffness*j.getJointAngle()-WAIST_RESISTANCE.damping*j.getJointSpeed(),-WAIST_RESISTANCE.maxTorque,WAIST_RESISTANCE.maxTorque);j.getBodyB().applyTorque(t,true);j.getBodyA().applyTorque(-t,true);return t;}
   readVision(){const p=this.parts.pelvis.getPosition(),goal=this.goalState();this.lastVision=sampleEnvironment(this.terrain,this.obstacles,p,{left:this.parts.leftFoot.getPosition(),right:this.parts.rightFoot.getPosition()},{...this.parts.head.getPosition(),angle:this.parts.head.getAngle()},goal.target<0?-1:1);this.lastVisionStep=this.steps;return this.lastVision;}
   observations(){const torso=this.parts.torso,pelvis=this.parts.pelvis,p=pelvis.getPosition(),v=pelvis.getLinearVelocity(),a=torso.getAngle()*this.facing,goal=this.goalState(),vision=this.readVision(),direction=goal.target<0?-1:1,ahead=side=>{const foot=this.parts[side+'Foot'].getPosition(),seen=vision.samples.filter(s=>s.side===side&&s.hit&&(s.x-foot.x)*direction>0&&(s.x-foot.x)*direction<.6&&(s.kind==='ground'||s.kind==='obstacle'&&s.object?.shape!=='stalactite'));return seen.length?clamp((Math.max(...seen.map(s=>s.y))-this.groundHeight(foot.x))/.6,-1,1):-1;};
-   return [Math.sin(a),Math.cos(a),clamp(torso.getAngularVelocity()*this.facing/8,-1,1),clamp((p.y-this.groundHeight(p.x))/1.2,-1,1),clamp(v.x*this.facing/3,-1,1),clamp(v.y/3,-1,1),goal.target/2,((this.contacts.get('leftFoot')||0)+(this.contacts.get('leftToePart')||0))>0?1:0,((this.contacts.get('rightFoot')||0)+(this.contacts.get('rightToePart')||0))>0?1:0,ahead('left'),ahead('right'),vision.values[21],...this.motors.map(m=>m.joint.getJointAngle()*this.facing/Math.PI),...this.motors.map(m=>clamp(m.joint.getJointSpeed()*this.facing/8,-1,1)),clamp(goal.error/5,-1,1),goal.positioned?1:0,goal.low?1:0,...(this.previousPolicyActions||Array(36).fill(0)),...Object.keys(STAGES).map(s=>s===this.stage?1:0),...opponentFeatures(this,this.combatOpponent,this.combatState,this.opponentState),...vision.values];
+   return [Math.sin(a),Math.cos(a),clamp(torso.getAngularVelocity()*this.facing/8,-1,1),clamp((p.y-this.groundHeight(p.x))/1.2,-1,1),clamp(v.x*this.facing/3,-1,1),clamp(v.y/3,-1,1),goal.target/2,((this.contacts.get('leftFoot')||0)+(this.contacts.get('leftToePart')||0))>0?1:0,((this.contacts.get('rightFoot')||0)+(this.contacts.get('rightToePart')||0))>0?1:0,ahead('left'),ahead('right'),vision.values[21],...this.motors.map(m=>m.joint.getJointAngle()*this.facing/Math.PI),...this.motors.map(m=>clamp(m.joint.getJointSpeed()*this.facing/8,-1,1)),clamp(goal.error/5,-1,1),goal.positioned?1:0,goal.low?1:0,...(this.previousPolicyActions||Array(36).fill(0)),...POLICY_TASK_SLOTS.map(s=>s===this.stage?1:0),...opponentFeatures(this,this.combatOpponent,this.combatState,this.opponentState),...vision.values];
   }
 
   control(weights){
