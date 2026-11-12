@@ -1,14 +1,32 @@
-export const DT=.04, STEPS=500;
-const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-export class SwingLearner {
+export const DT=.04,STEPS=500,ACTION_COUNT=27;
+export const SWING=Object.freeze({pivotHeight:3.85,ropeLength:2.65,maxAngle:1.3});
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const hipTargets=[-.42,0,.42],kneeTargets=[.12,.75,1.38];
+export function actionTargets(action){if(!Number.isInteger(action)||action<0||action>=ACTION_COUNT)throw new RangeError('Invalid swing action');return {hip:hipTargets[Math.floor(action/9)],leftKnee:kneeTargets[Math.floor(action/3)%3],rightKnee:kneeTargets[action%3]};}
+export class SwingLearner{
  constructor(random=Math.random){this.random=random;this.reset();}
  reset(){this.q=new Map();this.episodes=0;this.history=[];this.resetEpisode();}
- resetEpisode(){this.theta=.07;this.omega=0;this.hip=0;this.hipV=0;this.knee=.5;this.kneeV=0;this.steps=0;this.total=0;this.peak=0;this.exploring=false;}
- state(){const bin=(v,a,b,n)=>Math.min(n-1,Math.floor((clamp(v,a,b)-a)/(b-a)*n));return [bin(this.theta,-1.5,1.5,15),bin(this.omega,-3,3,15),bin(this.hip,-.7,.7,3),bin(this.knee,0,1,3)].join(',');}
- values(s){if(!this.q.has(s))this.q.set(s,new Float64Array(9));return this.q.get(s);}
- choose(s,epsilon){this.exploring=this.random()<epsilon;if(this.exploring)return Math.floor(this.random()*9);const q=this.values(s),max=Math.max(...q),best=[];q.forEach((v,i)=>{if(v===max)best.push(i);});return best[Math.floor(this.random()*best.length)];}
- physics(action,objective){const ht=[-.65,0,.65][Math.floor(action/3)],kt=[0,.5,1][action%3];const oldH=this.hip,oldK=this.knee;
- for(let i=0;i<4;i++){const dt=DT/4,ha=clamp(30*(ht-this.hip)-7*this.hipV,-18,18),ka=clamp(24*(kt-this.knee)-6*this.kneeV,-16,16);this.hipV+=ha*dt;this.hip=clamp(this.hip+this.hipV*dt,-.75,.75);this.kneeV+=ka*dt;this.knee=clamp(this.knee+this.kneeV*dt,0,1);const length=2.25-.35*this.knee,lengthV=-.35*this.kneeV;const accel=-9.81/length*Math.sin(this.theta)-.055*this.omega-2*lengthV/length*this.omega-.19*ha;this.omega=clamp(this.omega+accel*dt,-5,5);this.theta+=this.omega*dt;if(Math.abs(this.theta)>1.5){this.theta=clamp(this.theta,-1.5,1.5);this.omega*=-.25;}}
- const height=2.2*(1-Math.cos(this.theta));this.peak=Math.max(this.peak,height);const effort=(this.hip-oldH)**2+(this.knee-oldK)**2;const stability=1-.5*(this.hip/.75)**2-.5*Math.min(1,effort/.015);return objective*height/2.2+(1-objective)*stability-.008*(Math.abs(this.hipV)+Math.abs(this.kneeV));}
- step(epsilon,objective,learn=true){const s=this.state(),a=this.choose(s,epsilon),r=this.physics(a,objective);this.total+=r;this.steps++;const done=this.steps>=STEPS;if(learn){const q=this.values(s),target=r+(done?0:.98*Math.max(...this.values(this.state())));q[a]+=.12*(target-q[a]);}if(done){const result={reward:this.total/STEPS,peak:this.peak};if(learn){this.episodes++;this.history.push(result);if(this.history.length>100)this.history.shift();}this.resetEpisode();return result;}return null;}
+ resetEpisode(){this.theta=.07;this.omega=0;this.hip=0;this.hipV=0;this.leftKnee=.18;this.rightKnee=.18;this.leftKneeV=0;this.rightKneeV=0;this.steps=0;this.total=0;this.peak=0;this.exploring=false;}
+ get knee(){return (this.leftKnee+this.rightKnee)/2;}
+ state(){const bin=(v,a,b,n)=>Math.min(n-1,Math.floor((clamp(v,a,b)-a)/(b-a)*n));return [bin(this.theta,-1.3,1.3,15),bin(this.omega,-3,3,15),bin(this.hip,-.5,.5,3),bin(this.leftKnee,0,1.45,3),bin(this.rightKnee,0,1.45,3)].join(',');}
+ values(s,create=true){if(!this.q.has(s)){if(!create)return new Float64Array(ACTION_COUNT);this.q.set(s,new Float64Array(ACTION_COUNT));}return this.q.get(s);}
+ choose(s,epsilon,learn=true){this.exploring=learn&&this.random()<epsilon;if(this.exploring)return Math.floor(this.random()*ACTION_COUNT);const q=this.values(s,learn),max=Math.max(...q),best=[];q.forEach((v,i)=>{if(v===max)best.push(i);});return learn?best[Math.floor(this.random()*best.length)]:best.includes(9)?9:best[0];}
+ physics(action,objective){const target=actionTargets(action),oldH=this.hip,oldL=this.leftKnee,oldR=this.rightKnee;
+  for(let i=0;i<4;i++){const dt=DT/4,ha=clamp(28*(target.hip-this.hip)-7*this.hipV,-14,14);this.hipV+=ha*dt;this.hip=clamp(this.hip+this.hipV*dt,-.5,.5);
+   for(const side of ['left','right']){const key=side+'Knee',v=key+'V',a=clamp(25*(target[key]-this[key])-7*this[v],-16,16);this[v]+=a*dt;this[key]=clamp(this[key]+this[v]*dt,.06,1.45);}
+   // Standing: bending lowers the centre of mass, increasing its distance from the pivot.
+   const length=SWING.ropeLength-(.85-.20*this.knee/1.45),lengthV=.20/1.45*(this.leftKneeV+this.rightKneeV)/2,offset=.14*Math.sin(this.hip);
+   const accel=-9.81/length*(Math.sin(this.theta)+offset/length*Math.cos(this.theta))-.045*this.omega-2*lengthV/length*this.omega-.12*ha;
+   this.omega=clamp(this.omega+accel*dt,-4.8,4.8);this.theta+=this.omega*dt;
+   if(Math.abs(this.theta)>SWING.maxAngle){this.theta=clamp(this.theta,-SWING.maxAngle,SWING.maxAngle);this.omega*=-.2;}
+  }
+  const height=SWING.ropeLength*(1-Math.cos(this.theta));this.peak=Math.max(this.peak,height);
+  const effort=(this.hip-oldH)**2+(this.leftKnee-oldL)**2+(this.rightKnee-oldR)**2,stability=clamp(1-.35*(this.hip/.5)**2-.25*Math.abs(this.leftKnee-this.rightKnee)/1.45-.25*Math.min(1,effort/.012),0,1);
+  return objective*height/(SWING.ropeLength*(1-Math.cos(SWING.maxAngle)))+(1-objective)*stability-.006*(Math.abs(this.hipV)+Math.abs(this.leftKneeV)+Math.abs(this.rightKneeV));
+ }
+ snapshot(){return {theta:this.theta,hip:this.hip,leftKnee:this.leftKnee,rightKnee:this.rightKnee};}
+ step(epsilon,objective,learn=true){const s=this.state(),action=this.choose(s,epsilon,learn),reward=this.physics(action,objective);this.total+=reward;this.steps++;
+  const done=this.steps>=STEPS;if(learn){const q=this.values(s),target=reward+(done?0:.98*Math.max(...this.values(this.state())));q[action]+=.12*(target-q[action]);}
+  if(done){const result={reward:this.total/STEPS,peak:this.peak};if(learn){this.episodes++;this.history.push(result);if(this.history.length>100)this.history.shift();}this.resetEpisode();return result;}return null;
+ }
 }
