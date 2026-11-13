@@ -1,14 +1,15 @@
-import {terrainHeight,rockVertices,TERRAINS} from './robot-terrain.mjs?v=update85';
+import {TerrainLayer} from './robot-terrain-layer.mjs?v=update86';
+import {terrainHeight,rockVertices,TERRAINS} from './robot-terrain.mjs?v=update86';
 let atlas=null,caveAtlas=null;
 function loadArt(file,set){return new Promise(resolve=>{const image=new Image();set(image);image.onload=()=>resolve(true);image.onerror=()=>resolve(false);image.src=new URL(file,import.meta.url).href;});}
 export const terrainArtReady=typeof Image==='undefined'?Promise.resolve(false):Promise.all([loadArt('./assets/terrain-atlas.webp',i=>atlas=i),loadArt('./assets/terrain-atlas-v9.webp',i=>caveAtlas=i)]).then(r=>r.every(Boolean));
 const noise=i=>{let n=Math.imul(i+913,374761393);n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;};
 const palettes={training:['#94a9b0','#abb2b2','#657f8a'],meadow:['#7e9c59','#b6956e','#557c3e'],hills:['#81975a','#b89b73','#526d3d'],stones:['#a9a58a','#a78f73','#6c7259'],stairs:['#a9ad97','#959483','#68765d'],construction:['#b6a181','#a58a67','#736752'],desert:['#e1c18a','#cba36b','#a67c48'],ice:['#bcdce4','#8fbccf','#688fa4'],cave:['#66616b','#393b46','#212a35']};
-function paintTerrain(ctx,{W,H,scale,camera,ground,terrain,obstacles,X,Y}){
+export function paintTerrain(ctx,{W,H,scale,camera,ground,terrain,obstacles,X,Y}){
  const kind=terrain?.kind||'meadow',segments=terrain?.segments||[],colors=palettes[kind]||palettes.meadow;
  ctx.fillStyle='#edf2ed';ctx.fillRect(0,0,W,H);
  const image=kind==='desert'?null:kind==='cave'?caveAtlas:atlas;
- if(image?.complete&&image.naturalWidth){let sx,sy,sw,sh;const aspect=W/H;if(kind==='cave'){const pw=image.naturalWidth/2,ph=image.naturalHeight/4;sw=pw-6;sh=ph-6;if(sw/sh>aspect)sw=sh*aspect;else sh=sw/aspect;sx=pw+(pw-sw)/2;sy=3*ph+(ph-sh)/2;}else{const index=['meadow','hills','stones','stairs','construction','rockyhills','ice'].indexOf(kind==='training'?'meadow':kind),pw=image.naturalWidth/7;sw=pw-8;sh=Math.min(image.naturalHeight,sw/aspect);sx=index*pw+4;sy=(image.naturalHeight-sh)*.36;}ctx.save();ctx.globalAlpha=.64;ctx.drawImage(image,sx,sy,sw,sh,0,0,W,H);ctx.restore();}
+ if(image?.complete&&image.naturalWidth){let sx,sy,sw,sh;const aspect=W/H;if(kind==='cave'){const pw=image.naturalWidth/2,ph=image.naturalHeight/4;sw=pw-6;sh=ph-6;if(sw/sh>aspect)sw=sh*aspect;else sh=sw/aspect;sx=pw+(pw-sw)/2;sy=3*ph+(ph-sh)/2;}else{const index=['meadow','hills','stones','stairs','construction','rockyhills','ice'].indexOf(kind==='training'?'meadow':kind),pw=image.naturalWidth/7;sw=pw-8;sh=Math.min(image.naturalHeight,sw/aspect);sx=index*pw+4;sy=(image.naturalHeight-sh)*.36;}ctx.save();ctx.globalAlpha=.64;ctx.drawImage(image.source||image,sx,sy,sw,sh,0,0,W,H);ctx.restore();}
 
  if(kind==='desert'){
   ctx.fillStyle='#e7ece9';ctx.fillRect(0,0,W,H);ctx.fillStyle='#f5e6c6';ctx.beginPath();ctx.arc(W*.78,H*.19,Math.min(W,H)*.075,0,Math.PI*2);ctx.fill();
@@ -53,8 +54,11 @@ function paintTerrain(ctx,{W,H,scale,camera,ground,terrain,obstacles,X,Y}){
  const grid=Math.max(1,Math.ceil(70/scale));ctx.fillStyle='#f8f9efcc';ctx.fillRect(0,H-17,W,17);ctx.fillStyle='#667969';ctx.font='9px sans-serif';ctx.textAlign='center';for(let x=Math.floor(left/grid)*grid;x<right;x+=grid)ctx.fillText(`${x}m`,X(x),H-5);
 }
 
+export function setTerrainArt(a,c){const wrap=source=>({source,complete:true,naturalWidth:source.width,naturalHeight:source.height});atlas=wrap(a);caveAtlas=wrap(c);}
+let raster=null;
 let cached=null,cacheKey='',lastTerrain=null,lastObstacles=null;
 export function drawTerrainScene(ctx,args){
+ if(typeof window!=='undefined'&&typeof OffscreenCanvas!=='undefined'&&typeof Worker!=='undefined'&&typeof createImageBitmap==='function'){raster??=new TerrainLayer(terrainArtReady,()=>[atlas,caveAtlas]);if(raster.draw(ctx,args))return;}
  const key=[args.W,args.H,args.scale,args.camera,args.ground,Boolean(atlas?.complete&&atlas.naturalWidth&&caveAtlas?.complete&&caveAtlas.naturalWidth)].join(':');
  if(!cached)cached=document.createElement('canvas');
  if(key!==cacheKey||lastTerrain!==args.terrain||lastObstacles!==args.obstacles){const ratio=Math.min(2,globalThis.window?.devicePixelRatio||1);cached.width=Math.max(1,Math.ceil(args.W*ratio));cached.height=Math.max(1,Math.ceil(args.H*ratio));const context=cached.getContext('2d');context.setTransform(ratio,0,0,ratio,0,0);paintTerrain(context,args);cacheKey=key;lastTerrain=args.terrain;lastObstacles=args.obstacles;}

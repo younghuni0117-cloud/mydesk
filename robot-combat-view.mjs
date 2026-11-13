@@ -1,4 +1,4 @@
-import {bagRopePath,bagAttachment} from './robot-bag.mjs?v=update85';
+import {bagRopePath,bagAttachment} from './robot-bag.mjs?v=update86';
 export const DRILL_LABELS=Object.freeze({bag:'샌드백',limited:'주먹 막기 · 회피',sparring:'제한 대련',selfplay:'자유 자기 대전'});
 export function combatResultText(c){if(!c)return '';const counters=c.fighters.map((f,i)=>f.down?`${i?'오른쪽':'왼쪽'} 다운 ${f.count} / 10`:'').filter(Boolean);if(!c.winner)return counters.join(' · ');const reason={health:'체력 소진',count:'10카운트',time:'시간 종료'}[c.reason]||'경기 종료';return `${c.winner==='draw'?'무승부':c.winner==='left'?'왼쪽 승리':'오른쪽 승리'} · ${reason}`;}
 export function drawCombatScene(ctx,frame,X,Y,scale){const bag=frame.bag;if(bag){const [x,y]=bag.position;ctx.save();ctx.translate(X(x),Y(y));ctx.rotate(-bag.angle);

@@ -1,4 +1,4 @@
-import {ROBOT_MASS} from './robot-body.mjs?v=update85';
+import {ROBOT_MASS} from './robot-body.mjs?v=update86';
 // A reproducible curriculum of simple courses. Nothing here commands a joint.
 export const TRAINING_COURSES=Object.freeze(['flat','uphill','downhill','slopes','stones','lowSteps','highSteps','lowStepsDown','highStepsDown']);
 export const COURSE_LABELS=Object.freeze({flat:'평지',uphill:'오르막',downhill:'내리막',slopes:'다양한 경사',stones:'돌길',lowSteps:'낮은 오르막 계단',highSteps:'높은 오르막 계단',lowStepsDown:'낮은 내리막 계단',highStepsDown:'높은 내리막 계단'});

@@ -1,8 +1,8 @@
-import {loadTaskSettings} from './robot-task-settings.mjs?v=update85';
-import {observationScene} from './robot-transfer.mjs?v=update85';
-import {RobotLearner,ALLOWED_ATTEMPTS,evaluationSignature} from './robot-learning.mjs?v=update85';
-import {ParallelRollouts} from './robot-rollouts.mjs?v=update85';
-import {STAGES} from './robot-core.mjs?v=update85';
+import {loadTaskSettings} from './robot-task-settings.mjs?v=update86';
+import {observationScene} from './robot-transfer.mjs?v=update86';
+import {RobotLearner,ALLOWED_ATTEMPTS,evaluationSignature} from './robot-learning.mjs?v=update86';
+import {ParallelRollouts} from './robot-rollouts.mjs?v=update86';
+import {STAGES} from './robot-core.mjs?v=update86';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,interval=20,lastCandidate=null,lastTrial=null,rollouts=null,robotCount=1,lastScenes=[];
 let activeGeneration=0,evaluationPromise=null;const evaluationCache=new Map();
 const emit=data=>postMessage({...data,generation:activeGeneration});
@@ -13,7 +13,7 @@ async function evaluateEnvironment(current,pool,token){
  emit({type:'evaluation',active:true});await yieldControl();const abilities={};
  for(const task of Object.keys(STAGES)){if(!active())return;abilities[task]=await pool.ability(current.weights,task,current.environment,active,undefined,true);if(!active()||!abilities[task])return;}
  const goalReward=await pool.commands(current.weights,current.environment,active,true);if(!active()||goalReward===null)return;
- current.applyEvaluation(abilities,goalReward);evaluationCache.set(key,{abilities,goalReward});while(evaluationCache.size>6)evaluationCache.delete(evaluationCache.keys().next().value);
+ current.applyEvaluation(abilities,goalReward);evaluationCache.set(key,{abilities,goalReward});while(evaluationCache.size>12)evaluationCache.delete(evaluationCache.keys().next().value);
  sendModel();emit({type:'evaluation',active:false});
 }
 const sendModel=()=>emit({type:'model',model:learner.snapshot()});
@@ -27,7 +27,7 @@ async function initialize(data,token){
  if(data.taskSettings)learner.taskSettings=loadTaskSettings({taskSettings:data.taskSettings});
  learner.onPhase=(phase,details)=>emit({type:'phase',phase,...details});stage=STAGES[data.stage]?data.stage:'balance';focus=STAGES[data.focus]?data.focus:stage;learner.setFocus(focus);
  await rollouts.start();if(token!==initToken)return;sendModel();preview();emit({type:'ready',parallelism:rollouts.concurrency,robots:robotCount});
- const current=learner,pool=rollouts;if(!current.evaluationPending){const key=current.id+':'+current.policyVersion+':'+evaluationSignature(current.environment);evaluationCache.set(key,{abilities:structuredClone(current.abilities),goalReward:current.goalReward});while(evaluationCache.size>6)evaluationCache.delete(evaluationCache.keys().next().value);}evaluationPromise=current.evaluationPending?evaluateEnvironment(current,pool,token).catch(error=>{if(token===initToken)emit({type:'error',message:'성능 기준 계산 오류: '+error.message});}):null;
+ const current=learner,pool=rollouts;if(!current.evaluationPending){const key=current.id+':'+current.policyVersion+':'+evaluationSignature(current.environment);evaluationCache.set(key,{abilities:structuredClone(current.abilities),goalReward:current.goalReward});while(evaluationCache.size>12)evaluationCache.delete(evaluationCache.keys().next().value);}evaluationPromise=current.evaluationPending?(async()=>{await new Promise(resolve=>setTimeout(resolve,120));if(token!==initToken)return;return evaluateEnvironment(current,pool,token);})().catch(error=>{if(token===initToken)emit({type:'error',message:'성능 기준 계산 오류: '+error.message});}):null;
 }
 self.onmessage=async({data})=>{
  try{
