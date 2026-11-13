@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {recoveryAssistOptions,recoveryAssistOutput,updateRecoveryPractice} from '../robot-recovery.mjs';
+import {recoveryAssistSettings,recoveryAssistOptions,recoveryAssistOutput,updateRecoveryPractice} from '../robot-recovery.mjs';
 import {taskProfile,loadTaskSettings} from '../robot-task-settings.mjs';
 import {RobotWorld,POLICY_SIZE,evaluateAbility,VALIDATION_CASES} from '../robot-core.mjs';
 import {RobotLearner} from '../robot-learning.mjs';
@@ -7,17 +7,21 @@ import {ParallelRollouts} from '../robot-rollouts.mjs';
 const zero=Array(POLICY_SIZE).fill(0);
 test('numeric per-task setting survives reload; zero disables, default is 120 N',()=>{
  assert.equal(taskProfile('recover').recoveryAssistForce,120);assert.equal(taskProfile('balance').recoveryAssistForce,0);
- const settings={recover:taskProfile('recover',{recoveryAssistForce:237,recoveryAssistAutoReduce:false})};assert.deepEqual(loadTaskSettings({taskSettings:settings}).recover,settings.recover);assert.equal(taskProfile('recover',{recoveryAssistForce:501}).recoveryAssistForce,120);
+ const settings={recover:taskProfile('recover',{recoveryAssistForce:237,recoveryAssistAutoReduce:false})};assert.deepEqual(loadTaskSettings({taskSettings:settings}).recover,settings.recover);assert.equal(taskProfile('recover',{recoveryAssistForce:1001}).recoveryAssistForce,120);
  assert.equal(recoveryAssistOptions({recoveryAssistForce:0}).recoveryAssistForce,0);
  assert.equal(recoveryAssistOptions({recoveryAssistForce:500},{assistScale:.5}).recoveryAssistForce,250);
  assert.equal(recoveryAssistOptions({recoveryAssistForce:500,recoveryAssistAutoReduce:false},{assistScale:0}).recoveryAssistForce,500);
  for(let i=0;i<8;i++)assert.equal(recoveryAssistOptions({}, {trials:i}).recoveryAssistForce,i%4===3?0:120);
 });
-test('fade only on genuine completed recovery, reaches zero and persists without resetting model',()=>{
- let p={trials:0,successRate:0};const success={terminationReason:'duration',recoveries:1,finalUpright:true,recovering:false,stableTime:2,recoveryStart:'lying-front',recoveryAssistAutoReduce:true,recoveryAssistMaxUsed:120};
- assert.equal(updateRecoveryPractice(p,{...success,recoveries:0}).assistScale,undefined);
- assert.equal(updateRecoveryPractice(p,{...success,recoveryStart:'seated',recoveryAssistMaxUsed:0}).assistScale,undefined);
- for(let i=0;i<16;i++)p=updateRecoveryPractice(p,success);assert.equal(p.assistScale,0);
+test('successful recoveries reduce force by exactly 1 N and time by 0.1 s, with independent switches',()=>{
+ let p={trials:0,successRate:0};const success={terminationReason:'duration',recoveries:1,finalUpright:true,recovering:false,stableTime:2,recoveryStart:'lying-front',recoveryAssistAutoReduce:true,recoveryAssistTimeAutoReduce:true,recoveryAssistBaseForce:1000};
+ assert.equal(updateRecoveryPractice(p,{...success,recoveries:0}).assistReductionN,undefined);
+ p=updateRecoveryPractice(p,success);assert.equal(recoveryAssistSettings({recoveryAssistForce:1000,recoveryAssistSeconds:5,recoveryAssistTimeAutoReduce:true},p).recoveryAssistForce,999);assert.equal(recoveryAssistSettings({recoveryAssistSeconds:5,recoveryAssistTimeAutoReduce:true},p).recoveryAssistSeconds,4.9);
+ const forceOnly=updateRecoveryPractice({}, {...success,recoveryAssistTimeAutoReduce:false});assert.equal(forceOnly.assistReductionN,1);assert.equal(forceOnly.assistTimeReduction,undefined);
+ const timeOnly=updateRecoveryPractice({}, {...success,recoveryAssistAutoReduce:false});assert.equal(timeOnly.assistReductionN,undefined);assert.equal(timeOnly.assistTimeReduction,.1);
+ for(let i=0;i<1100;i++)p=updateRecoveryPractice(p,success);assert.equal(p.assistReductionN,1000);assert.equal(p.assistTimeReduction,5);
+ const settings=recoveryAssistSettings({recoveryAssistForce:1000,recoveryAssistSeconds:5,recoveryAssistTimeAutoReduce:true},p);assert.equal(settings.recoveryAssistForce,0);assert.equal(settings.recoveryAssistSeconds,0);
+ assert.equal(updateRecoveryPractice({assistScale:.5},{...success,recoveryAssistBaseForce:120}).assistReductionN,61);
  const learner=new RobotLearner(null,42,{}, {deferEvaluation:true});learner.recoveryPractice=p;const before=learner.snapshot(),after=new RobotLearner(before,42,before.environment,{deferEvaluation:true});assert.deepEqual(after.recoveryPractice,p);assert.deepEqual(after.weights,before.weights);assert.equal(after.id,before.id);
 });
 test('upward force waits for lying stall, ramps and stops at standing height or upward speed',()=>{
@@ -38,4 +42,15 @@ test('PPO prepares training assistance and carries the exact force into preview;
  const a=l.prepareIntegratedTrial();assert.equal(a.task,'recover');assert.equal(a.options.recoveryAssistTraining,true);assert.equal(a.options.recoveryAssistForce,230);
  l.recoveryPractice={trials:3,successRate:0,assistScale:.5};assert.equal(l.prepareIntegratedTrial().options.recoveryAssistForce,0);
  l.focus='walk';assert.equal(l.prepareIntegratedTrial().options.recoveryAssistTraining,undefined);
+});
+
+test('assistance time window expires once per episode and never restarts after another fall',()=>{
+ const w=new RobotWorld('recover',{seed:42,recoveryStart:'lying-front',recoveryAssistTraining:true,recoveryAssistForce:1000,recoveryAssistSeconds:.1});w.recoveryAssistStall=2;w.recoveryAssistElapsed=1;
+ for(let i=0;i<12;i++)w.applyRecoveryAssist(1/120);assert.ok(w.metrics().recoveryAssistImpulse>0);assert.ok(w.metrics().recoveryAssistUsedSeconds<=.1);const impulse=w.metrics().recoveryAssistImpulse;w.applyRecoveryAssist(1/120);assert.equal(w.metrics().recoveryAssistForce,0);
+ w.recoveryAssistStall=3;w.applyRecoveryAssist(1/120);assert.equal(w.metrics().recoveryAssistImpulse,impulse);
+ const off=new RobotWorld('recover',{recoveryAssistTraining:true,recoveryAssistForce:1000,recoveryAssistSeconds:0});off.recoveryAssistStall=2;off.applyRecoveryAssist(1);assert.equal(off.metrics().recoveryAssistImpulse,0);
+ assert.equal(taskProfile('recover',{recoveryAssistForce:1000,recoveryAssistSeconds:5,recoveryAssistTimeAutoReduce:true}).recoveryAssistForce,1000);assert.equal(taskProfile('recover',{recoveryAssistSeconds:5.1}).recoveryAssistSeconds,3);
+});
+test('1000 N assistance remains finite in both lying directions over the full assistance window',()=>{
+ for(const kind of ['lying-front','lying-back']){const w=new RobotWorld('recover',{seed:42,recoveryStart:kind,recoveryAssistTraining:true,recoveryAssistForce:1000,recoveryAssistSeconds:5,observationSeconds:8,disturbances:false});while(!w.done)w.step(zero);assert.ok(w.metrics().recoveryAssistMaxUsed>0);assert.ok(w.metrics().recoveryAssistUsedSeconds<=5);assert.equal(w.metrics().recoveryAssistForce,0);assert.ok(w.bodies.every(p=>Number.isFinite(p.body.getPosition().y)));}
 });

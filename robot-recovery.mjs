@@ -17,13 +17,23 @@ export function recoveryStart(random,options={}){
   joints[s+'Shoulder']=lying?range(.02,.2):range(.1,1.2);joints[s+'Elbow']=lying?range(.05,.3):range(.2,1.3);
  }return {kind,angle,joints};
 }
-export function updateRecoveryPractice(previous={},metrics){const success=metrics.terminationReason==='duration'&&metrics.recoveries>=1&&metrics.finalUpright===true&&!metrics.recovering&&metrics.stableTime+1e-6>=2;const result={...previous,trials:(previous.trials||0)+1,successRate:(previous.successRate||0)*.95+(success?.05:0)};if(success&&metrics.recoveryAssistAutoReduce===true&&(metrics.recoveryAssistMaxUsed>0||metrics.recoveryStart?.startsWith('lying'))){const scale=clamp((previous.assistScale??1)*.8);result.assistScale=scale<.03?0:scale;}return result;}
-
+export function updateRecoveryPractice(previous={},metrics){
+ const success=metrics.terminationReason==='duration'&&metrics.recoveries>=1&&metrics.finalUpright===true&&!metrics.recovering&&metrics.stableTime+1e-6>=2;
+ const result={...previous,trials:(previous.trials||0)+1,successRate:(previous.successRate||0)*.95+(success?.05:0)};
+ if(success&&metrics.recoveryAssistAutoReduce===true)result.assistReductionN=clamp(recoveryForceReduction(previous,metrics.recoveryAssistBaseForce??120)+1,0,1000);
+ if(success&&metrics.recoveryAssistTimeAutoReduce===true)result.assistTimeReduction=Math.min(5,Math.round(((previous.assistTimeReduction||0)+.1)*10)/10);
+ return result;
+}
+const numberIn=(value,fallback,max)=>Number.isFinite(Number(value))?clamp(Number(value),0,max):fallback;
+export const recoveryForceReduction=(practice={},maximum=120)=>numberIn(practice.assistReductionN,maximum*(1-numberIn(practice.assistScale,1,1)),1000);
+export function recoveryAssistSettings(profile={},practice={}){
+ const base=numberIn(profile.recoveryAssistForce,120,1000),seconds=numberIn(profile.recoveryAssistSeconds,3,5),auto=profile.recoveryAssistAutoReduce!==false,timeAuto=profile.recoveryAssistTimeAutoReduce===true;
+ return {recoveryAssistBaseForce:base,recoveryAssistAutoReduce:auto,recoveryAssistTimeAutoReduce:timeAuto,recoveryAssistForce:Math.max(0,base-(auto?recoveryForceReduction(practice,base):0)),recoveryAssistSeconds:Math.max(0,Math.round((seconds-(timeAuto?(practice.assistTimeReduction||0):0))*10)/10)};
+}
 // Training scaffold only; validation and integrated execution never enable it.
 export function recoveryAssistOptions(profile={},practice={},offset=0){
- const raw=Number(profile.recoveryAssistForce??120),maximum=Number.isFinite(raw)?clamp(raw,0,500):120,auto=profile.recoveryAssistAutoReduce!==false;
- const probe=((practice.trials||0)+offset+1)%4===0;
- return {recoveryAssistTraining:true,recoveryAssistAutoReduce:auto,recoveryAssistForce:probe?0:maximum*(auto?clamp(practice.assistScale??1):1)};
+ const settings=recoveryAssistSettings(profile,practice),probe=((practice.trials||0)+offset+1)%4===0;
+ return {...settings,recoveryAssistTraining:true,recoveryAssistForce:probe?0:settings.recoveryAssistForce};
 }
 export function recoveryAssistOutput({force,height,verticalSpeed,stallSeconds,rampSeconds}){
  return force*clamp((stallSeconds-1.2)/.5)*clamp((.85-height)/.3)*clamp((.9-verticalSpeed)/.5)*clamp(rampSeconds/.5);
