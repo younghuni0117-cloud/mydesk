@@ -1,22 +1,23 @@
-import {STANDARD_GRAVITY,ROBOT_BODY_VERSION,ROBOT_MASS,HUMAN_SEGMENTS,MOTOR_TORQUES,segmentMassData} from './robot-body.mjs?v=update84';
-import {recoveryEarlyStopReady,recoveryAssistLocation,recoveryAssistOutput,recoveryStart,recoveryPotential,recoveryLimitCost,recoveryTestStart} from './robot-recovery.mjs?v=update84';
-import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update84';
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update84';
-import {taskEnvironment} from './robot-task-settings.mjs?v=update84';
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update84';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update84';
-import {distalActivity} from './robot-attention.mjs?v=update84';
-import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update84';
-import {PUSH_PARTS} from './robot-impact.mjs?v=update84';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update84';
-import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update84';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update84';
-import { World, Vec2, Box, Circle, Polygon, RevoluteJoint, DistanceJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update84';
+import {BAG_HEIGHT,BAG_HOOK_OFFSET,BAG_ROPE_LENGTH} from './robot-bag.mjs?v=update85';
+import {STANDARD_GRAVITY,ROBOT_BODY_VERSION,ROBOT_MASS,HUMAN_SEGMENTS,MOTOR_TORQUES,segmentMassData} from './robot-body.mjs?v=update85';
+import {recoveryEarlyStopReady,recoveryAssistLocation,recoveryAssistOutput,recoveryStart,recoveryPotential,recoveryLimitCost,recoveryTestStart} from './robot-recovery.mjs?v=update85';
+import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update85';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update85';
+import {taskEnvironment} from './robot-task-settings.mjs?v=update85';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update85';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update85';
+import {distalActivity} from './robot-attention.mjs?v=update85';
+import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update85';
+import {PUSH_PARTS} from './robot-impact.mjs?v=update85';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update85';
+import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update85';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update85';
+import { World, Vec2, Box, Circle, Polygon, RevoluteJoint, RopeJoint } from './vendor/planck.mjs';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update85';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update84';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update84';
-export {POLICY_SIZE} from './robot-policy.mjs?v=update84';
+import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update85';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update85';
+export {POLICY_SIZE} from './robot-policy.mjs?v=update85';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '일어나기', speed: 0, duration: 10 },
@@ -245,9 +246,9 @@ export class CombatWorld extends RobotWorld{
   if(this.drill==='bag'||this.drill==='limited'){
    const glove=stage==='defend',x=.05,y=this.groundHeight(x)+1.2,anchor=this.world.createBody();
    const body=this.world.createDynamicBody({position:Vec2(x,y),gravityScale:glove?0:1,linearDamping:glove?0:.15,angularDamping:.3,bullet:true,userData:glove?'trainingGlove':'combatBag'});
-   body.createFixture(glove?Circle(.14):Box(.22,.48),{density:glove?50:12,friction:.45,restitution:.08,filterGroupIndex:-2});
-   if(!glove)this.world.createJoint(DistanceJoint({length:1.55,frequencyHz:0,dampingRatio:.05},anchor,body,Vec2(x,y+2.03),Vec2(x,y+.48)));
-   this.bag={body,anchor:[x,y+2.03],radius:glove?.14:.22,height:glove?.28:.96,glove};this.combatOpponent=this.bag;this.nextBagSwing=.4;
+   body.createFixture(glove?Circle(.14):Box(.22,.48),{density:glove?50:this.combatOptions.bagMass/(.44*BAG_HEIGHT),friction:.45,restitution:.08,filterGroupIndex:-2});
+   const rope=!glove?this.world.createJoint(RopeJoint({localAnchorA:Vec2(x,y+2.03),localAnchorB:Vec2(0,BAG_HOOK_OFFSET),maxLength:BAG_ROPE_LENGTH},anchor,body)):null;
+   this.bag={body,rope,anchor:[x,y+2.03],radius:glove?.14:.22,height:glove?.28:BAG_HEIGHT,glove};this.combatOpponent=this.bag;this.nextBagSwing=.4;
    if(glove)body.setPosition(Vec2(4,y));
 
   }else{
@@ -303,8 +304,8 @@ export class CombatWorld extends RobotWorld{
  }
  trackThreats(){const head=this.parts.head.getPosition(),velocity=this.parts.head.getLinearVelocity(),bodies=this.bag?[this.bag.body]:['leftForearm','rightForearm','leftFoot','rightFoot'].map(n=>this.opponent.parts[n]);for(let i=0;i<bodies.length;i++){const body=bodies[i],p=body.getPosition(),v=body.getLinearVelocity(),dx=head.x-p.x,dy=head.y-p.y,distance=Math.hypot(dx,dy),closing=((v.x-velocity.x)*dx+(v.y-velocity.y)*dy)/Math.max(.01,distance);let threat=this.threats.get(i);if(!threat&&distance<.9&&closing>1.2){threat={start:this.time,minimum:distance,damage:this.combatState.damageTaken,head:[head.x,head.y],blocks:this.combatState.blocks};this.threats.set(i,threat);}if(!threat)continue;threat.minimum=Math.min(threat.minimum,distance);if(closing<0&&distance>threat.minimum+.2&&this.time-threat.start>.1){if(this.combatState.damageTaken===threat.damage&&this.combatState.blocks===threat.blocks&&this.finalUpright&&Math.hypot(head.x-threat.head[0],head.y-threat.head[1])>.08){this.avoided++;if(this.stage==='defend'||this.stage==='fight')this.addCombatReward(1,'evade');}this.threats.delete(i);}else if(this.time-threat.start>1.5)this.threats.delete(i);}}
  targetDistance(){const p=this.parts.pelvis.getPosition(),q=this.opponent?.parts.pelvis.getPosition()||this.bag?.body.getPosition();return q?Math.hypot(q.x-p.x,q.y-p.y):0;}
- metrics(){const m=super.metrics();if(!this.combatState)return m;return {...m,combat:{fighters:[{...this.combatState},{...this.rivalState}],drill:this.drill,winner:this.decision?.winner||null,reason:this.decision?.reason||null,remaining:Math.max(0,this.duration-this.time),avoided:this.avoided,countSeconds:2}};}
- snapshot(){const frame=super.snapshot();return {...frame,facing:1,opponent:this.opponent?{...this.opponent.snapshot(),facing:-1}:null,bag:this.bag?{position:[this.bag.body.getPosition().x,this.bag.body.getPosition().y],angle:this.bag.body.getAngle(),anchor:[...this.bag.anchor],radius:this.bag.radius,height:this.bag.height,glove:this.bag.glove,direction:this.bag.direction||-1}:null,combatHits:this.combatHits.filter(e=>this.time-e.time<.4)};}
+ metrics(){const m=super.metrics();if(!this.combatState)return m;return {...m,combat:{fighters:[{...this.combatState},{...this.rivalState}],bagMass:this.bag&&!this.bag.glove?this.bag.body.getMass():null,drill:this.drill,winner:this.decision?.winner||null,reason:this.decision?.reason||null,remaining:Math.max(0,this.duration-this.time),avoided:this.avoided,countSeconds:2}};}
+ snapshot(){const frame=super.snapshot();return {...frame,facing:1,opponent:this.opponent?{...this.opponent.snapshot(),facing:-1}:null,bag:this.bag?{mass:this.bag.body.getMass(),ropeLength:this.bag.glove?0:BAG_ROPE_LENGTH,velocity:[this.bag.body.getLinearVelocity().x,this.bag.body.getLinearVelocity().y],angularVelocity:this.bag.body.getAngularVelocity(),position:[this.bag.body.getPosition().x,this.bag.body.getPosition().y],angle:this.bag.body.getAngle(),anchor:[...this.bag.anchor],radius:this.bag.radius,height:this.bag.height,glove:this.bag.glove,direction:this.bag.direction||-1}:null,combatHits:this.combatHits.filter(e=>this.time-e.time<.4)};}
 }
 
 export const createRobotWorld=(stage='balance',options={})=>isCombat(stage)?new CombatWorld(stage,options):new RobotWorld(stage,options);

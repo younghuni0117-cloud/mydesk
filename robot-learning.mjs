@@ -1,19 +1,19 @@
-import {ROBOT_BODY_VERSION,STANDARD_GRAVITY} from './robot-body.mjs?v=update84';
-import {RECOVERY_OBJECTIVE_VERSION,recoveryAssistOptions,recoveryLyingProbability,updateRecoveryPractice} from './robot-recovery.mjs?v=update84';
-import {loadTrainingRewards,recordTrainingReward} from './robot-training-rewards.mjs?v=update84';
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update84';
-import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update84';
-import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update84';
-import {normalizeActuation} from './robot-actuation.mjs?v=update84';
-import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update84';
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update84';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update84';
-import {compareAbilities} from './robot-performance.mjs?v=update84';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update84';
-import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update84';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update84';
-import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update84';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update84';
+import {ROBOT_BODY_VERSION,STANDARD_GRAVITY} from './robot-body.mjs?v=update85';
+import {RECOVERY_OBJECTIVE_VERSION,recoveryAssistOptions,recoveryLyingProbability,updateRecoveryPractice} from './robot-recovery.mjs?v=update85';
+import {loadTrainingRewards,recordTrainingReward} from './robot-training-rewards.mjs?v=update85';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update85';
+import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update85';
+import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update85';
+import {normalizeActuation} from './robot-actuation.mjs?v=update85';
+import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update85';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update85';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update85';
+import {compareAbilities} from './robot-performance.mjs?v=update85';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update85';
+import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update85';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update85';
+import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update85';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update85';
 export const MODEL_VERSION=10;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -44,7 +44,7 @@ export function compactHistory(rows){if(rows.length<=160)return rows;const keep=
 export function evaluationSignature(environment={}){const {trainingGround,...conditions}=environment;return environmentSignature(conditions);}
 export class RobotLearner {
  constructor(saved=null,seed=Date.now(),environment={}, {deferEvaluation=false}={}){
-  saved=migrateModel(saved);this.environment=environment=canonicalEnvironment({...environment,...normalizeActuation(environment),bodyVersion:ROBOT_BODY_VERSION,gravity:STANDARD_GRAVITY,recoveryVersion:RECOVERY_OBJECTIVE_VERSION,controlKind:POLICY_KIND});this.searchSeed=seed>>>0;
+  saved=migrateModel(saved);this.environment=environment=canonicalEnvironment({...environment,...combatSettings(environment),...normalizeActuation(environment),bodyVersion:ROBOT_BODY_VERSION,gravity:STANDARD_GRAVITY,recoveryVersion:RECOVERY_OBJECTIVE_VERSION,controlKind:POLICY_KIND});this.searchSeed=seed>>>0;
   this.random=seeded(seed);this.id=globalThis.crypto?.randomUUID?.()||`robot-${Date.now()}-${seed}`;
   this.weights=Array(POLICY_SIZE).fill(0);this.mean=initialPolicy(this.searchSeed);this.spread=Array(POLICY_SIZE).fill(.3);
   this.terrainReview=null;this.validationBank=null;this.generalization=null;this.searchArchive=null;this.searchState={lastResetAttempt:saved?.attempts||0,restarts:0};this.lastFullValidationAttempt=0;this.algorithm='ppo';this.algorithmAttempts={cem:0,ppo:0};this.ppo=null;this.cohortStart=0;this.curriculum=Object.fromEntries(stages.map(s=>[s,.15]));this.trainingCurriculum=true;this.attempts=0;this.taskAttempts=Object.fromEntries(stages.map(s=>[s,0]));this.modelAttempt=0;this.revision=0;this.policyVersion=0;this.history=[];this.pending=[];this.focus='balance';
@@ -61,7 +61,7 @@ export class RobotLearner {
   if(saved?.validationBank&&vector(saved.validationBank.weights)&&stages.includes(saved.validationBank.task)&&Number.isFinite(saved.validationBank.ability?.meanReward)&&saved.validationBank.ability?.cases?.length===4)this.validationBank=structuredClone(saved.validationBank);
   if(Number.isSafeInteger(saved?.lastFullValidationAttempt)&&saved.lastFullValidationAttempt>=0&&saved.lastFullValidationAttempt<=this.attempts)this.lastFullValidationAttempt=saved.lastFullValidationAttempt;
   if(this.mean.slice(0,BIAS_START).every(v=>v===0)){const tail=this.mean.slice(BIAS_START);this.mean=initialPolicy(this.searchSeed);this.mean.splice(BIAS_START,tail.length,...tail);}
-  const visionChanged=!!saved&&saved.environment?.visionVersion!==environment.visionVersion,locksChanged=!!saved&&saved.environment?.distalLocked!==environment.distalLocked;const actuationChanged=!!saved&&(saved.environment?.actuationVersion!==3||JSON.stringify(normalizeActuation(saved.environment))!==JSON.stringify(normalizeActuation(environment))||environmentSignature(saved.environment?.taskEnvironments)!==environmentSignature(environment.taskEnvironments));if(saved?.environment?.bodyVersion!==ROBOT_BODY_VERSION||visionChanged||locksChanged||actuationChanged||saved?.environment?.recoveryVersion!==environment.recoveryVersion){if(this.ppo)this.ppo.buffer=[];if(this.searchArchive?.ppo)this.searchArchive.ppo.buffer=[];}
+  const visionChanged=!!saved&&saved.environment?.visionVersion!==environment.visionVersion,locksChanged=!!saved&&saved.environment?.distalLocked!==environment.distalLocked;const actuationChanged=!!saved&&(saved.environment?.actuationVersion!==3||JSON.stringify(normalizeActuation(saved.environment))!==JSON.stringify(normalizeActuation(environment))||environmentSignature(saved.environment?.taskEnvironments)!==environmentSignature(environment.taskEnvironments));if(saved?.environment?.combatVersion!==3||saved?.environment?.bodyVersion!==ROBOT_BODY_VERSION||visionChanged||locksChanged||actuationChanged||saved?.environment?.recoveryVersion!==environment.recoveryVersion){if(this.ppo)this.ppo.buffer=[];if(this.searchArchive?.ppo)this.searchArchive.ppo.buffer=[];}
   for(const row of this.history)if(typeof row.environment==='string')try{row.environment=environmentSignature(JSON.parse(row.environment));}catch{}
   this.environmentChanged=!!saved&&environmentSignature(saved.environment)!==environmentSignature(environment);if(this.environmentChanged){if(this.ppo)this.ppo.buffer=[];this.terrainReview=null;this.generalization=null;this.validationBank=null;this.pending=[];this.cohortStart=this.attempts;}
   const reuse=saved&&!saved.evaluationPending&&evaluationSignature(saved.environment)===evaluationSignature(environment);

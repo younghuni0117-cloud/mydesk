@@ -1,33 +1,33 @@
-import {ROBOT_BODY_VERSION,STANDARD_GRAVITY} from './robot-body.mjs?v=update84';
-import {RECOVERY_ASSIST_LOCATIONS,recoveryAssistSettings,recoveryLyingProbability} from './robot-recovery.mjs?v=update84';
-import {recordTrainingReward,trainingRewardRows} from './robot-training-rewards.mjs?v=update84';
-import {DRILL_LABELS,combatResultText,drawBagStand,drawCombatScene} from './robot-combat-view.mjs?v=update84';
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update84';
-import {trainingStatusLines} from './robot-training-view.mjs?v=update84';
-import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=update84';
-import {normalizeGround} from './robot-training-ground.mjs?v=update84';
-import {trainingPreviewSpec} from './robot-training-preview.mjs?v=update84';
-import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=update84';
-import {normalizeActuation} from './robot-actuation.mjs?v=update84';
-import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=update84';
-import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=update84';
-import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=update84';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=update84';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=update84';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=update84';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update84';
-import {abilitySummary} from './robot-performance.mjs?v=update84';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=update84';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=update84';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=update84';
-import {rewardHelp} from './robot-rewards.mjs?v=update84';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=update84';
-import {RobotTeam} from './robot-team.mjs?v=update84';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=update84';
-import {drawRobotSkin} from './robot-skin.mjs?v=update84';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=update84';
-import {RobotWorld,createRobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=update84';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=update84';
+import {ROBOT_BODY_VERSION,STANDARD_GRAVITY} from './robot-body.mjs?v=update85';
+import {RECOVERY_ASSIST_LOCATIONS,recoveryAssistSettings,recoveryLyingProbability} from './robot-recovery.mjs?v=update85';
+import {recordTrainingReward,trainingRewardRows} from './robot-training-rewards.mjs?v=update85';
+import {DRILL_LABELS,combatResultText,drawBagStand,drawCombatScene} from './robot-combat-view.mjs?v=update85';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update85';
+import {trainingStatusLines} from './robot-training-view.mjs?v=update85';
+import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=update85';
+import {normalizeGround} from './robot-training-ground.mjs?v=update85';
+import {trainingPreviewSpec} from './robot-training-preview.mjs?v=update85';
+import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=update85';
+import {normalizeActuation} from './robot-actuation.mjs?v=update85';
+import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=update85';
+import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=update85';
+import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=update85';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=update85';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=update85';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=update85';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update85';
+import {abilitySummary} from './robot-performance.mjs?v=update85';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=update85';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=update85';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=update85';
+import {rewardHelp} from './robot-rewards.mjs?v=update85';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=update85';
+import {RobotTeam} from './robot-team.mjs?v=update85';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=update85';
+import {drawRobotSkin} from './robot-skin.mjs?v=update85';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=update85';
+import {RobotWorld,createRobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=update85';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=update85';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=readTravelRecord(model?.travelRecord);
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -42,7 +42,7 @@ try{const o=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');Objec
 let savedTaskOptions={};try{savedTaskOptions=JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}');}catch{}
 let taskSettings=loadTaskSettings(savedTaskOptions,model?.taskSettings);applySharedTaskEnvironment(taskSettings,model?.environment);Object.assign(options,taskSettings[options.focus]);
 try{options.trainingGround=normalizeGround({...model?.environment.trainingGround,...JSON.parse(localStorage.getItem('mydesk.robot.options')||'{}').trainingGround});}catch{options.trainingGround=normalizeGround();}
-Object.assign(options,combatSettings(savedTaskOptions));let fighterSkins={left:savedTaskOptions.fighterSkins?.left||skin,right:savedTaskOptions.fighterSkins?.right||'tin'};
+Object.assign(options,combatSettings({...model?.environment,...savedTaskOptions}));let fighterSkins={left:savedTaskOptions.fighterSkins?.left||skin,right:savedTaskOptions.fighterSkins?.right||'tin'};
 options.graphMetric=savedTaskOptions.graphMetric==='validation'?'validation':'training';
 let chartRenderFrame=0,chartInspection={rows:[],start:0,end:0,mode:"training"};
 let pickingTarget=false;
@@ -65,7 +65,7 @@ async function refreshShared(){if(syncBusy||training||initializing||document.hid
 let lastRequest={completed:0,target:0},lastRemainingText=0;
 function progress(completed,target,label,total=model?.attempts||0,force=false){lastRequest={completed,target};const ratio=target?Math.min(100,completed/target*100):0;get('progress').value=ratio;get('progress').textContent=Math.round(ratio)+'%';get('progress-label').textContent=target?`${completed.toLocaleString()} / ${target.toLocaleString()}회 · ${Math.floor(ratio)}%`:`누적 ${total.toLocaleString()}회`;}
 
-function controls(){get('recovery-assist').hidden=stage!=='recover';for(const id of ['recovery-early-stop','recovery-assist-location','recovery-assist-force','recovery-assist-auto','recovery-assist-seconds','recovery-assist-time-auto'])get(id).disabled=initializing||training||recoveryBlocked;get('ground-settings').hidden=options.terrain!=='training';get('auto-push').closest('fieldset').hidden=options.terrain==='training';get('combat-training').hidden=!isCombat(stage);get('match-seconds').disabled=initializing||training;get('fight-restart').disabled=initializing||training||recoveryBlocked;for(const e of get('ground-settings').querySelectorAll('input'))e.disabled=initializing||training||options.terrain!=='training';get('train').disabled=initializing||recoveryBlocked||syncBusy;get('curriculum').disabled=initializing||training;get('training-seconds').disabled=initializing||training;get('balance-early-stop').disabled=initializing||training||stage!=='balance';get('balance-full-trials').disabled=initializing||training||stage!=='balance'||!options.balanceEarlyStop;get('balance-full-every').disabled=initializing||training||stage!=='balance'||!options.balanceEarlyStop||!options.balanceFullTrials;get('task-defaults').disabled=initializing||training||recoveryBlocked;get('reset').disabled=initializing;get('run').disabled=initializing||recoveryBlocked;for(const id of ['command-mode','command-direction','command-speed','command-position','command-posture','pick-target'])get(id).disabled=initializing||recoveryBlocked;for(const id of ['terrain','validation-seconds','monitor-seconds','servo-profile','target-speed','target-velocity','residual-torque','mix-mode'])get(id).disabled=initializing||training||recoveryBlocked;get('preview').disabled=initializing||recoveryBlocked;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing||recoveryBlocked;get('focus').disabled=training||initializing||recoveryBlocked;get('auto-push').disabled=training||initializing;for(const id of ['push-min','push-max','push-frequency'])get(id).disabled=training||initializing||!options.autoPush;get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
+function controls(){get('bag-mass-row').hidden=!['punch','kick'].includes(stage);get('bag-mass').disabled=initializing||training||recoveryBlocked;get('recovery-assist').hidden=stage!=='recover';for(const id of ['recovery-early-stop','recovery-assist-location','recovery-assist-force','recovery-assist-auto','recovery-assist-seconds','recovery-assist-time-auto'])get(id).disabled=initializing||training||recoveryBlocked;get('ground-settings').hidden=options.terrain!=='training';get('auto-push').closest('fieldset').hidden=options.terrain==='training';get('combat-training').hidden=!isCombat(stage);get('match-seconds').disabled=initializing||training;get('fight-restart').disabled=initializing||training||recoveryBlocked;for(const e of get('ground-settings').querySelectorAll('input'))e.disabled=initializing||training||options.terrain!=='training';get('train').disabled=initializing||recoveryBlocked||syncBusy;get('curriculum').disabled=initializing||training;get('training-seconds').disabled=initializing||training;get('balance-early-stop').disabled=initializing||training||stage!=='balance';get('balance-full-trials').disabled=initializing||training||stage!=='balance'||!options.balanceEarlyStop;get('balance-full-every').disabled=initializing||training||stage!=='balance'||!options.balanceEarlyStop||!options.balanceFullTrials;get('task-defaults').disabled=initializing||training||recoveryBlocked;get('reset').disabled=initializing;get('run').disabled=initializing||recoveryBlocked;for(const id of ['command-mode','command-direction','command-speed','command-position','command-posture','pick-target'])get(id).disabled=initializing||recoveryBlocked;for(const id of ['terrain','validation-seconds','monitor-seconds','servo-profile','target-speed','target-velocity','residual-torque','mix-mode'])get(id).disabled=initializing||training||recoveryBlocked;get('preview').disabled=initializing||recoveryBlocked;get('train').textContent=training?'Ⅱ 학습 중지':'학습 시작';get('count').disabled=training||initializing||recoveryBlocked;get('focus').disabled=training||initializing||recoveryBlocked;get('auto-push').disabled=training||initializing;for(const id of ['push-min','push-max','push-frequency'])get(id).disabled=training||initializing||!options.autoPush;get('run').setAttribute('aria-pressed',String(viewSource==='best'));get('preview').setAttribute('aria-pressed',String(viewSource==='candidate'));}
 for(const id of ['focus'])for(const [value,s]of Object.entries(STAGES)){const o=document.createElement('option');o.value=value;o.textContent=s.label;get(id).append(o);}
 for(const value of ALLOWED_ATTEMPTS){const o=document.createElement('option');o.value=String(value);o.textContent=value.toLocaleString()+'회';get('count').append(o);}get('count').value='10000';
 const cells={};for(const [key,s]of Object.entries(STAGES)){const row=document.createElement('tr'),title=document.createElement('th');title.scope='row';title.textContent=s.label.replace('빠르게 달리기','달리기');row.append(title);cells[key]=[];for(let i=0;i<3;i++){const cell=document.createElement('td');cell.textContent='—';row.append(cell);cells[key].push(cell);}get('abilities').append(row);}
@@ -200,6 +200,8 @@ canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;c
 function release(e){if(drag&&drag.id===e.pointerId&&drag.mode==='push'&&e.type==='pointerup'){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(pickingTarget){const rect=canvas.getBoundingClientRect(),x=clamp(cameraX+(e.clientX-rect.left-rect.width/2)/drawScale,-30,30);setPicking(false);applyCommand({...command,mode:'position',position:Math.round(x*10)/10});}else if(Math.hypot(dx,dy)>8)pushAt(Math.atan2(-dy,dx)*180/Math.PI,Math.hypot(dx,dy)/90,drag.point);}pointers.delete(e.pointerId);drag=null;pinch=null;}
 canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
 for(const side of ['left','right']){const select=get(side+'-character');for(const option of get('character').options)select.append(option.cloneNode(true));if(![...select.options].some(o=>o.value===fighterSkins[side]))fighterSkins[side]=side==='left'?skin:'tin';select.value=fighterSkins[side];select.onchange=()=>{fighterSkins[side]=select.value;saveOptions();};}
+get('bag-mass').value=String(options.bagMass);
+get('bag-mass').onchange=()=>{const input=get('bag-mass'),mass=Number(input.value);input.setCustomValidity('');if(!Number.isFinite(mass)||mass<.5||mass>200){input.setCustomValidity('0.5~200kg 사이의 값을 입력하세요.');input.reportValidity();return;}options.bagMass=Math.round(mass*100)/100;input.value=String(options.bagMass);saveOptions();actuationDirty=true;status('샌드백 무게 변경 · 새 조건에서 성능 재평가 중');configure(model);};
 get('match-seconds').value=options.matchSeconds;
 get('match-seconds').onchange=()=>{const input=get('match-seconds');if(!input.checkValidity()){input.reportValidity();return;}options.matchSeconds=Number(input.value);saveOptions();};
 
