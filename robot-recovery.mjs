@@ -20,7 +20,7 @@ export function recoveryStart(random,options={}){
  }return {kind,angle,joints};
 }
 export function updateRecoveryPractice(previous={},metrics){
- const success=metrics.terminationReason==='duration'&&metrics.recoveries>=1&&metrics.finalUpright===true&&!metrics.recovering&&metrics.stableTime+1e-6>=2;
+ const success=['duration','recovered'].includes(metrics.terminationReason)&&metrics.recoveries>=1&&metrics.finalUpright===true&&!metrics.recovering&&metrics.stableTime+1e-6>=2;
  const result={...previous,trials:(previous.trials||0)+1,successRate:(previous.successRate||0)*.95+(success?.05:0)};
  if(success&&metrics.recoveryAssistAutoReduce===true)result.assistReductionN=clamp(recoveryForceReduction(previous,metrics.recoveryAssistBaseForce??120)+1,0,1000);
  if(success&&metrics.recoveryAssistTimeAutoReduce===true)result.assistTimeReduction=Math.min(5,Math.round(((previous.assistTimeReduction||0)+.1)*10)/10);
@@ -35,8 +35,10 @@ export function recoveryAssistSettings(profile={},practice={}){
 // Training scaffold only; validation and integrated execution never enable it.
 export function recoveryAssistOptions(profile={},practice={},offset=0){
  const settings=recoveryAssistSettings(profile,practice),probe=((practice.trials||0)+offset+1)%4===0;
- return {...settings,recoveryAssistTraining:true,recoveryAssistForce:probe?0:settings.recoveryAssistForce};
+ return {...settings,recoveryEarlyStopTraining:true,recoveryEarlyStop:profile.recoveryEarlyStop===true,recoveryAssistTraining:true,recoveryAssistForce:probe?0:settings.recoveryAssistForce};
 }
 export function recoveryAssistOutput({force,height,verticalSpeed,stallSeconds,rampSeconds}){
  return force*clamp((stallSeconds-1.2)/.5)*clamp((.85-height)/.3)*clamp((.9-verticalSpeed)/.5)*clamp(rampSeconds/.5);
 }
+
+export function recoveryEarlyStopReady({enabled,recoveries,finalUpright,stableTime,unassistedTime}){return enabled===true&&recoveries>=1&&finalUpright===true&&stableTime+1e-6>=2&&unassistedTime+1e-6>=2;}

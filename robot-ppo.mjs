@@ -1,6 +1,6 @@
-import {TERRAIN_SENSOR_COUNT as S} from './robot-sensors.mjs?v=update78';
-import {RobotWorld,createRobotWorld,DT,robotGeometry,seeded,clamp} from './robot-core.mjs?v=update78';
-import {POLICY_INPUTS as I,POLICY_BODY_INPUTS as B,POLICY_HIDDEN as H,POLICY_OUTPUTS as O,POLICY_SIZE,initialPolicy,feedbackFeatures,FEEDBACK_START,ACTION_EXPLORATION_SCALES} from './robot-policy.mjs?v=update78';
+import {TERRAIN_SENSOR_COUNT as S} from './robot-sensors.mjs?v=update79';
+import {RobotWorld,createRobotWorld,DT,robotGeometry,seeded,clamp} from './robot-core.mjs?v=update79';
+import {POLICY_INPUTS as I,POLICY_BODY_INPUTS as B,POLICY_HIDDEN as H,POLICY_OUTPUTS as O,POLICY_SIZE,initialPolicy,feedbackFeatures,FEEDBACK_START,ACTION_EXPLORATION_SCALES} from './robot-policy.mjs?v=update79';
 export const MAX_PPO_EXPERIENCES=16384;
 export const PPO_CONFIG=Object.freeze({gamma:.995,lambda:.97,clip:.2,epochs:4,minibatch:64,actorRate:.0003,valueRate:.001,entropy:.01,maxKL:.04});
 const baseSize=outputs=>B*H+H+H*outputs+outputs+(outputs===O?O*6:0),size=outputs=>baseSize(outputs)+H*S,normal=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());

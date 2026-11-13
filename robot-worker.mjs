@@ -1,8 +1,8 @@
-import {loadTaskSettings} from './robot-task-settings.mjs?v=update78';
-import {observationScene} from './robot-transfer.mjs?v=update78';
-import {RobotLearner,ALLOWED_ATTEMPTS,evaluationSignature} from './robot-learning.mjs?v=update78';
-import {ParallelRollouts} from './robot-rollouts.mjs?v=update78';
-import {STAGES} from './robot-core.mjs?v=update78';
+import {loadTaskSettings} from './robot-task-settings.mjs?v=update79';
+import {observationScene} from './robot-transfer.mjs?v=update79';
+import {RobotLearner,ALLOWED_ATTEMPTS,evaluationSignature} from './robot-learning.mjs?v=update79';
+import {ParallelRollouts} from './robot-rollouts.mjs?v=update79';
+import {STAGES} from './robot-core.mjs?v=update79';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,interval=20,lastCandidate=null,lastTrial=null,rollouts=null,robotCount=1,lastScenes=[];
 let activeGeneration=0,evaluationPromise=null;const evaluationCache=new Map();
 const emit=data=>postMessage({...data,generation:activeGeneration});
@@ -18,7 +18,7 @@ async function evaluateEnvironment(current,pool,token){
 }
 const sendModel=()=>emit({type:'model',model:learner.snapshot()});
 const yieldControl=()=>new Promise(r=>setTimeout(r,0));
-function preview(){emit({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],observedTask:lastTrial?.task||stage,trainingSpec:lastTrial?.trainingSpec,scene:lastScenes[0]||null,scenes:lastScenes.slice(0,robotCount),team:robotCount,endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,recoveryAssistLocation:lastTrial?.recoveryAssistLocation,recoveryAssistBaseForce:lastTrial?.recoveryAssistBaseForce,recoveryAssistSeconds:lastTrial?.recoveryAssistSeconds,recoveryAssistTimeAutoReduce:lastTrial?.recoveryAssistTimeAutoReduce,recoveryAssistTraining:lastTrial?.recoveryAssistTraining,recoveryAssistForce:lastTrial?.recoveryAssistForce,recoveryAssistAutoReduce:lastTrial?.recoveryAssistAutoReduce,trainingSeconds:lastTrial?.trainingSeconds,recoveryLyingProbability:lastTrial?.recoveryLyingProbability,terrainVariant:lastTrial?.terrainVariant,spawnRange:lastTrial?.spawnRange});}
+function preview(){emit({type:'preview',stage,source:lastCandidate?'candidate':'best',weights:[...(lastCandidate||learner.weights)],policyVersion:learner.policyVersion,attempts:learner.attempts,seed:lastTrial?.seed??31,pushPlan:lastTrial?.pushPlan||[],commandSchedule:lastTrial?.commandSchedule||[],observedTask:lastTrial?.task||stage,trainingSpec:lastTrial?.trainingSpec,scene:lastScenes[0]||null,scenes:lastScenes.slice(0,robotCount),team:robotCount,endOnFall:lastTrial?.endOnFall,spawnTilt:lastTrial?.spawnTilt,recoveryEarlyStop:lastTrial?.recoveryEarlyStop,recoveryEarlyStopTraining:lastTrial?.recoveryEarlyStopTraining,recoveryAssistLocation:lastTrial?.recoveryAssistLocation,recoveryAssistBaseForce:lastTrial?.recoveryAssistBaseForce,recoveryAssistSeconds:lastTrial?.recoveryAssistSeconds,recoveryAssistTimeAutoReduce:lastTrial?.recoveryAssistTimeAutoReduce,recoveryAssistTraining:lastTrial?.recoveryAssistTraining,recoveryAssistForce:lastTrial?.recoveryAssistForce,recoveryAssistAutoReduce:lastTrial?.recoveryAssistAutoReduce,trainingSeconds:lastTrial?.trainingSeconds,recoveryLyingProbability:lastTrial?.recoveryLyingProbability,terrainVariant:lastTrial?.terrainVariant,spawnRange:lastTrial?.spawnRange});}
 async function initialize(data,token){
  activeGeneration=data.generation;
  rollouts?.close();robotCount=1;lastCandidate=null;lastTrial=null;lastScenes=[];
