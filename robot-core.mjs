@@ -1,22 +1,22 @@
-import {STANDARD_GRAVITY,ROBOT_BODY_VERSION,ROBOT_MASS,HUMAN_SEGMENTS,MOTOR_TORQUES,segmentMassData} from './robot-body.mjs?v=update83';
-import {recoveryEarlyStopReady,recoveryAssistLocation,recoveryAssistOutput,recoveryStart,recoveryPotential,recoveryLimitCost,recoveryTestStart} from './robot-recovery.mjs?v=update83';
-import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update83';
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update83';
-import {taskEnvironment} from './robot-task-settings.mjs?v=update83';
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update83';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update83';
-import {distalActivity} from './robot-attention.mjs?v=update83';
-import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update83';
-import {PUSH_PARTS} from './robot-impact.mjs?v=update83';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update83';
-import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update83';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update83';
+import {STANDARD_GRAVITY,ROBOT_BODY_VERSION,ROBOT_MASS,HUMAN_SEGMENTS,MOTOR_TORQUES,segmentMassData} from './robot-body.mjs?v=update84';
+import {recoveryEarlyStopReady,recoveryAssistLocation,recoveryAssistOutput,recoveryStart,recoveryPotential,recoveryLimitCost,recoveryTestStart} from './robot-recovery.mjs?v=update84';
+import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update84';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update84';
+import {taskEnvironment} from './robot-task-settings.mjs?v=update84';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update84';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update84';
+import {distalActivity} from './robot-attention.mjs?v=update84';
+import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update84';
+import {PUSH_PARTS} from './robot-impact.mjs?v=update84';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update84';
+import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update84';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update84';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint, DistanceJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update83';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update84';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update83';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update83';
-export {POLICY_SIZE} from './robot-policy.mjs?v=update83';
+import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update84';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update84';
+export {POLICY_SIZE} from './robot-policy.mjs?v=update84';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '일어나기', speed: 0, duration: 10 },
