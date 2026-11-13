@@ -1,18 +1,18 @@
-import {RECOVERY_OBJECTIVE_VERSION,recoveryLyingProbability,updateRecoveryPractice} from './robot-recovery.mjs?v=update75';
-import {loadTrainingRewards,recordTrainingReward} from './robot-training-rewards.mjs?v=update75';
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update75';
-import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update75';
-import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update75';
-import {normalizeActuation} from './robot-actuation.mjs?v=update75';
-import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update75';
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update75';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update75';
-import {compareAbilities} from './robot-performance.mjs?v=update75';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update75';
-import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update75';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update75';
-import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update75';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update75';
+import {RECOVERY_OBJECTIVE_VERSION,recoveryAssistOptions,recoveryLyingProbability,updateRecoveryPractice} from './robot-recovery.mjs?v=update76';
+import {loadTrainingRewards,recordTrainingReward} from './robot-training-rewards.mjs?v=update76';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update76';
+import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update76';
+import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update76';
+import {normalizeActuation} from './robot-actuation.mjs?v=update76';
+import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update76';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update76';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update76';
+import {compareAbilities} from './robot-performance.mjs?v=update76';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update76';
+import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update76';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update76';
+import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update76';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update76';
 export const MODEL_VERSION=10;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -49,7 +49,7 @@ export class RobotLearner {
   this.terrainReview=null;this.validationBank=null;this.generalization=null;this.searchArchive=null;this.searchState={lastResetAttempt:saved?.attempts||0,restarts:0};this.lastFullValidationAttempt=0;this.algorithm='ppo';this.algorithmAttempts={cem:0,ppo:0};this.ppo=null;this.cohortStart=0;this.curriculum=Object.fromEntries(stages.map(s=>[s,.15]));this.trainingCurriculum=true;this.attempts=0;this.taskAttempts=Object.fromEntries(stages.map(s=>[s,0]));this.modelAttempt=0;this.revision=0;this.policyVersion=0;this.history=[];this.pending=[];this.focus='balance';
   if(RobotLearner.valid(saved))for(const k of ['id','weights','mean','spread','attempts','taskAttempts','modelAttempt','revision','policyVersion','history','algorithm','algorithmAttempts','ppo','pending','focus','cohortStart','curriculum','searchSeed'])this[k]=structuredClone(saved[k]);
 
-  this.trainingRewards=loadTrainingRewards(saved?.trainingRewards,stages);this.recoveryPractice=saved?.environment?.recoveryVersion===RECOVERY_OBJECTIVE_VERSION&&Number.isSafeInteger(saved?.recoveryPractice?.trials)&&saved.recoveryPractice.trials>=0&&Number.isFinite(saved.recoveryPractice.successRate)?{trials:saved.recoveryPractice.trials,successRate:clamp(saved.recoveryPractice.successRate,0,1)}:{trials:0,successRate:0};
+  this.trainingRewards=loadTrainingRewards(saved?.trainingRewards,stages);this.recoveryPractice=saved?.environment?.recoveryVersion===RECOVERY_OBJECTIVE_VERSION&&Number.isSafeInteger(saved?.recoveryPractice?.trials)&&saved.recoveryPractice.trials>=0&&Number.isFinite(saved.recoveryPractice.successRate)?{trials:saved.recoveryPractice.trials,successRate:clamp(saved.recoveryPractice.successRate,0,1),...(Number.isFinite(saved.recoveryPractice.assistScale)?{assistScale:clamp(saved.recoveryPractice.assistScale,0,1)}:{})}:{trials:0,successRate:0};
   this.opponentPool=(saved?.opponentPool||[]).filter(vector).slice(-3).map(w=>[...w]);
   this.taskSettings=saved?.taskSettings?loadTaskSettings({taskSettings:saved.taskSettings}):null;
   if(saved?.terrainReview&&stages.includes(saved.terrainReview.task)&&abilityRecord(saved.terrainReview.ability,5))this.terrainReview=structuredClone(saved.terrainReview);
@@ -112,7 +112,7 @@ export class RobotLearner {
   const push=normalizePushSettings({...this.trainingPush,...(this.taskSettings?profile:{})});
   push.pushMax=push.pushMin+(push.pushMax-push.pushMin)*level;push.autoPush=effectiveTrainingPush({stage:task,autoPush:push.autoPush,curriculum:this.trainingCurriculum,horizon,trainingSeconds:seconds});
   const combat=combatSettings(this.environment),autoDrill=isCombat(task)?task==='fight'?'selfplay':task==='defend'?'limited':'bag':undefined,opponentWeights=isCombat(task)?[...(this.opponentPool.length&&index%3!==0?this.opponentPool[index%this.opponentPool.length]:this.weights)]:undefined;
-  return {weights:[...this.ppo.actor],critic:[...this.ppo.critic],logStd:[...this.ppo.logStd],task,index,seed,noiseSeed:seed^0x531727,record,algorithm:'ppo',group:this.pending.length+offset,options:{...base,...push,...(task==='recover'?{recoveryLyingProbability:recoveryLyingProbability(this.recoveryPractice,this.trainingCurriculum)}:{}),...(isCombat(task)?{combatDrill:combat.combatDrill==='auto'?autoDrill:combat.combatDrill,opponentWeights}:{}),trainingSpec,terrainVariant:Math.floor(index/Math.max(1,ground.changeEvery))%4,observationSeconds:horizon,spawnRange:.025+.075*level,spawnTilt:task==='balance'?(index%2?1:-1)*(.004+.02*level):undefined,disturbances:true,commandSchedule:schedule,record,summaryOnly:!record,endOnFall:task==='balance'&&endBalanceTrialEarly({...this.trainingBalance,...profile},'ppo',this.taskAttempts.balance+offset)}};
+  return {weights:[...this.ppo.actor],critic:[...this.ppo.critic],logStd:[...this.ppo.logStd],task,index,seed,noiseSeed:seed^0x531727,record,algorithm:'ppo',group:this.pending.length+offset,options:{...base,...push,...(task==='recover'?{...recoveryAssistOptions(this.taskSettings?.recover,this.recoveryPractice,offset),recoveryLyingProbability:recoveryLyingProbability(this.recoveryPractice,this.trainingCurriculum)}:{}),...(isCombat(task)?{combatDrill:combat.combatDrill==='auto'?autoDrill:combat.combatDrill,opponentWeights}:{}),trainingSpec,terrainVariant:Math.floor(index/Math.max(1,ground.changeEvery))%4,observationSeconds:horizon,spawnRange:.025+.075*level,spawnTilt:task==='balance'?(index%2?1:-1)*(.004+.02*level):undefined,disturbances:true,commandSchedule:schedule,record,summaryOnly:!record,endOnFall:task==='balance'&&endBalanceTrialEarly({...this.trainingBalance,...profile},'ppo',this.taskAttempts.balance+offset)}};
  }
  prepareTrial({record=false}={},offset=0){
   if(this.evaluationPending)throw Error('현재 지형의 성능 기준 계산을 먼저 완료해 주세요.');
@@ -127,7 +127,7 @@ export class RobotLearner {
   const task=this.focus,index=this.attempts+offset,seed=(0x2468ace0+this.searchSeed+Math.imul(this.cohortStart,2654435761))>>>0,batch=Math.floor(this.cohortStart/32),schedule=this.trainingCurriculum&&Math.max(this.abilities[task].passRate,this.abilities.balance.passRate)<.5?[]:trainingCommands(task,batch);if((!this.trainingCurriculum||Math.max(this.abilities[task].passRate,this.abilities.balance.passRate)>=.5)&&batch%6===5&&this.trainingCommand)schedule.splice(0,schedule.length,{time:0,command:this.trainingCommand});
   if(task==='balance')schedule.splice(0,schedule.length,{time:0,command:{mode:'hold'}});
   const push=normalizePushSettings(this.trainingPush),level=this.trainingCurriculum?this.curriculum[task]:1;push.pushMax=push.pushMin+(push.pushMax-push.pushMin)*level;push.autoPush=effectiveTrainingPush({stage:task,autoPush:push.autoPush,curriculum:this.trainingCurriculum,horizon,trainingSeconds:fullHorizon});
-  return {weights,task,index,seed,record,group:slot,reference:this.algorithm==='cem'&&slot===1,algorithm:this.algorithm,critic:this.algorithm==='ppo'?[...this.ppo.critic]:undefined,logStd:this.algorithm==='ppo'?[...this.ppo.logStd]:undefined,noiseSeed:(100003+index+this.searchSeed)>>>0,options:{...taskEnvironment(this.environment,task),...push,...(task==='recover'?{recoveryLyingProbability:recoveryLyingProbability(this.recoveryPractice,this.trainingCurriculum)}:{}),terrainVariant:task==='balance'&&horizon<fullHorizon?0:(batch+this.searchSeed)%4,...(task==='balance'?{spawnTilt:(index%2?1:-1)*(this.trainingCurriculum?(horizon===2?.004:horizon===4?.008:.018):.025)}:{}),observationSeconds:task==='balance'&&this.trainingCurriculum?horizon:fullHorizon,spawnRange:.025+(this.trainingCurriculum ? .075*level : 0),disturbances:true,commandSchedule:schedule,record,summaryOnly:!record,endOnFall:task==='balance'&&endBalanceTrialEarly(this.trainingBalance,this.algorithm,this.algorithm==='cem'?2*Math.floor((this.taskAttempts.balance-this.pending.length)/2)+trialSlot:this.taskAttempts.balance+offset)}};
+  return {weights,task,index,seed,record,group:slot,reference:this.algorithm==='cem'&&slot===1,algorithm:this.algorithm,critic:this.algorithm==='ppo'?[...this.ppo.critic]:undefined,logStd:this.algorithm==='ppo'?[...this.ppo.logStd]:undefined,noiseSeed:(100003+index+this.searchSeed)>>>0,options:{...taskEnvironment(this.environment,task),...push,...(task==='recover'?{...recoveryAssistOptions(this.taskSettings?.recover,this.recoveryPractice,offset),recoveryLyingProbability:recoveryLyingProbability(this.recoveryPractice,this.trainingCurriculum)}:{}),terrainVariant:task==='balance'&&horizon<fullHorizon?0:(batch+this.searchSeed)%4,...(task==='balance'?{spawnTilt:(index%2?1:-1)*(this.trainingCurriculum?(horizon===2?.004:horizon===4?.008:.018):.025)}:{}),observationSeconds:task==='balance'&&this.trainingCurriculum?horizon:fullHorizon,spawnRange:.025+(this.trainingCurriculum ? .075*level : 0),disturbances:true,commandSchedule:schedule,record,summaryOnly:!record,endOnFall:task==='balance'&&endBalanceTrialEarly(this.trainingBalance,this.algorithm,this.algorithm==='cem'?2*Math.floor((this.taskAttempts.balance-this.pending.length)/2)+trialSlot:this.taskAttempts.balance+offset)}};
  }
  completeTrial(prepared,trial){
   if(prepared.index!==this.attempts)throw Error('학습 결과의 순서가 일치하지 않습니다.');
@@ -136,7 +136,7 @@ export class RobotLearner {
   if(task==='recover')this.recoveryPractice=updateRecoveryPractice(this.recoveryPractice,result);
   recordTrainingReward(this.trainingRewards,task,this.taskAttempts[task],result.reward,JSON.stringify(this.environment),prepared.options.observationSeconds??STAGES[task].duration);
   this.travelRecord=nextTravelRecord(this.travelRecord,result,{attempt:this.attempts,task,terrain:result.forwardContact?.terrain||this.environment.terrain||'meadow'});
-  return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,spawnRange:prepared.options.spawnRange,endOnFall:prepared.options.endOnFall,spawnTilt:prepared.options.spawnTilt,trainingSpec:prepared.options.trainingSpec,combatDrill:prepared.options.combatDrill,opponentWeights:prepared.options.opponentWeights,trainingSeconds:prepared.options.observationSeconds,recoveryLyingProbability:prepared.options.recoveryLyingProbability,terrainVariant:prepared.options.terrainVariant,scene:record?trial:null};
+  return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,spawnRange:prepared.options.spawnRange,endOnFall:prepared.options.endOnFall,spawnTilt:prepared.options.spawnTilt,trainingSpec:prepared.options.trainingSpec,combatDrill:prepared.options.combatDrill,opponentWeights:prepared.options.opponentWeights,recoveryAssistTraining:prepared.options.recoveryAssistTraining,recoveryAssistForce:prepared.options.recoveryAssistForce,recoveryAssistAutoReduce:prepared.options.recoveryAssistAutoReduce,trainingSeconds:prepared.options.observationSeconds,recoveryLyingProbability:prepared.options.recoveryLyingProbability,terrainVariant:prepared.options.terrainVariant,scene:record?trial:null};
  }
  trainOne(options={}){const prepared=this.prepareTrial(options);return this.completeTrial(prepared,prepared.algorithm==='ppo'?ppoEpisode(prepared):episode(prepared.weights,prepared.task,prepared.seed,prepared.options));}
 

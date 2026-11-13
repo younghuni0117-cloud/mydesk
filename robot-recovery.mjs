@@ -17,4 +17,14 @@ export function recoveryStart(random,options={}){
   joints[s+'Shoulder']=lying?range(.02,.2):range(.1,1.2);joints[s+'Elbow']=lying?range(.05,.3):range(.2,1.3);
  }return {kind,angle,joints};
 }
-export function updateRecoveryPractice(previous={},metrics){const success=metrics.terminationReason==='duration'&&metrics.recoveries>=1&&metrics.finalUpright===true&&!metrics.recovering&&metrics.stableTime+1e-6>=2;return {trials:(previous.trials||0)+1,successRate:(previous.successRate||0)*.95+(success?.05:0)};}
+export function updateRecoveryPractice(previous={},metrics){const success=metrics.terminationReason==='duration'&&metrics.recoveries>=1&&metrics.finalUpright===true&&!metrics.recovering&&metrics.stableTime+1e-6>=2;const result={...previous,trials:(previous.trials||0)+1,successRate:(previous.successRate||0)*.95+(success?.05:0)};if(success&&metrics.recoveryAssistAutoReduce===true&&(metrics.recoveryAssistMaxUsed>0||metrics.recoveryStart?.startsWith('lying'))){const scale=clamp((previous.assistScale??1)*.8);result.assistScale=scale<.03?0:scale;}return result;}
+
+// Training scaffold only; validation and integrated execution never enable it.
+export function recoveryAssistOptions(profile={},practice={},offset=0){
+ const raw=Number(profile.recoveryAssistForce??120),maximum=Number.isFinite(raw)?clamp(raw,0,500):120,auto=profile.recoveryAssistAutoReduce!==false;
+ const probe=((practice.trials||0)+offset+1)%4===0;
+ return {recoveryAssistTraining:true,recoveryAssistAutoReduce:auto,recoveryAssistForce:probe?0:maximum*(auto?clamp(practice.assistScale??1):1)};
+}
+export function recoveryAssistOutput({force,height,verticalSpeed,stallSeconds,rampSeconds}){
+ return force*clamp((stallSeconds-1.2)/.5)*clamp((.85-height)/.3)*clamp((.9-verticalSpeed)/.5)*clamp(rampSeconds/.5);
+}

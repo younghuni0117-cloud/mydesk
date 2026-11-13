@@ -1,11 +1,11 @@
-import {normalizeActuation} from './robot-actuation.mjs?v=update75';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update75';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update75';
+import {normalizeActuation} from './robot-actuation.mjs?v=update76';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update76';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update76';
 
-const common={algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
+const common={recoveryAssistForce:0,recoveryAssistAutoReduce:true,algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({
  balance:Object.freeze({...common,trainingSeconds:10,validationSeconds:10,monitorSeconds:30,observationSeconds:30,interval:20,balanceEarlyStop:true,balanceFullTrials:true,pushMin:1,pushMax:6}),
- recover:Object.freeze({...common,trainingSeconds:30,validationSeconds:30,monitorSeconds:60,observationSeconds:60,autoPush:false,pushMax:2}),
+ recover:Object.freeze({...common,recoveryAssistForce:120,trainingSeconds:30,validationSeconds:30,monitorSeconds:60,observationSeconds:60,autoPush:false,pushMax:2}),
  walk:Object.freeze({...common,trainingSeconds:15,validationSeconds:15,monitorSeconds:45,observationSeconds:45}),
  punch:Object.freeze({...common,trainingSeconds:15,validationSeconds:10,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:1080,targetVelocity:1200,residualTorque:.35}),
  kick:Object.freeze({...common,trainingSeconds:15,validationSeconds:10,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:900,targetVelocity:1080,residualTorque:.35}),
@@ -17,6 +17,7 @@ const integer=(x,lo,hi,fallback)=>Number.isInteger(Number(x))&&Number(x)>=lo&&Nu
 export function taskProfile(task,raw={}){
  const d=Object.hasOwn(TASK_DEFAULTS,task)?TASK_DEFAULTS[task]:TASK_DEFAULTS.balance,p={...d};
  for(const k of TASK_SETTING_KEYS)if(raw?.[k]!==undefined)p[k]=raw[k];
+ const assist=Number(p.recoveryAssistForce);p.recoveryAssistForce=Number.isFinite(assist)&&assist>=0&&assist<=500?assist:d.recoveryAssistForce;p.recoveryAssistAutoReduce=p.recoveryAssistAutoReduce!==false;
  p.trainingSeconds=integer(p.trainingSeconds,1,120,d.trainingSeconds);
  p.validationSeconds=integer(p.validationSeconds,6,120,d.validationSeconds);
  p.monitorSeconds=integer(p.monitorSeconds,10,3600,d.monitorSeconds);
