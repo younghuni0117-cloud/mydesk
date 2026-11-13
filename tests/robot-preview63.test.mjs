@@ -12,7 +12,7 @@ test('manual ground observation uses configured friction, mass and high step lim
   const saved={...model,attempts:i},spec=trainingPreviewSpec(options,saved);courses.add(spec.course);
   assert.deepEqual(spec,trainingCondition(i,91,options.trainingGround,1));
   const world=new RobotWorld('balance',{...options,trainingSpec:spec,disturbances:false});
-  assert.equal(world.terrain.friction,.35);assert.ok(Math.abs(world.metrics().mass-19.9)<1e-8);assert.equal(world.pushes.length,0);
+  assert.equal(world.terrain.friction,.35);assert.ok(Math.abs(world.metrics().mass-70)<1e-8);assert.equal(world.pushes.length,0);
   const text=trainingStatusLines(world.terrain,world.metrics(),0)[0];assert.match(text,/마찰 0.35/);assert.match(text,/질량 \+0.0%/);
   if(spec.course.startsWith('highSteps')){assert.equal(world.terrain.stairHeight,.3);assert.match(text,/30cm/);}
  }

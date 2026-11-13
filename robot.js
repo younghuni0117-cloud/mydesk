@@ -1,32 +1,33 @@
-import {RECOVERY_ASSIST_LOCATIONS,recoveryAssistSettings,recoveryLyingProbability} from './robot-recovery.mjs?v=update80';
-import {recordTrainingReward,trainingRewardRows} from './robot-training-rewards.mjs?v=update80';
-import {DRILL_LABELS,combatResultText,drawCombatScene} from './robot-combat-view.mjs?v=update80';
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update80';
-import {trainingStatusLines} from './robot-training-view.mjs?v=update80';
-import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=update80';
-import {normalizeGround} from './robot-training-ground.mjs?v=update80';
-import {trainingPreviewSpec} from './robot-training-preview.mjs?v=update80';
-import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=update80';
-import {normalizeActuation} from './robot-actuation.mjs?v=update80';
-import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=update80';
-import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=update80';
-import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=update80';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=update80';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=update80';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=update80';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update80';
-import {abilitySummary} from './robot-performance.mjs?v=update80';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=update80';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=update80';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=update80';
-import {rewardHelp} from './robot-rewards.mjs?v=update80';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=update80';
-import {RobotTeam} from './robot-team.mjs?v=update80';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=update80';
-import {drawRobotSkin} from './robot-skin.mjs?v=update80';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=update80';
-import {RobotWorld,createRobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=update80';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=update80';
+import {ROBOT_BODY_VERSION,STANDARD_GRAVITY} from './robot-body.mjs?v=update81';
+import {RECOVERY_ASSIST_LOCATIONS,recoveryAssistSettings,recoveryLyingProbability} from './robot-recovery.mjs?v=update81';
+import {recordTrainingReward,trainingRewardRows} from './robot-training-rewards.mjs?v=update81';
+import {DRILL_LABELS,combatResultText,drawCombatScene} from './robot-combat-view.mjs?v=update81';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update81';
+import {trainingStatusLines} from './robot-training-view.mjs?v=update81';
+import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=update81';
+import {normalizeGround} from './robot-training-ground.mjs?v=update81';
+import {trainingPreviewSpec} from './robot-training-preview.mjs?v=update81';
+import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=update81';
+import {normalizeActuation} from './robot-actuation.mjs?v=update81';
+import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=update81';
+import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=update81';
+import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=update81';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=update81';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=update81';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=update81';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update81';
+import {abilitySummary} from './robot-performance.mjs?v=update81';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=update81';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=update81';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=update81';
+import {rewardHelp} from './robot-rewards.mjs?v=update81';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=update81';
+import {RobotTeam} from './robot-team.mjs?v=update81';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=update81';
+import {drawRobotSkin} from './robot-skin.mjs?v=update81';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=update81';
+import {RobotWorld,createRobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=update81';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=update81';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=readTravelRecord(model?.travelRecord);
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -128,10 +129,11 @@ get('graph-version').onchange=()=>{options.graphVersion=get('graph-version').val
 
 get('curriculum').onchange=()=>{options.curriculum=get('curriculum').checked;saveOptions();renderModel();};
 
+{const p=document.createElement('p');p.textContent='물리 모델: 키 약 185cm · 기준 질량 70kg · 중력 9.80665m/s². 부위 질량·무게중심·회전관성은 스킨 굵기와 별도로 설정합니다. 훈련소에서는 설정한 부위별 질량 변화가 적용됩니다. 관절 구동은 목표 자세를 유지하는 힘이므로, 매달았을 때의 움직임은 질량과 모터 작용이 함께 결정합니다.';get('reward-common').append(p);}
 get('reward-commands').textContent=rewardHelp(STAGES).commands;
 const rewardDetails={};const rewardInfo=rewardHelp(STAGES);for(const key of ['standing','speed','penalties','push','attention']){const p=document.createElement('p');p.textContent=rewardInfo[key];get('reward-common').append(p);}for(const task of rewardInfo.tasks){const details=document.createElement('details'),summary=document.createElement('summary');details.open=task.id===stage;summary.textContent=`${task.label} · 목표 ${task.target}m/s`;details.append(summary);for(const [label,key]of [['상점','positive'],['벌점','negative'],['검증 통과 기준','validation']]){const p=document.createElement('p');p.textContent=label+': '+task[key];details.append(p);}get('reward-tasks').append(details);rewardDetails[task.id]=details;}
 const worker=new RobotTeam();
-function configure(saved=model){chartTask=stage;renderChart();initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;carryRewardEvents=[];traceTime=0;viewPaused=false;const initial=createRobotWorld(stage,{...options,seed:31,disturbances:false,trainingSpec:trainingPreviewSpec(options,saved)});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};resolveReady?.(false);const ready=new Promise(resolve=>{resolveReady=resolve;});controls();worker.postMessage({type:'init',stage,focus:stage,saved,taskSettings:structuredClone(taskSettings),environment:{terrain:options.terrain,courseVersion:14,solverVersion:2,trainingGround:options.trainingGround,visionVersion:VISION_VERSION,bodyVersion:7,...combatSettings(options),...normalizeActuation(),...normalizeEvaluationSettings(),taskEnvironments:taskEnvironments(taskSettings)},robotCount:1});return ready;}
+function configure(saved=model){chartTask=stage;renderChart();initializing=true;training=false;viewSource='best';latestPreview=null;mode='trace';live=null;scene=null;pendingScene=null;carryRewardEvents=[];traceTime=0;viewPaused=false;const initial=createRobotWorld(stage,{...options,seed:31,disturbances:false,trainingSpec:trainingPreviewSpec(options,saved)});geometry=robotGeometry(initial);scene={trace:[initial.snapshot()],...geometry,obstacles:initial.obstacles,terrain:initial.terrain};resolveReady?.(false);const ready=new Promise(resolve=>{resolveReady=resolve;});controls();worker.postMessage({type:'init',stage,focus:stage,saved,taskSettings:structuredClone(taskSettings),environment:{terrain:options.terrain,courseVersion:14,solverVersion:2,trainingGround:options.trainingGround,visionVersion:VISION_VERSION,bodyVersion:ROBOT_BODY_VERSION,gravity:STANDARD_GRAVITY,...combatSettings(options),...normalizeActuation(),...normalizeEvaluationSettings(),taskEnvironments:taskEnvironments(taskSettings)},robotCount:1});return ready;}
 function settings(){worker.postMessage({type:'settings',interval:options.interval});}
 worker.onmessage=async({data})=>{
  if(data.type==='model'){if(!RobotLearner.valid(data.model)){status('모델 데이터 검증 실패');return;}knownTravel=data.model.id===model?.id?mergeTravelRecord(knownTravel,data.model.travelRecord):readTravelRecord(data.model.travelRecord);model=data.model;model.travelRecord=knownTravel;if(model.policyVersion>lastModelVersion){writeLog(`통합 모델 갱신 · v${model.policyVersion} · 검증을 거친 후보 채택`);lastModelVersion=model.policyVersion;}renderModel();persist();if(training&&model.attempts>trainingStartAttempt)void storage.publish(model);progress(lastRequest.completed,lastRequest.target,'학습');return;}

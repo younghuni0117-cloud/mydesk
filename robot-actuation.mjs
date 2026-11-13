@@ -2,12 +2,12 @@
 // actuator settings; both CEM and PPO use this same inner torque loop.
 export const CONTROL_KIND='joint-target-velocity-residual-pd-12joint-combat-v10';
 export const JOINT_SERVOS=Object.freeze({
- waist:Object.freeze({kp:200,kd:15}),neck:Object.freeze({kp:12,kd:1}),
- leftHip:Object.freeze({kp:180,kd:12}),rightHip:Object.freeze({kp:180,kd:12}),
- leftKnee:Object.freeze({kp:150,kd:10}),rightKnee:Object.freeze({kp:150,kd:10}),
- leftAnkle:Object.freeze({kp:100,kd:7}),rightAnkle:Object.freeze({kp:100,kd:7}),
- leftShoulder:Object.freeze({kp:45,kd:3}),rightShoulder:Object.freeze({kp:45,kd:3}),
- leftElbow:Object.freeze({kp:35,kd:2.5}),rightElbow:Object.freeze({kp:35,kd:2.5}),
+ waist:Object.freeze({kp:700,kd:52.5}),neck:Object.freeze({kp:55,kd:5}),
+ leftHip:Object.freeze({kp:630,kd:42}),rightHip:Object.freeze({kp:630,kd:42}),
+ leftKnee:Object.freeze({kp:525,kd:35}),rightKnee:Object.freeze({kp:525,kd:35}),
+ leftAnkle:Object.freeze({kp:350,kd:24.5}),rightAnkle:Object.freeze({kp:350,kd:24.5}),
+ leftShoulder:Object.freeze({kp:160,kd:11}),rightShoulder:Object.freeze({kp:160,kd:11}),
+ leftElbow:Object.freeze({kp:125,kd:9}),rightElbow:Object.freeze({kp:125,kd:9}),
 });
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 export const SERVO_PROFILES=Object.freeze({soft:{kp:.65,kd:.8},standard:{kp:1,kd:1},firm:{kp:1.35,kd:1.2}});

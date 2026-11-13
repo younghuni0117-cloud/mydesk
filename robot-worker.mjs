@@ -1,8 +1,8 @@
-import {loadTaskSettings} from './robot-task-settings.mjs?v=update80';
-import {observationScene} from './robot-transfer.mjs?v=update80';
-import {RobotLearner,ALLOWED_ATTEMPTS,evaluationSignature} from './robot-learning.mjs?v=update80';
-import {ParallelRollouts} from './robot-rollouts.mjs?v=update80';
-import {STAGES} from './robot-core.mjs?v=update80';
+import {loadTaskSettings} from './robot-task-settings.mjs?v=update81';
+import {observationScene} from './robot-transfer.mjs?v=update81';
+import {RobotLearner,ALLOWED_ATTEMPTS,evaluationSignature} from './robot-learning.mjs?v=update81';
+import {ParallelRollouts} from './robot-rollouts.mjs?v=update81';
+import {STAGES} from './robot-core.mjs?v=update81';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,interval=20,lastCandidate=null,lastTrial=null,rollouts=null,robotCount=1,lastScenes=[];
 let activeGeneration=0,evaluationPromise=null;const evaluationCache=new Map();
 const emit=data=>postMessage({...data,generation:activeGeneration});

@@ -15,8 +15,8 @@ test('response profiles change actual restoring torque without changing mass or 
   const w=new RobotWorld('balance',{servoProfile:profile,autoPush:false,spawnTilt:0});
   w.parts.head.setAngle(.1);w.torqueLoad=0;w.applyActuation(DT/12);
   results[profile]=Math.abs(w.activeTorques[JOINTS.indexOf('neck')]);
-  assert.equal(w.motors.find(m=>m.name==='neck').torque,8);
-  assert.ok(Math.abs(w.bodies.reduce((s,b)=>s+b.body.getMass(),0)-19.9)<1e-8);
+  assert.equal(w.motors.find(m=>m.name==='neck').torque,35);
+  assert.ok(Math.abs(w.bodies.reduce((s,b)=>s+b.body.getMass(),0)-70)<1e-8);
  }
  assert.ok(Math.abs(results.soft/results.standard-.65)<1e-12);
  assert.ok(Math.abs(results.firm/results.standard-1.35)<1e-12);

@@ -22,7 +22,7 @@ test('100 N·s settings reach the actual hammer schedule without the legacy 30 c
 });
 test('terrain status begins with the displayed task and uses the requested slash-separated format',()=>{
  const terrain=makeTrainingTerrain({...groundTestSpec(0),course:'highSteps',step:.141,friction:.86});
- assert.equal(trainingStatusLines(terrain,{mass:19.9},0,STAGES.balance.label)[0],'균형 잡기 / 높은 오르막 계단 / 높이 14.1cm / 마찰 0.86 / 질량 +0.0%');
+ assert.equal(trainingStatusLines(terrain,{mass:70},0,STAGES.balance.label)[0],'균형 잡기 / 높은 오르막 계단 / 높이 14.1cm / 마찰 0.86 / 질량 +0.0%');
 });
 test('training stair limits accept 0–50 cm for both directions and low steps never exceed the selected maximum',()=>{
  for(const maximum of [0,.03,.5])for(const level of [.15,1]){
@@ -31,7 +31,7 @@ test('training stair limits accept 0–50 cm for both directions and low steps n
    const spec=trainingCondition(i,42,{stepMax:maximum},level);if(!spec.course.includes('Steps'))continue;
    assert.ok(spec.step>=0&&spec.step<=maximum);
    const terrain=makeTrainingTerrain(spec);assert.equal(terrain.stairHeight,spec.step);assert.ok(terrain.segments.every(s=>Number.isFinite(s.y0)&&Number.isFinite(s.y1)));
-   if(maximum===0){assert.ok(terrain.segments.every(s=>Math.abs(s.y0-.16)<1e-8&&Math.abs(s.y1-.16)<1e-8));assert.match(trainingStatusLines(terrain,{mass:19.9})[0],/높이 0cm/);}
+   if(maximum===0){assert.ok(terrain.segments.every(s=>Math.abs(s.y0-.16)<1e-8&&Math.abs(s.y1-.16)<1e-8));assert.match(trainingStatusLines(terrain,{mass:70})[0],/높이 0cm/);}
    const world=new RobotWorld('balance',{terrain:'training',trainingSpec:spec,disturbances:false});assert.ok(world.bodies.every(p=>Number.isFinite(p.body.getPosition().y)));
   }
  }
