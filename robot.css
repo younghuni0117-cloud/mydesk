@@ -260,3 +260,15 @@ body[data-page=robot].robot-wide-fit .robot-chart svg{height:140px}
 .robot-fight-hud>div{display:flex;align-items:center;gap:5px;min-width:0}.robot-fight-hud progress{width:100%;min-width:15px;height:8px;accent-color:#527fa2}.robot-fight-hud>div:last-of-type progress{accent-color:#be8d72}.robot-fight-hud span,.robot-fight-hud b{white-space:nowrap}.robot-fight-hud>strong{font-variant-numeric:tabular-nums;font-size:13px}.robot-fight-hud p{grid-column:1/-1;min-height:18px;margin:0;text-align:center;font-size:14px;font-weight:600;color:#a34f4a}
 .robot-combat-panel{padding:8px 10px;border:1px solid #dce4eb;border-radius:6px;background:#fbfcfd;font-size:12px}.robot-combat-heading{display:flex;justify-content:space-between;gap:8px;color:#526b83}.robot-combat-heading span{font-size:11px;color:#8998a8}.robot-combat-panel table{width:100%;border-collapse:collapse;margin:5px 0}.robot-combat-panel :is(td,th){text-align:right;padding:2px;font-weight:400}.robot-combat-panel th:first-child{text-align:left;color:#8090a0}.robot-combat-panel p{font-size:10px;margin:4px 0 0;min-height:16px}.robot-fighter-selectors{display:grid;grid-template-columns:1fr 1fr;gap:7px}.robot-fighter-selectors label{display:flex!important;flex-direction:column;align-items:stretch!important;gap:4px!important}.robot-fighter-selectors select{width:100%}#rb-fight-restart{width:100%;min-height:34px;border:1px solid #ccd8e4;border-radius:5px;font-size:12px}
 @media(max-width:599px){.robot-fight-hud{right:9px;gap:5px;font-size:9px}.robot-fight-hud>div{gap:3px}.robot-fight-hud>strong{font-size:11px}.robot-fight-hud p{font-size:12px}}
+
+/* Put compact chart labels inside the plot; keep only three aligned y ticks. */
+body[data-page=robot] .robot-chart-plot{padding-top:32px;box-sizing:border-box;grid-template-rows:minmax(0,1fr)}
+body[data-page=robot] .robot-chart-heading{position:absolute;top:1px;left:48px;right:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:400}
+body[data-page=robot] .robot-chart-legend{position:absolute;top:15px;left:48px;right:4px;margin:0;line-height:14px}
+body[data-page=robot] .robot-controls .robot-chart :is(.robot-chart-heading,.robot-chart-legend,.robot-chart-x,.robot-chart-y){font-family:inherit;font-size:10px;line-height:14px;font-variant-numeric:tabular-nums}
+body[data-page=robot] .robot-chart svg,body[data-page=robot].robot-wide-fit .robot-chart svg{height:100%;min-height:0}
+body[data-page=robot] .robot-chart-y span:nth-child(1){top:5%}
+body[data-page=robot] .robot-chart-y span:nth-child(2){top:50%}
+body[data-page=robot] .robot-chart-y span:nth-child(3){top:95%}
+body[data-page=robot] .robot-chart-x{margin-top:0;padding-top:0;line-height:14px}
+body[data-page=robot] .robot-chart-tooltip{top:34px}

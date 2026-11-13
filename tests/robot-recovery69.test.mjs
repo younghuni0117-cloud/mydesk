@@ -8,9 +8,9 @@ const state={dt:1,upright:false,motionQuality:.6,quality:.6,height:.74,angle:0,s
 const score=s=>Object.values(rewardBreakdown('recover',{...state,...s})).reduce((a,b)=>a+b,0);
 assert.ok(score({})<0,'crouching still is not rewarded');
 assert.equal(score({speed:.5}),score({}),'necessary rolling is allowed');
-assert.ok(score({recoveryHeightProgress:.2,postureProgress:.1})>0,'getting up earns dense progress');
-assert.ok(score({recoveryHeightProgress:-.2})<score({}),'reversing progress costs the same potential');
-assert.ok(score({recoveryStable:true,upright:true,motionQuality:1})>0);
+assert.ok(score({recoveryPotentialProgress:.2})>0,'getting up earns dense progress');
+assert.ok(score({recoveryPotentialProgress:-.2})<score({}),'reversing progress costs the same potential');
+assert.ok(score({recoveryStable:true,upright:true,motionQuality:1,recoveryPotential:1})>0);
 assert.equal(rewardBreakdown('recover',{...state,recovered:true,firstRecovery:true}).recovery,30);
 assert.equal(rewardBreakdown('recover',{...state,recovered:true,firstRecovery:false}).recovery,0);
 const standing={height:.9,angle:0,footDown:true,bodyDown:false,vx:0,vy:0,angularSpeed:0};
