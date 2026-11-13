@@ -1,7 +1,7 @@
-import {recoveryAssistLocation} from './robot-recovery.mjs?v=update79';
-import {normalizeActuation} from './robot-actuation.mjs?v=update79';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update79';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update79';
+import {recoveryAssistLocation} from './robot-recovery.mjs?v=update80';
+import {normalizeActuation} from './robot-actuation.mjs?v=update80';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update80';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update80';
 
 const common={recoveryEarlyStop:false,recoveryAssistLocation:'shoulder',recoveryAssistSeconds:3,recoveryAssistTimeAutoReduce:false,recoveryAssistForce:0,recoveryAssistAutoReduce:true,algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({
@@ -18,7 +18,7 @@ const integer=(x,lo,hi,fallback)=>Number.isInteger(Number(x))&&Number(x)>=lo&&Nu
 export function taskProfile(task,raw={}){
  const d=Object.hasOwn(TASK_DEFAULTS,task)?TASK_DEFAULTS[task]:TASK_DEFAULTS.balance,p={...d};
  for(const k of TASK_SETTING_KEYS)if(raw?.[k]!==undefined)p[k]=raw[k];
- p.recoveryEarlyStop=p.recoveryEarlyStop===true;p.recoveryAssistLocation=recoveryAssistLocation(p.recoveryAssistLocation);const assist=Number(p.recoveryAssistForce);p.recoveryAssistForce=Number.isFinite(assist)&&assist>=0&&assist<=1000?assist:d.recoveryAssistForce;p.recoveryAssistAutoReduce=p.recoveryAssistAutoReduce!==false;const assistSeconds=Number(p.recoveryAssistSeconds);p.recoveryAssistSeconds=Number.isFinite(assistSeconds)&&assistSeconds>=0&&assistSeconds<=5?Math.round(assistSeconds*10)/10:d.recoveryAssistSeconds;p.recoveryAssistTimeAutoReduce=p.recoveryAssistTimeAutoReduce===true;
+ p.recoveryEarlyStop=p.recoveryEarlyStop===true;p.recoveryAssistLocation=recoveryAssistLocation(p.recoveryAssistLocation);const assist=Number(p.recoveryAssistForce);p.recoveryAssistForce=Number.isFinite(assist)&&assist>=0&&assist<=1000?assist:d.recoveryAssistForce;p.recoveryAssistAutoReduce=p.recoveryAssistAutoReduce!==false;const assistSeconds=Number(p.recoveryAssistSeconds);p.recoveryAssistSeconds=Number.isFinite(assistSeconds)&&assistSeconds>=0&&assistSeconds<=20?Math.round(assistSeconds*100)/100:d.recoveryAssistSeconds;p.recoveryAssistTimeAutoReduce=p.recoveryAssistTimeAutoReduce===true;
  p.trainingSeconds=integer(p.trainingSeconds,1,120,d.trainingSeconds);
  p.validationSeconds=integer(p.validationSeconds,6,120,d.validationSeconds);
  p.monitorSeconds=integer(p.monitorSeconds,10,3600,d.monitorSeconds);

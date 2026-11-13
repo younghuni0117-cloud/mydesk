@@ -9,7 +9,7 @@ test('successful termination requires genuine recovery and two continuous second
  const ready={enabled:true,recoveries:1,finalUpright:true,stableTime:2,unassistedTime:2};assert.equal(recoveryEarlyStopReady(ready),true);
  for(const override of [{enabled:false},{recoveries:0},{finalUpright:false},{stableTime:1.99},{unassistedTime:1.99}])assert.equal(recoveryEarlyStopReady({...ready,...override}),false);
  const w=standingTrial();while(!w.done)w.step(zero);assert.equal(w.terminationReason,'recovered');assert.ok(Math.abs(w.time-2)<1e-6);assert.equal(w.rewardTerms.failure,undefined);assert.ok(w.reward>0);
- const p=updateRecoveryPractice({}, {...w.metrics(),recoveryAssistAutoReduce:true,recoveryAssistTimeAutoReduce:true});assert.equal(p.assistReductionN,1);assert.equal(p.assistTimeReduction,.1);assert.equal(p.successRate,.05);
+ const p=updateRecoveryPractice({}, {...w.metrics(),recoveryAssistAutoReduce:true,recoveryAssistTimeAutoReduce:true});assert.equal(p.assistReductionN,1);assert.equal(p.assistTimeReduction,.01);assert.equal(p.successRate,.05);
  const helped=standingTrial();helped.applyRecoveryAssist=()=>{helped.recoveryAssistForce=helped.time<1?10:0;};while(!helped.done)helped.step(zero);assert.equal(helped.terminationReason,'recovered');assert.ok(helped.time>=3-1e-6);
 });
 test('unchecked option and integrated execution finish at full duration, and unstable standing resets the timer',()=>{
