@@ -1,8 +1,8 @@
-import {loadTaskSettings} from './robot-task-settings.mjs?v=update72';
-import {observationScene} from './robot-transfer.mjs?v=update72';
-import {RobotLearner,ALLOWED_ATTEMPTS,evaluationSignature} from './robot-learning.mjs?v=update72';
-import {ParallelRollouts} from './robot-rollouts.mjs?v=update72';
-import {STAGES} from './robot-core.mjs?v=update72';
+import {loadTaskSettings} from './robot-task-settings.mjs?v=update73';
+import {observationScene} from './robot-transfer.mjs?v=update73';
+import {RobotLearner,ALLOWED_ATTEMPTS,evaluationSignature} from './robot-learning.mjs?v=update73';
+import {ParallelRollouts} from './robot-rollouts.mjs?v=update73';
+import {STAGES} from './robot-core.mjs?v=update73';
 let learner=null,stage='balance',focus='balance',initToken=0,job=null,interval=20,lastCandidate=null,lastTrial=null,rollouts=null,robotCount=1,lastScenes=[];
 let activeGeneration=0,evaluationPromise=null;const evaluationCache=new Map();
 const emit=data=>postMessage({...data,generation:activeGeneration});
@@ -61,7 +61,7 @@ self.onmessage=async({data})=>{
     const result=learner.completeTrial(prepared[i],trials[i]);completed++;
     if(i===0){lastCandidate=result.weights;lastTrial=result;}
     if(record)lastScenes[i]=observationScene(trials[i]);
-    emit({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},algorithmAttempts:{...learner.algorithmAttempts},task:result.task,score:result.score,robotCount,travelRecord:learner.travelRecord,summary:record?{trainingSpec:trials[i].metrics.trainingSpec,attempt:learner.attempts,time:trials[i].metrics.time,reward:trials[i].metrics.reward,pushes:trials[i].metrics.pushes,terminationReason:trials[i].metrics.terminationReason}:null,remainingMs:(Date.now()-started)/completed*(target-completed)});
+    emit({type:'progress',completed,target,attempts:learner.attempts,taskAttempts:{...learner.taskAttempts},algorithmAttempts:{...learner.algorithmAttempts},task:result.task,score:result.score,trainingSeconds:result.trainingSeconds,robotCount,travelRecord:learner.travelRecord,summary:record?{trainingSpec:trials[i].metrics.trainingSpec,attempt:learner.attempts,time:trials[i].metrics.time,reward:trials[i].metrics.reward,pushes:trials[i].metrics.pushes,terminationReason:trials[i].metrics.terminationReason}:null,remainingMs:(Date.now()-started)/completed*(target-completed)});
    }
    if(record)preview();
    if(!current.cancelled&&learner.pending.length>=learner.batchSize){emit({type:'phase',phase:'validation',completed,target});await learner.checkpointAsync(yieldControl,()=>job===current&&!current.cancelled,rollouts.ready?rollouts:null,completed===target);if(job!==current)return;sendModel();}

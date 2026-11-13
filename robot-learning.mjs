@@ -1,16 +1,17 @@
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update72';
-import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update72';
-import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update72';
-import {normalizeActuation} from './robot-actuation.mjs?v=update72';
-import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update72';
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update72';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update72';
-import {compareAbilities} from './robot-performance.mjs?v=update72';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update72';
-import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update72';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update72';
-import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update72';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update72';
+import {loadTrainingRewards,recordTrainingReward} from './robot-training-rewards.mjs?v=update73';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update73';
+import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update73';
+import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update73';
+import {normalizeActuation} from './robot-actuation.mjs?v=update73';
+import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update73';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update73';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update73';
+import {compareAbilities} from './robot-performance.mjs?v=update73';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update73';
+import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update73';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update73';
+import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update73';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update73';
 export const MODEL_VERSION=10;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -47,6 +48,7 @@ export class RobotLearner {
   this.terrainReview=null;this.validationBank=null;this.generalization=null;this.searchArchive=null;this.searchState={lastResetAttempt:saved?.attempts||0,restarts:0};this.lastFullValidationAttempt=0;this.algorithm='ppo';this.algorithmAttempts={cem:0,ppo:0};this.ppo=null;this.cohortStart=0;this.curriculum=Object.fromEntries(stages.map(s=>[s,.15]));this.trainingCurriculum=true;this.attempts=0;this.taskAttempts=Object.fromEntries(stages.map(s=>[s,0]));this.modelAttempt=0;this.revision=0;this.policyVersion=0;this.history=[];this.pending=[];this.focus='balance';
   if(RobotLearner.valid(saved))for(const k of ['id','weights','mean','spread','attempts','taskAttempts','modelAttempt','revision','policyVersion','history','algorithm','algorithmAttempts','ppo','pending','focus','cohortStart','curriculum','searchSeed'])this[k]=structuredClone(saved[k]);
 
+  this.trainingRewards=loadTrainingRewards(saved?.trainingRewards,stages);
   this.opponentPool=(saved?.opponentPool||[]).filter(vector).slice(-3).map(w=>[...w]);
   this.taskSettings=saved?.taskSettings?loadTaskSettings({taskSettings:saved.taskSettings}):null;
   if(saved?.terrainReview&&stages.includes(saved.terrainReview.task)&&abilityRecord(saved.terrainReview.ability,5))this.terrainReview=structuredClone(saved.terrainReview);
@@ -130,6 +132,7 @@ export class RobotLearner {
   if(prepared.index!==this.attempts)throw Error('학습 결과의 순서가 일치하지 않습니다.');
   const {weights,task,seed,record}=prepared,result=trial.metrics;this.attempts++;this.taskAttempts[task]++;this.algorithmAttempts[this.algorithm]++;this.pending.push({weights,score:task==='balance'?(result.done&&result.terminationReason==='duration'&&result.falls===0?Math.max(0,20*result.upright*result.time+2*(result.longestUpright||0)+.01*result.reward):Math.min(-REWARDS.balanceFall,result.reward)):result.reward,task,reference:prepared.reference,group:prepared.group});if(this.algorithm==='ppo')this.ppo.buffer.push(...trial.experience);
 
+  recordTrainingReward(this.trainingRewards,task,this.taskAttempts[task],result.reward,JSON.stringify(this.environment),prepared.options.observationSeconds??STAGES[task].duration);
   this.travelRecord=nextTravelRecord(this.travelRecord,result,{attempt:this.attempts,task,terrain:result.forwardContact?.terrain||this.environment.terrain||'meadow'});
   return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,spawnRange:prepared.options.spawnRange,endOnFall:prepared.options.endOnFall,spawnTilt:prepared.options.spawnTilt,trainingSpec:prepared.options.trainingSpec,combatDrill:prepared.options.combatDrill,opponentWeights:prepared.options.opponentWeights,trainingSeconds:prepared.options.observationSeconds,terrainVariant:prepared.options.terrainVariant,scene:record?trial:null};
  }
@@ -176,5 +179,5 @@ export class RobotLearner {
   return accepted;
  }
  checkpoint(){if(!this.pending.length)return;const winner=this.candidate(true);if(!winner)return;this.adopt(winner.weights,evaluateAbilities(winner.weights,this.environment));this.updateDistribution();}
- snapshot(){return {opponentPool:this.opponentPool.map(w=>[...w]),evaluationPending:this.evaluationPending,terrainReview:structuredClone(this.terrainReview),...(this.taskSettings?{taskSettings:structuredClone(this.taskSettings)}:{}),trainingBalance:{...this.trainingBalance},travelRecord:structuredClone(this.travelRecord),searchState:structuredClone(this.searchState),searchArchive:structuredClone(this.searchArchive),generalization:structuredClone(this.generalization),validationBank:structuredClone(this.validationBank),lastFullValidationAttempt:this.lastFullValidationAttempt,version:MODEL_VERSION,skillsVersion:2,searchSeed:this.searchSeed,rewardVersion:REWARD_VERSION,algorithm:this.algorithm,algorithmAttempts:{...this.algorithmAttempts},ppo:this.ppo?structuredClone(this.ppo):null,pending:structuredClone(this.pending),focus:this.focus,cohortStart:this.cohortStart,curriculum:{...this.curriculum},goalReward:this.goalReward,physicsVersion:7,policyKind:POLICY_KIND,environment:{...this.environment},id:this.id,weights:[...this.weights],mean:[...this.mean],spread:[...this.spread],attempts:this.attempts,taskAttempts:{...this.taskAttempts},modelAttempt:this.modelAttempt,revision:this.revision,policyVersion:this.policyVersion,abilities:structuredClone(this.abilities),history:structuredClone(this.history),updatedAt:new Date().toISOString()};}
+ snapshot(){return {trainingRewards:structuredClone(this.trainingRewards),opponentPool:this.opponentPool.map(w=>[...w]),evaluationPending:this.evaluationPending,terrainReview:structuredClone(this.terrainReview),...(this.taskSettings?{taskSettings:structuredClone(this.taskSettings)}:{}),trainingBalance:{...this.trainingBalance},travelRecord:structuredClone(this.travelRecord),searchState:structuredClone(this.searchState),searchArchive:structuredClone(this.searchArchive),generalization:structuredClone(this.generalization),validationBank:structuredClone(this.validationBank),lastFullValidationAttempt:this.lastFullValidationAttempt,version:MODEL_VERSION,skillsVersion:2,searchSeed:this.searchSeed,rewardVersion:REWARD_VERSION,algorithm:this.algorithm,algorithmAttempts:{...this.algorithmAttempts},ppo:this.ppo?structuredClone(this.ppo):null,pending:structuredClone(this.pending),focus:this.focus,cohortStart:this.cohortStart,curriculum:{...this.curriculum},goalReward:this.goalReward,physicsVersion:7,policyKind:POLICY_KIND,environment:{...this.environment},id:this.id,weights:[...this.weights],mean:[...this.mean],spread:[...this.spread],attempts:this.attempts,taskAttempts:{...this.taskAttempts},modelAttempt:this.modelAttempt,revision:this.revision,policyVersion:this.policyVersion,abilities:structuredClone(this.abilities),history:structuredClone(this.history),updatedAt:new Date().toISOString()};}
 }

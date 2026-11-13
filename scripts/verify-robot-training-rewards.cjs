@@ -1,0 +1,23 @@
+// The shared REST model is mocked; browser checks never overwrite real learning.
+const {chromium}=require('playwright'),fs=require('node:fs'),assert=require('node:assert/strict');
+(async()=>{
+ const remote=process.env.PAGE_BASE?.startsWith('https:');const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox'],...(remote?{proxy:{server:process.env.HTTPS_PROXY||process.env.HTTP_PROXY}}:{})});
+ try{
+  let model=JSON.parse(fs.readFileSync('/tmp/robot70-baseline.json','utf8')),revision=1;const originalId=model.id;
+  const c=await browser.newContext({viewport:{width:1440,height:1000}});
+  await c.route('**/rest/v1/**',async r=>{const q=r.request();if(!q.url().includes('robot_shared_model'))return r.fulfill({json:[]});if(q.method()==='POST'){model=q.postDataJSON().model;revision++;return r.fulfill({json:[{id:'main',model,revision}]});}return r.fulfill({json:[q.url().includes('select=revision')?{revision}:{id:'main',model,revision}]});});
+  await c.addInitScript(()=>{localStorage.setItem('calendar-preserved','yes');localStorage.setItem('blog-preserved','yes');window.__rewardSamples=[];const NativeWorker=Worker;window.Worker=class extends NativeWorker{constructor(...args){super(...args);this.addEventListener('message',({data:d})=>{if(d.type==='progress')requestAnimationFrame(()=>requestAnimationFrame(()=>window.__rewardSamples.push({task:d.task,attempts:d.taskAttempts[d.task],score:d.score,title:document.getElementById('rb-chart-title')?.textContent,path:document.getElementById('rb-chart-best')?.getAttribute('d')})));});}};});
+  const p=await c.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto((process.env.PAGE_BASE||'http://127.0.0.1:8003')+'/robot.html',{waitUntil:'networkidle'});
+  await p.waitForFunction(()=>!document.getElementById('rb-train').disabled,null,{timeout:120000});
+  await p.locator('#rb-focus').selectOption('punch');await p.locator('#rb-details > summary').click();assert.equal(await p.locator('#rb-graph-metric').inputValue(),'training');
+  await p.locator('#rb-mix-mode').selectOption('selected');await p.waitForFunction(()=>!document.getElementById('rb-train').disabled,null,{timeout:120000});await p.locator('#rb-training-seconds').fill('1');await p.locator('#rb-training-seconds').dispatchEvent('change');await p.locator('#rb-details > summary').click();await p.locator('#rb-count').selectOption('100');await p.locator('#rb-train').click();
+  await p.waitForFunction(()=>window.__rewardSamples.length>=3,null,{timeout:120000});const samples=await p.evaluate(()=>window.__rewardSamples.slice(0,3));console.log(JSON.stringify({samples}));assert.ok(samples.every(s=>s.task==='punch'&&s.path?.startsWith('M')&&s.title.includes('최근')));assert.ok(new Set(samples.map(s=>s.path)).size>1);
+  await p.locator('#rb-train').click();await p.waitForFunction(()=>document.getElementById('rb-train').textContent==='학습 시작',null,{timeout:120000});
+  assert.equal(model.id,originalId);assert.ok(model.trainingRewards.punch.points.length>=3);assert.ok(model.history.length);const count=model.trainingRewards.punch.points.length;
+  await p.locator('#rb-details > summary').click();await p.locator('#rb-graph-metric').selectOption('validation');assert.match(await p.locator('#rb-chart-title').innerText(),/평균 보상/);assert.equal(await p.locator('#rb-graph-version').isDisabled(),false);await p.locator('#rb-graph-metric').selectOption('training');await p.locator('#rb-graph-range').selectOption('500');await p.locator('#rb-details > summary').click();
+  for(const [width,height]of [[390,844],[690,829],[900,600],[1440,1000]]){await p.setViewportSize({width,height});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no overflow '+width);assert.equal(await p.locator('#rb-run').isVisible(),true);}
+  await p.setViewportSize({width:390,height:844});await p.locator('.robot-chart').screenshot({path:'/tmp/robot73-reward-chart.png'});
+  await p.reload({waitUntil:'networkidle'});await p.waitForFunction(()=>!document.getElementById('rb-train').disabled,null,{timeout:120000});assert.match(await p.locator('#rb-chart-title').innerText(),/최근/);assert.equal(await p.locator('#rb-graph-metric').inputValue(),'training');assert.equal(model.trainingRewards.punch.points.length,count);assert.equal(await p.evaluate(()=>localStorage.getItem('calendar-preserved')),'yes');assert.equal(await p.evaluate(()=>localStorage.getItem('blog-preserved')),'yes');assert.deepEqual(errors,[]);
+  console.log(JSON.stringify({passed:true,perTrialChartUpdates:samples.length,retainedPoints:count,legacyModelIdPreserved:true,reload:true,errors}));
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1)});
