@@ -1,7 +1,7 @@
-import {recoveryAssistLocation} from './robot-recovery.mjs?v=update82';
-import {normalizeActuation} from './robot-actuation.mjs?v=update82';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update82';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update82';
+import {recoveryAssistLocation} from './robot-recovery.mjs?v=update83';
+import {normalizeActuation} from './robot-actuation.mjs?v=update83';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update83';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update83';
 
 const common={recoveryEarlyStop:false,recoveryAssistLocation:'shoulder',recoveryAssistSeconds:3,recoveryAssistTimeAutoReduce:false,recoveryAssistForce:0,recoveryAssistAutoReduce:true,algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({

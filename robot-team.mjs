@@ -1,7 +1,7 @@
 // A single coordinator owns the learner. Extra workers only collect physics
 // rollouts; there are no independent models or winner-picking between robots.
 export class RobotTeam {
- constructor(factory=()=>new Worker(new URL('./robot-worker.mjs?v=update82',import.meta.url),{type:'module'})){
+ constructor(factory=()=>new Worker(new URL('./robot-worker.mjs?v=update83',import.meta.url),{type:'module'})){
   this.factory=factory;this.lanes=[];this.generation=0;this.settings={};this.model=null;this.running=false;
  }
  emit(data){this.onmessage?.({data});}

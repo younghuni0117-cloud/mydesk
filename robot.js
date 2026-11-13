@@ -1,33 +1,33 @@
-import {ROBOT_BODY_VERSION,STANDARD_GRAVITY} from './robot-body.mjs?v=update82';
-import {RECOVERY_ASSIST_LOCATIONS,recoveryAssistSettings,recoveryLyingProbability} from './robot-recovery.mjs?v=update82';
-import {recordTrainingReward,trainingRewardRows} from './robot-training-rewards.mjs?v=update82';
-import {DRILL_LABELS,combatResultText,drawCombatScene} from './robot-combat-view.mjs?v=update82';
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update82';
-import {trainingStatusLines} from './robot-training-view.mjs?v=update82';
-import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=update82';
-import {normalizeGround} from './robot-training-ground.mjs?v=update82';
-import {trainingPreviewSpec} from './robot-training-preview.mjs?v=update82';
-import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=update82';
-import {normalizeActuation} from './robot-actuation.mjs?v=update82';
-import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=update82';
-import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=update82';
-import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=update82';
-import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=update82';
-import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=update82';
-import {hammerEffects,drawHammer} from './robot-impact.mjs?v=update82';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update82';
-import {abilitySummary} from './robot-performance.mjs?v=update82';
-import {RobotSharedStorage} from './robot-shared-storage.mjs?v=update82';
-import {REWARD_VERSION} from './robot-rewards.mjs?v=update82';
-import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=update82';
-import {rewardHelp} from './robot-rewards.mjs?v=update82';
-import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=update82';
-import {RobotTeam} from './robot-team.mjs?v=update82';
-import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=update82';
-import {drawRobotSkin} from './robot-skin.mjs?v=update82';
-import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=update82';
-import {RobotWorld,createRobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=update82';
-import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=update82';
+import {ROBOT_BODY_VERSION,STANDARD_GRAVITY} from './robot-body.mjs?v=update83';
+import {RECOVERY_ASSIST_LOCATIONS,recoveryAssistSettings,recoveryLyingProbability} from './robot-recovery.mjs?v=update83';
+import {recordTrainingReward,trainingRewardRows} from './robot-training-rewards.mjs?v=update83';
+import {DRILL_LABELS,combatResultText,drawCombatScene} from './robot-combat-view.mjs?v=update83';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update83';
+import {trainingStatusLines} from './robot-training-view.mjs?v=update83';
+import {cameraPreferences,cameraFrame,reanchorCamera} from './robot-camera.mjs?v=update83';
+import {normalizeGround} from './robot-training-ground.mjs?v=update83';
+import {trainingPreviewSpec} from './robot-training-preview.mjs?v=update83';
+import {TASK_DEFAULTS,loadTaskSettings,taskProfile,taskEnvironments,applySharedTaskEnvironment} from './robot-task-settings.mjs?v=update83';
+import {normalizeActuation} from './robot-actuation.mjs?v=update83';
+import {normalizeBalanceTraining,fullTrialPeriod,effectiveTrainingPush} from './robot-training-options.mjs?v=update83';
+import {createStudyLog,hitDescription,trialDescription,readTravelRecord,nextTravelRecord,mergeTravelRecord} from './robot-study.mjs?v=update83';
+import {drawRewardPopups,rewardTotals} from './robot-reward-feedback.mjs?v=update83';
+import {drawEyeSensorGauge} from './robot-sensor-view.mjs?v=update83';
+import {sampleEnvironment,VISION_VERSION} from './robot-sensors.mjs?v=update83';
+import {hammerEffects,drawHammer} from './robot-impact.mjs?v=update83';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update83';
+import {abilitySummary} from './robot-performance.mjs?v=update83';
+import {RobotSharedStorage} from './robot-shared-storage.mjs?v=update83';
+import {REWARD_VERSION} from './robot-rewards.mjs?v=update83';
+import {normalizeCommand,commandLabel} from './robot-goals.mjs?v=update83';
+import {rewardHelp} from './robot-rewards.mjs?v=update83';
+import {drawTerrainScene,terrainArtReady} from './robot-scenery.mjs?v=update83';
+import {RobotTeam} from './robot-team.mjs?v=update83';
+import {TERRAINS,terrainHeight} from './robot-terrain.mjs?v=update83';
+import {drawRobotSkin} from './robot-skin.mjs?v=update83';
+import {traceFrame,interpolateFrame,chartDomain,taskChartRows,playbackFrame,previewWindow} from './robot-view.mjs?v=update83';
+import {RobotWorld,createRobotWorld,STAGES,POLICY_SIZE,DT,robotGeometry,clamp,normalizePushSettings} from './robot-core.mjs?v=update83';
+import {RobotLearner,ALLOWED_ATTEMPTS,migrateModel} from './robot-learning.mjs?v=update83';
 const get=id=>document.getElementById(`rb-${id}`),canvas=get('canvas'),ctx=canvas.getContext('2d');
 const storage=new RobotSharedStorage(migrateModel),loaded=await storage.load();let model=loaded.model,recoveryBlocked=loaded.blocked;let knownTravel=readTravelRecord(model?.travelRecord);
 let skin='explorer';try{const saved=localStorage.getItem('mydesk.robot.skin');if(['explorer','tin','space','hiker','doyun','seona'].includes(saved))skin=saved;}catch{}
@@ -230,7 +230,7 @@ function draw(data){
 
  // Independent environments are displayed about one robot height apart.
  for(const [i,actor]of actors.entries()){const Xlocal=x=>X(x+actor.offset),shift=terrainHeight(actor.meta.terrain.segments,0)-terrainHeight(meta.terrain.segments,0),Ylocal=y=>Y(y-shift);if(meta.terrain.kind==='training'&&actors.length>1){ctx.save();const left=i===0?0:X(actor.offset-1.1),right=i===actors.length-1?W:X(actor.offset+1.1);ctx.beginPath();ctx.rect(left,0,right-left,H);ctx.clip();drawTerrainScene(ctx,{W,H,scale,camera,ground,terrain:actor.meta.terrain,obstacles:actor.meta.obstacles||[],X:Xlocal,Y:Ylocal});ctx.restore();}if(actor.frame.facing===-1){ctx.save();ctx.translate(W,0);ctx.scale(-1,1);drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts.map(p=>[-p[0],p[1],-p[2]]),x=>W-Xlocal(-x),Ylocal,scale,fighterSkins.right);ctx.restore();}else drawRobotSkin(ctx,actor.meta.parts,actor.frame.parts,Xlocal,Ylocal,scale,fighting?fighterSkins.left:skin);}
- drawCombatScene(frame,X,Y,scale);
+ drawCombatScene(ctx,frame,X,Y,scale);
  const actor=actors[0];
  if(options.sensorVisible){const point=name=>{const pose=actor.frame.parts[actor.meta.parts.findIndex(p=>p.name===name)];return {x:pose[0],y:pose[1],angle:pose[2]};},pelvis=point('pelvis'),sensors=sampleEnvironment(actor.meta.terrain,actor.meta.obstacles||[],pelvis,{left:point('leftFoot'),right:point('rightFoot')},point('head'),(actor.frame.metrics?.targetSpeed??0)<0?-1:1);drawEyeSensorGauge(ctx,sensors,X,Y,scale);}
  for(const robot of actors){const Xlocal=x=>X(x+robot.offset),shift=terrainHeight(robot.meta.terrain.segments,0)-terrainHeight(meta.terrain.segments,0),Ylocal=y=>Y(y-shift);for(const effect of hammerEffects(robot.frame,robot.meta))drawHammer(ctx,effect,Xlocal,Ylocal,scale);}
