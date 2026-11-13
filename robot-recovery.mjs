@@ -22,14 +22,14 @@ export function recoveryStart(random,options={}){
 export function updateRecoveryPractice(previous={},metrics){
  const success=['duration','recovered'].includes(metrics.terminationReason)&&metrics.recoveries>=1&&metrics.finalUpright===true&&!metrics.recovering&&metrics.stableTime+1e-6>=2;
  const result={...previous,trials:(previous.trials||0)+1,successRate:(previous.successRate||0)*.95+(success?.05:0)};
- if(success&&metrics.recoveryAssistAutoReduce===true)result.assistReductionN=clamp(recoveryForceReduction(previous,metrics.recoveryAssistBaseForce??120)+1,0,1000);
+ if(success&&metrics.recoveryAssistAutoReduce===true)result.assistReductionN=clamp(recoveryForceReduction(previous,metrics.recoveryAssistBaseForce??120)+1,0,5000);
  if(success&&metrics.recoveryAssistTimeAutoReduce===true)result.assistTimeReduction=Math.min(20,Math.round(((previous.assistTimeReduction||0)+.01)*100)/100);
  return result;
 }
 const numberIn=(value,fallback,max)=>Number.isFinite(Number(value))?clamp(Number(value),0,max):fallback;
-export const recoveryForceReduction=(practice={},maximum=120)=>numberIn(practice.assistReductionN,maximum*(1-numberIn(practice.assistScale,1,1)),1000);
+export const recoveryForceReduction=(practice={},maximum=120)=>numberIn(practice.assistReductionN,maximum*(1-numberIn(practice.assistScale,1,1)),5000);
 export function recoveryAssistSettings(profile={},practice={}){
- const base=numberIn(profile.recoveryAssistForce,120,1000),seconds=numberIn(profile.recoveryAssistSeconds,3,20),auto=profile.recoveryAssistAutoReduce!==false,timeAuto=profile.recoveryAssistTimeAutoReduce===true;
+ const base=numberIn(profile.recoveryAssistForce,120,5000),seconds=numberIn(profile.recoveryAssistSeconds,3,20),auto=profile.recoveryAssistAutoReduce!==false,timeAuto=profile.recoveryAssistTimeAutoReduce===true;
  return {recoveryAssistLocation:recoveryAssistLocation(profile.recoveryAssistLocation),recoveryAssistBaseForce:base,recoveryAssistAutoReduce:auto,recoveryAssistTimeAutoReduce:timeAuto,recoveryAssistForce:Math.max(0,base-(auto?recoveryForceReduction(practice,base):0)),recoveryAssistSeconds:Math.max(0,Math.round((seconds-(timeAuto?(practice.assistTimeReduction||0):0))*100)/100)};
 }
 // Training scaffold only; validation and integrated execution never enable it.

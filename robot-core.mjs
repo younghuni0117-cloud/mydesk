@@ -1,22 +1,22 @@
-import {STANDARD_GRAVITY,ROBOT_BODY_VERSION,ROBOT_MASS,HUMAN_SEGMENTS,MOTOR_TORQUES,segmentMassData} from './robot-body.mjs?v=update81';
-import {recoveryEarlyStopReady,recoveryAssistLocation,recoveryAssistOutput,recoveryStart,recoveryPotential,recoveryLimitCost,recoveryTestStart} from './robot-recovery.mjs?v=update81';
-import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update81';
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update81';
-import {taskEnvironment} from './robot-task-settings.mjs?v=update81';
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update81';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update81';
-import {distalActivity} from './robot-attention.mjs?v=update81';
-import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update81';
-import {PUSH_PARTS} from './robot-impact.mjs?v=update81';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update81';
-import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update81';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update81';
+import {STANDARD_GRAVITY,ROBOT_BODY_VERSION,ROBOT_MASS,HUMAN_SEGMENTS,MOTOR_TORQUES,segmentMassData} from './robot-body.mjs?v=update82';
+import {recoveryEarlyStopReady,recoveryAssistLocation,recoveryAssistOutput,recoveryStart,recoveryPotential,recoveryLimitCost,recoveryTestStart} from './robot-recovery.mjs?v=update82';
+import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update82';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update82';
+import {taskEnvironment} from './robot-task-settings.mjs?v=update82';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update82';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update82';
+import {distalActivity} from './robot-attention.mjs?v=update82';
+import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update82';
+import {PUSH_PARTS} from './robot-impact.mjs?v=update82';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update82';
+import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update82';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update82';
 import { World, Vec2, Box, Circle, Polygon, RevoluteJoint, DistanceJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update81';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update82';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update81';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update81';
-export {POLICY_SIZE} from './robot-policy.mjs?v=update81';
+import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update82';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update82';
+export {POLICY_SIZE} from './robot-policy.mjs?v=update82';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '일어나기', speed: 0, duration: 10 },
@@ -49,7 +49,7 @@ export class RobotWorld {
     this.obstacles=[...this.terrain.obstacles];
 
     for(const o of this.obstacles){const body=this.world.createBody({position:Vec2(o.x,(o.bottom??this.groundHeight(o.x))+o.height/2),userData:'obstacle'});body.createFixture(['rock','stalactite'].includes(o.shape)?Polygon(rockVertices(o).map(p=>Vec2(...p))):o.shape==='pipe'?Circle(o.height/2):Box(o.width/2,o.height/2),{friction:.8,filterMaskBits:o.side==='left'?3:o.side==='right'?5:0xffff});}
-    this.endOnRecovery=this.stage==='recover'&&options.recoveryEarlyStopTraining===true&&options.recoveryEarlyStop===true;this.recoveryUnassistedStable=0;this.recoveryAssistLocation=recoveryAssistLocation(options.recoveryAssistLocation);this.recoveryAssistLimit=this.stage==='recover'&&options.recoveryAssistTraining===true?clamp(Number(options.recoveryAssistForce)||0,0,1000):0;this.recoveryAssistBaseForce=clamp(Number(options.recoveryAssistBaseForce??options.recoveryAssistForce)||0,0,1000);this.recoveryAssistSeconds=this.recoveryAssistLimit>0?clamp(Number(options.recoveryAssistSeconds??3)||0,0,20):0;this.recoveryAssistTimeAutoReduce=options.recoveryAssistTimeAutoReduce===true;this.recoveryAssistWindow=0;this.recoveryAssistStarted=false;this.recoveryAssistAutoReduce=options.recoveryAssistAutoReduce===true;this.recoveryAssistForce=0;this.recoveryAssistMaxUsed=0;this.recoveryAssistImpulse=0;this.recoveryAssistStall=0;this.recoveryAssistElapsed=0;
+    this.endOnRecovery=this.stage==='recover'&&options.recoveryEarlyStopTraining===true&&options.recoveryEarlyStop===true;this.recoveryUnassistedStable=0;this.recoveryAssistLocation=recoveryAssistLocation(options.recoveryAssistLocation);this.recoveryAssistLimit=this.stage==='recover'&&options.recoveryAssistTraining===true?clamp(Number(options.recoveryAssistForce)||0,0,5000):0;this.recoveryAssistBaseForce=clamp(Number(options.recoveryAssistBaseForce??options.recoveryAssistForce)||0,0,5000);this.recoveryAssistSeconds=this.recoveryAssistLimit>0?clamp(Number(options.recoveryAssistSeconds??3)||0,0,20):0;this.recoveryAssistTimeAutoReduce=options.recoveryAssistTimeAutoReduce===true;this.recoveryAssistWindow=0;this.recoveryAssistStarted=false;this.recoveryAssistAutoReduce=options.recoveryAssistAutoReduce===true;this.recoveryAssistForce=0;this.recoveryAssistMaxUsed=0;this.recoveryAssistImpulse=0;this.recoveryAssistStall=0;this.recoveryAssistElapsed=0;
     const recovering=this.stage==='recover'&&options.startStanding!==true;this.recoveryStart=recovering?recoveryStart(this.random,options):null;const lying=this.recoveryStart?.kind.startsWith('lying');
     this.spawnAngle=this.recoveryStart?this.recoveryStart.angle:(Number.isFinite(options.spawnTilt)?clamp(options.spawnTilt,-.12,.12):(this.random()-.5)*(options.spawnRange??.025));
     this.spawnY=(lying?.34:1.03)+this.groundHeight(this.spawnX||0);

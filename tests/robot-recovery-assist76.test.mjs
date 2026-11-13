@@ -7,7 +7,7 @@ import {ParallelRollouts} from '../robot-rollouts.mjs';
 const zero=Array(POLICY_SIZE).fill(0);
 test('numeric per-task setting survives reload; zero disables, default is 120 N',()=>{
  assert.equal(taskProfile('recover').recoveryAssistForce,120);assert.equal(taskProfile('balance').recoveryAssistForce,0);
- const settings={recover:taskProfile('recover',{recoveryAssistForce:237,recoveryAssistAutoReduce:false})};assert.deepEqual(loadTaskSettings({taskSettings:settings}).recover,settings.recover);assert.equal(taskProfile('recover',{recoveryAssistForce:1001}).recoveryAssistForce,120);
+ const settings={recover:taskProfile('recover',{recoveryAssistForce:237,recoveryAssistAutoReduce:false})};assert.deepEqual(loadTaskSettings({taskSettings:settings}).recover,settings.recover);assert.equal(taskProfile('recover',{recoveryAssistForce:5001}).recoveryAssistForce,120);
  assert.equal(recoveryAssistOptions({recoveryAssistForce:0}).recoveryAssistForce,0);
  assert.equal(recoveryAssistOptions({recoveryAssistForce:500},{assistScale:.5}).recoveryAssistForce,250);
  assert.equal(recoveryAssistOptions({recoveryAssistForce:500,recoveryAssistAutoReduce:false},{assistScale:0}).recoveryAssistForce,500);
@@ -19,7 +19,7 @@ test('successful recoveries reduce force by exactly 1 N and time by 0.01 s, with
  p=updateRecoveryPractice(p,success);assert.equal(recoveryAssistSettings({recoveryAssistForce:1000,recoveryAssistSeconds:5,recoveryAssistTimeAutoReduce:true},p).recoveryAssistForce,999);assert.equal(recoveryAssistSettings({recoveryAssistSeconds:5,recoveryAssistTimeAutoReduce:true},p).recoveryAssistSeconds,4.99);
  const forceOnly=updateRecoveryPractice({}, {...success,recoveryAssistTimeAutoReduce:false});assert.equal(forceOnly.assistReductionN,1);assert.equal(forceOnly.assistTimeReduction,undefined);
  const timeOnly=updateRecoveryPractice({}, {...success,recoveryAssistAutoReduce:false});assert.equal(timeOnly.assistReductionN,undefined);assert.equal(timeOnly.assistTimeReduction,.01);
- for(let i=0;i<2100;i++)p=updateRecoveryPractice(p,success);assert.equal(p.assistReductionN,1000);assert.equal(p.assistTimeReduction,20);
+ for(let i=0;i<5100;i++)p=updateRecoveryPractice(p,success);assert.equal(p.assistReductionN,5000);assert.equal(p.assistTimeReduction,20);
  const settings=recoveryAssistSettings({recoveryAssistForce:1000,recoveryAssistSeconds:5,recoveryAssistTimeAutoReduce:true},p);assert.equal(settings.recoveryAssistForce,0);assert.equal(settings.recoveryAssistSeconds,0);
  assert.equal(updateRecoveryPractice({assistScale:.5},{...success,recoveryAssistBaseForce:120}).assistReductionN,61);
  const learner=new RobotLearner(null,42,{}, {deferEvaluation:true});learner.recoveryPractice=p;const before=learner.snapshot(),after=new RobotLearner(before,42,before.environment,{deferEvaluation:true});assert.deepEqual(after.recoveryPractice,p);assert.deepEqual(after.weights,before.weights);assert.equal(after.id,before.id);
@@ -73,4 +73,10 @@ test('20-second window and hundredth-second reduction retain precision and legac
  const success={terminationReason:'recovered',recoveries:1,finalUpright:true,recovering:false,stableTime:2,recoveryAssistTimeAutoReduce:true};let p={assistTimeReduction:5.1,trials:10,successRate:.5};p=updateRecoveryPractice(p,success);assert.equal(p.assistTimeReduction,5.11);assert.equal(recoveryAssistSettings(profile,p).recoveryAssistSeconds,14.89);
  const l=new RobotLearner(null,42,{}, {deferEvaluation:true});l.recoveryPractice=p;const old=l.snapshot();assert.equal(new RobotLearner(old,42,old.environment,{deferEvaluation:true}).recoveryPractice.assistTimeReduction,5.11);
  const w=new RobotWorld('recover',{recoveryAssistTraining:true,recoveryAssistForce:120,recoveryAssistSeconds:20});w.recoveryAssistStall=2;w.recoveryAssistElapsed=1;w.recoveryAssistWindow=19.99;w.recoveryAssistStarted=true;w.applyRecoveryAssist(.01);assert.equal(w.metrics().recoveryAssistUsedSeconds,20);w.applyRecoveryAssist(.01);assert.equal(w.metrics().recoveryAssistForce,0);
+});
+
+test('5000 N is accepted, survives reload, decays by 1 N and stays finite at all four body locations',()=>{
+ const profile=taskProfile('recover',{recoveryAssistForce:5000});assert.equal(profile.recoveryAssistForce,5000);assert.equal(loadTaskSettings({taskSettings:{recover:profile}}).recover.recoveryAssistForce,5000);assert.equal(recoveryAssistOptions(profile).recoveryAssistForce,5000);
+ const practice=updateRecoveryPractice({}, {terminationReason:'recovered',recoveries:1,finalUpright:true,recovering:false,stableTime:2,recoveryAssistAutoReduce:true,recoveryAssistBaseForce:5000});assert.equal(recoveryAssistSettings(profile,practice).recoveryAssistForce,4999);
+ for(const location of ['head','shoulder','abdomen','pelvis']){const w=new RobotWorld('recover',{seed:42,recoveryStart:'lying-front',recoveryAssistTraining:true,recoveryAssistForce:5000,recoveryAssistLocation:location,observationSeconds:5,disturbances:false});assert.equal(w.recoveryAssistLimit,5000);while(!w.done)w.step(zero);assert.ok(w.metrics().recoveryAssistMaxUsed>0);assert.ok(w.metrics().recoveryAssistMaxUsed<=5000);assert.ok(w.snapshot().parts.flat().every(Number.isFinite));}
 });
