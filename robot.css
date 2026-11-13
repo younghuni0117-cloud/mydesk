@@ -226,6 +226,35 @@ body[data-page=robot] .robot-controls>.robot-chart{margin-top:0;margin-bottom:8p
 
 
 .robot-environment-info{margin:0;color:#607b97;text-align:center;font-size:clamp(9px,2.8vw,11px);line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0}
+
+/* Compact scene measurements below terrain information and above progress. */
+body[data-page=robot] .robot-gauges .robot-metrics{display:flex;flex-wrap:nowrap;justify-content:center;align-items:baseline;gap:clamp(3px,1vw,9px);margin:0;white-space:nowrap;color:#60758a;font-family:inherit;font-size:clamp(10px,2.65vw,13px);line-height:20px}
+body[data-page=robot] .robot-gauges .robot-metrics>div{display:flex;align-items:baseline;gap:3px;flex-shrink:0}
+body[data-page=robot] .robot-gauges .robot-metrics :is(span,strong,small){font:inherit;line-height:inherit;font-variant-numeric:tabular-nums}
+body[data-page=robot] .robot-gauges .robot-metrics strong{color:#405d74}
+.robot-metric-separator{color:#b2bec9}
+
+/* Swing-style reward graph: quiet raw returns, clear trend and soft fill. */
+body[data-page=robot] .robot-chart{padding-bottom:8px;border-bottom:1px solid #edf1f4;background:#fff}
+body[data-page=robot] .robot-chart-heading{color:#435a6e;font-weight:600}
+.robot-chart-legend{display:flex;justify-content:flex-end;gap:10px;margin:3px 0 2px;color:#8796a4;font-size:10px;line-height:15px}
+.robot-chart-legend>span{display:flex;align-items:center;gap:4px}.robot-chart-legend i{display:inline-block;width:13px;height:2px;background:#b3c7d3}.robot-chart-legend>span:last-child i{height:3px;background:#368482}
+body[data-page=robot] .robot-chart-plot{position:relative;margin-top:4px;height:140px}
+body[data-page=robot] .robot-chart svg{height:140px;touch-action:pan-y;overflow:visible}
+.robot-chart-grid{stroke:#e9eef2;stroke-width:1;vector-effect:non-scaling-stroke}
+body[data-page=robot] .robot-chart-y span:nth-child(1){top:5%}
+body[data-page=robot] .robot-chart-y span:nth-child(2){top:27.5%}
+body[data-page=robot] .robot-chart-y span:nth-child(3){top:50%}
+body[data-page=robot] .robot-chart-y span:nth-child(4){top:72.5%}
+body[data-page=robot] .robot-chart-y span:nth-child(5){top:95%}
+.robot-chart-raw{stroke:#b3c7d3;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#rb-chart-best,#rb-chart-current{stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#rb-chart-cursor{stroke:#8daab4;stroke-width:1;stroke-dasharray:3 4;vector-effect:non-scaling-stroke}
+#rb-chart-cursor[hidden],.robot-chart-tooltip[hidden]{display:none!important}
+.robot-chart-tooltip{position:absolute;z-index:3;top:6px;padding:6px 8px;background:#355a65f2;color:#fff;border-radius:5px;box-shadow:0 3px 8px #355a6520;font-size:10px;white-space:nowrap;pointer-events:none}
+body[data-page=robot].robot-wide-fit .robot-chart-plot{height:140px;min-height:140px;flex:none}
+body[data-page=robot].robot-wide-fit .robot-chart svg{height:140px}
+@media(min-width:600px) and (max-height:650px){body[data-page=robot] .robot-chart-plot,body[data-page=robot] .robot-chart svg,body[data-page=robot].robot-wide-fit .robot-chart-plot,body[data-page=robot].robot-wide-fit .robot-chart svg{height:110px;min-height:110px}}
 /* The same integrated policy powers both sides; match details stay grouped. */
 .robot-fight-hud{position:absolute;top:9px;left:9px;right:9px;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px 10px;align-items:center;pointer-events:none;color:#405872;font-size:11px;text-shadow:0 1px 2px #fff}
 .robot-fight-hud>div{display:flex;align-items:center;gap:5px;min-width:0}.robot-fight-hud progress{width:100%;min-width:15px;height:8px;accent-color:#527fa2}.robot-fight-hud>div:last-of-type progress{accent-color:#be8d72}.robot-fight-hud span,.robot-fight-hud b{white-space:nowrap}.robot-fight-hud>strong{font-variant-numeric:tabular-nums;font-size:13px}.robot-fight-hud p{grid-column:1/-1;min-height:18px;margin:0;text-align:center;font-size:14px;font-weight:600;color:#a34f4a}

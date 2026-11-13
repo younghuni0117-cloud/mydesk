@@ -21,7 +21,7 @@ export function recordTrainingReward(history,task,attempts,reward,environment,ho
  if(!s)s=history[task]={environment,horizon,segment:0,recent:[],points:[]};
  if(s.environment!==environment||s.horizon!==horizon){s.environment=environment;s.horizon=horizon;s.segment++;s.recent=[];}
  s.recent.push(reward);if(s.recent.length>TRAINING_REWARD_WINDOW)s.recent.shift();
- s.points.push({attempts,overall:s.recent.reduce((a,b)=>a+b,0)/s.recent.length,count:s.recent.length,segment:s.segment});s.points=compact(s.points);return s;
+ s.points.push({attempts,reward,overall:s.recent.reduce((a,b)=>a+b,0)/s.recent.length,count:s.recent.length,segment:s.segment});s.points=compact(s.points);return s;
 }
 export function trainingRewardRows(model,task,environment=JSON.stringify(model.environment)){
  const s=model.trainingRewards?.[task];if(!s||s.environment!==environment||!Array.isArray(s.points))return [];

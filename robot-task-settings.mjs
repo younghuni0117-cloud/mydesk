@@ -1,6 +1,6 @@
-import {normalizeActuation} from './robot-actuation.mjs?v=update73';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update73';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update73';
+import {normalizeActuation} from './robot-actuation.mjs?v=update74';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update74';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update74';
 
 const common={algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({
@@ -22,7 +22,7 @@ export function taskProfile(task,raw={}){
  p.monitorSeconds=integer(p.monitorSeconds,10,3600,d.monitorSeconds);
  p.observationSeconds=integer(p.observationSeconds,1,3600,d.observationSeconds);
  p.attemptCount=[100,200,500,1000,2000,5000,10000,100000].includes(Number(p.attemptCount))?Number(p.attemptCount):d.attemptCount;
- p.targetSpeed=integer(p.targetSpeed,30,1440,d.targetSpeed);
+ p.targetSpeed=integer(p.targetSpeed,30,5000,d.targetSpeed);
  p.interval=[10,20,50,100].includes(Number(p.interval))?Number(p.interval):d.interval;
  p.algorithm='ppo';p.curriculum=p.curriculum!==false;p.autoPush=p.autoPush!==false;
  const lo=Number(p.pushMin),hi=Number(p.pushMax);if(Number.isFinite(lo)&&Number.isFinite(hi)&&lo>=.1&&hi<=100&&lo<=hi){p.pushMin=lo;p.pushMax=hi;}else{p.pushMin=d.pushMin;p.pushMax=d.pushMax;}

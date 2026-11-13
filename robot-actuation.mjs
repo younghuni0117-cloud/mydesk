@@ -12,7 +12,7 @@ export const JOINT_SERVOS=Object.freeze({
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 export const SERVO_PROFILES=Object.freeze({soft:{kp:.65,kd:.8},standard:{kp:1,kd:1},firm:{kp:1.35,kd:1.2}});
 export const JOINT_RANGES=Object.freeze({waist:[-1.4,.9],neck:[-1.05,1.05],leftHip:[-.65,2.1],rightHip:[-.65,2.1],leftKnee:[-2.6,0],rightKnee:[-2.6,0],leftAnkle:[-1.1,1.1],rightAnkle:[-1.1,1.1],leftShoulder:[-1.05,3.05],rightShoulder:[-1.05,3.05],leftElbow:[0,2.6],rightElbow:[0,2.6]});
-export function normalizeActuation(raw={}){const speed=Number(raw?.targetSpeed);return {servoProfile:Object.hasOwn(SERVO_PROFILES,raw?.servoProfile)?raw.servoProfile:'standard',targetSpeed:Number.isInteger(speed)&&speed>=30&&speed<=1440?speed:180,targetVelocity:Number.isFinite(Number(raw?.targetVelocity))?clamp(Number(raw.targetVelocity),30,1440):360,residualTorque:Number.isFinite(Number(raw?.residualTorque))?clamp(Number(raw.residualTorque),0,.5):.2,actuationVersion:3};}
+export function normalizeActuation(raw={}){const speed=Number(raw?.targetSpeed);return {servoProfile:Object.hasOwn(SERVO_PROFILES,raw?.servoProfile)?raw.servoProfile:'standard',targetSpeed:Number.isInteger(speed)&&speed>=30&&speed<=5000?speed:180,targetVelocity:Number.isFinite(Number(raw?.targetVelocity))?clamp(Number(raw.targetVelocity),30,5000):360,residualTorque:Number.isFinite(Number(raw?.residualTorque))?clamp(Number(raw.residualTorque),0,1):.2,actuationVersion:3};}
 export function jointTargetAngle(action,lower,upper){
  const a=clamp(Number.isFinite(action)?action:0,-1,1);
  // Both exploration signs are useful for one-way knees/elbows, while zero

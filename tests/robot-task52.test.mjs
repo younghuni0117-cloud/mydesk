@@ -21,7 +21,7 @@ test('legacy edits migrate only to their selected task and per-task settings sur
  assert.equal(map.balance.trainingSeconds,10);assert.equal(map.walk.trainingSeconds,15);
  assert.deepEqual(loadTaskSettings(JSON.parse(JSON.stringify({taskSettings:map,focus:'walk',trainingSeconds:99}))),map);
  const otherDevice=loadTaskSettings({},map);assert.equal(otherDevice.recover.trainingSeconds,47);
- assert.equal(taskProfile('walk',{targetSpeed:1600}).targetSpeed,180);
+ assert.equal(taskProfile('walk',{targetSpeed:5001}).targetSpeed,180);
  assert.equal(taskProfile('recover',{trainingSeconds:0}).trainingSeconds,30);
 });
 
