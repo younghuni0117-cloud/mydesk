@@ -1,18 +1,18 @@
-import {RECOVERY_OBJECTIVE_VERSION,recoveryAssistOptions,recoveryLyingProbability,updateRecoveryPractice} from './robot-recovery.mjs?v=update77';
-import {loadTrainingRewards,recordTrainingReward} from './robot-training-rewards.mjs?v=update77';
-import {isCombat,combatSettings} from './robot-combat.mjs?v=update77';
-import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update77';
-import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update77';
-import {normalizeActuation} from './robot-actuation.mjs?v=update77';
-import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update77';
-import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update77';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update77';
-import {compareAbilities} from './robot-performance.mjs?v=update77';
-import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update77';
-import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update77';
-import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update77';
-import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update77';
-import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update77';
+import {RECOVERY_OBJECTIVE_VERSION,recoveryAssistOptions,recoveryLyingProbability,updateRecoveryPractice} from './robot-recovery.mjs?v=update78';
+import {loadTrainingRewards,recordTrainingReward} from './robot-training-rewards.mjs?v=update78';
+import {isCombat,combatSettings} from './robot-combat.mjs?v=update78';
+import {normalizeGround,mixedTask,trainingCondition,terrainReviewCases} from './robot-training-ground.mjs?v=update78';
+import {taskEnvironment,loadTaskSettings,canonicalEnvironment,environmentSignature} from './robot-task-settings.mjs?v=update78';
+import {normalizeActuation} from './robot-actuation.mjs?v=update78';
+import {normalizeBalanceTraining,endBalanceTrialEarly,effectiveTrainingPush,samplingBatchSize} from './robot-training-options.mjs?v=update78';
+import {readTravelRecord,nextTravelRecord} from './robot-study.mjs?v=update78';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update78';
+import {compareAbilities} from './robot-performance.mjs?v=update78';
+import {normalizeCommand,trainingCommands} from './robot-goals.mjs?v=update78';
+import {PPOOptimizer,ppoEpisode} from './robot-ppo.mjs?v=update78';
+import {REWARD_VERSION,REWARDS} from './robot-rewards.mjs?v=update78';
+import {POLICY_KIND,initialPolicy,policyExplorationScale,POLICY_BODY_INPUTS,POLICY_HIDDEN,POLICY_OUTPUTS,OUTPUT_START,BIAS_START,FEEDBACK_START,SENSOR_WEIGHT_OFFSET} from './robot-policy.mjs?v=update78';
+import {episode,POLICY_SIZE,STAGES,JOINTS,LOCKED_DISTAL_JOINTS,VALIDATION_CASES,evaluateAbility,evaluateAbilities,evaluateCommands,clamp,seeded,normalizePushSettings,passedStage} from './robot-core.mjs?v=update78';
 export const MODEL_VERSION=10;
 export const ALLOWED_ATTEMPTS=[100,200,500,1000,2000,5000,10000,100000];
 const stages=Object.keys(STAGES),gaussian=r=>Math.sqrt(-2*Math.log(Math.max(1e-9,r())))*Math.cos(2*Math.PI*r());
@@ -136,7 +136,7 @@ export class RobotLearner {
   if(task==='recover')this.recoveryPractice=updateRecoveryPractice(this.recoveryPractice,result);
   recordTrainingReward(this.trainingRewards,task,this.taskAttempts[task],result.reward,JSON.stringify(this.environment),prepared.options.observationSeconds??STAGES[task].duration);
   this.travelRecord=nextTravelRecord(this.travelRecord,result,{attempt:this.attempts,task,terrain:result.forwardContact?.terrain||this.environment.terrain||'meadow'});
-  return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,spawnRange:prepared.options.spawnRange,endOnFall:prepared.options.endOnFall,spawnTilt:prepared.options.spawnTilt,trainingSpec:prepared.options.trainingSpec,combatDrill:prepared.options.combatDrill,opponentWeights:prepared.options.opponentWeights,recoveryAssistBaseForce:prepared.options.recoveryAssistBaseForce,recoveryAssistSeconds:prepared.options.recoveryAssistSeconds,recoveryAssistTimeAutoReduce:prepared.options.recoveryAssistTimeAutoReduce,recoveryAssistTraining:prepared.options.recoveryAssistTraining,recoveryAssistForce:prepared.options.recoveryAssistForce,recoveryAssistAutoReduce:prepared.options.recoveryAssistAutoReduce,trainingSeconds:prepared.options.observationSeconds,recoveryLyingProbability:prepared.options.recoveryLyingProbability,terrainVariant:prepared.options.terrainVariant,scene:record?trial:null};
+  return {attempts:this.attempts,task,score:result.reward,weights,seed,pushPlan:trial.pushPlan,commandSchedule:trial.commandSchedule,pushes:result.pushes,spawnRange:prepared.options.spawnRange,endOnFall:prepared.options.endOnFall,spawnTilt:prepared.options.spawnTilt,trainingSpec:prepared.options.trainingSpec,combatDrill:prepared.options.combatDrill,opponentWeights:prepared.options.opponentWeights,recoveryAssistLocation:prepared.options.recoveryAssistLocation,recoveryAssistBaseForce:prepared.options.recoveryAssistBaseForce,recoveryAssistSeconds:prepared.options.recoveryAssistSeconds,recoveryAssistTimeAutoReduce:prepared.options.recoveryAssistTimeAutoReduce,recoveryAssistTraining:prepared.options.recoveryAssistTraining,recoveryAssistForce:prepared.options.recoveryAssistForce,recoveryAssistAutoReduce:prepared.options.recoveryAssistAutoReduce,trainingSeconds:prepared.options.observationSeconds,recoveryLyingProbability:prepared.options.recoveryLyingProbability,terrainVariant:prepared.options.terrainVariant,scene:record?trial:null};
  }
  trainOne(options={}){const prepared=this.prepareTrial(options);return this.completeTrial(prepared,prepared.algorithm==='ppo'?ppoEpisode(prepared):episode(prepared.weights,prepared.task,prepared.seed,prepared.options));}
 

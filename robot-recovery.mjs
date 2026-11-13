@@ -1,3 +1,5 @@
+export const RECOVERY_ASSIST_LOCATIONS=Object.freeze({head:'머리',shoulder:'어깨',abdomen:'배',pelvis:'골반'});
+export const recoveryAssistLocation=value=>Object.hasOwn(RECOVERY_ASSIST_LOCATIONS,value)?value:'shoulder';
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 export const RECOVERY_OBJECTIVE_VERSION=2;
 export const RECOVERY_TEST_STARTS=Object.freeze(['seated','kneeling','lying-front','lying-back']);
@@ -28,7 +30,7 @@ const numberIn=(value,fallback,max)=>Number.isFinite(Number(value))?clamp(Number
 export const recoveryForceReduction=(practice={},maximum=120)=>numberIn(practice.assistReductionN,maximum*(1-numberIn(practice.assistScale,1,1)),1000);
 export function recoveryAssistSettings(profile={},practice={}){
  const base=numberIn(profile.recoveryAssistForce,120,1000),seconds=numberIn(profile.recoveryAssistSeconds,3,5),auto=profile.recoveryAssistAutoReduce!==false,timeAuto=profile.recoveryAssistTimeAutoReduce===true;
- return {recoveryAssistBaseForce:base,recoveryAssistAutoReduce:auto,recoveryAssistTimeAutoReduce:timeAuto,recoveryAssistForce:Math.max(0,base-(auto?recoveryForceReduction(practice,base):0)),recoveryAssistSeconds:Math.max(0,Math.round((seconds-(timeAuto?(practice.assistTimeReduction||0):0))*10)/10)};
+ return {recoveryAssistLocation:recoveryAssistLocation(profile.recoveryAssistLocation),recoveryAssistBaseForce:base,recoveryAssistAutoReduce:auto,recoveryAssistTimeAutoReduce:timeAuto,recoveryAssistForce:Math.max(0,base-(auto?recoveryForceReduction(practice,base):0)),recoveryAssistSeconds:Math.max(0,Math.round((seconds-(timeAuto?(practice.assistTimeReduction||0):0))*10)/10)};
 }
 // Training scaffold only; validation and integrated execution never enable it.
 export function recoveryAssistOptions(profile={},practice={},offset=0){

@@ -26,7 +26,7 @@ test('successful recoveries reduce force by exactly 1 N and time by 0.1 s, with 
 });
 test('upward force waits for lying stall, ramps and stops at standing height or upward speed',()=>{
  const s={force:500,height:.3,verticalSpeed:0,stallSeconds:2,rampSeconds:1};assert.equal(recoveryAssistOutput(s),500);assert.equal(recoveryAssistOutput({...s,stallSeconds:1}),0);assert.equal(recoveryAssistOutput({...s,height:.9}),0);assert.equal(recoveryAssistOutput({...s,verticalSpeed:1}),0);
- const assisted=new RobotWorld('recover',{seed:42,recoveryStart:'lying-front',disturbances:false,recoveryAssistTraining:true,recoveryAssistForce:120});
+ const assisted=new RobotWorld('recover',{seed:42,recoveryStart:'lying-front',disturbances:false,recoveryAssistTraining:true,recoveryAssistForce:120,recoveryAssistLocation:'pelvis'});
  const pelvis=assisted.parts.pelvis,position=pelvis.getPosition();assert.ok(assisted.metrics().height<.65);assisted.recoveryAssistStall=2;assisted.recoveryAssistElapsed=1;
  const before={...pelvis.m_force};assisted.applyRecoveryAssist(1/120);assert.equal(pelvis.m_force.x,before.x);assert.ok(pelvis.m_force.y>before.y);assert.ok(assisted.metrics().recoveryAssistMaxUsed>0);assert.equal(pelvis.getPosition().x,position.x);
  for(const stage of ['balance','recover']){const w=new RobotWorld(stage,{recoveryAssistTraining:stage==='balance',recoveryAssistForce:500});w.applyRecoveryAssist(.1);assert.equal(w.metrics().recoveryAssistMaxUsed,0);}
@@ -53,4 +53,17 @@ test('assistance time window expires once per episode and never restarts after a
 });
 test('1000 N assistance remains finite in both lying directions over the full assistance window',()=>{
  for(const kind of ['lying-front','lying-back']){const w=new RobotWorld('recover',{seed:42,recoveryStart:kind,recoveryAssistTraining:true,recoveryAssistForce:1000,recoveryAssistSeconds:5,observationSeconds:8,disturbances:false});while(!w.done)w.step(zero);assert.ok(w.metrics().recoveryAssistMaxUsed>0);assert.ok(w.metrics().recoveryAssistUsedSeconds<=5);assert.equal(w.metrics().recoveryAssistForce,0);assert.ok(w.bodies.every(p=>Number.isFinite(p.body.getPosition().y)));}
+});
+
+test('each chosen body location receives upward force at its own point, including physical shoulder and abdomen moments',()=>{
+ const torques={};for(const location of ['head','shoulder','abdomen','pelvis']){
+  const w=new RobotWorld('recover',{seed:42,recoveryStart:'lying-front',recoveryAssistTraining:true,recoveryAssistForce:120,recoveryAssistLocation:location});
+  w.recoveryAssistStall=2;w.recoveryAssistElapsed=1;const {body,point}=w.recoveryAssistTarget(),center=body.getWorldCenter(),before=body.m_torque;
+  assert.equal(body,w.parts[location==='head'?'head':location==='pelvis'?'pelvis':'torso']);
+  w.applyRecoveryAssist(1/120);const force=w.metrics().recoveryAssistForce;assert.ok(force>0);assert.ok(Math.abs(body.m_force.y-force)<1e-9);assert.ok(Math.abs(body.m_torque-before-(point.x-center.x)*force)<1e-9);torques[location]=body.m_torque-before;
+  for(const {body:other}of w.bodies)if(other!==body)assert.equal(other.m_force.y,0);assert.equal(w.metrics().recoveryAssistLocation,location);
+  const profile=taskProfile('recover',{recoveryAssistLocation:location});assert.equal(loadTaskSettings({taskSettings:{recover:profile}}).recover.recoveryAssistLocation,location);assert.equal(recoveryAssistOptions(profile).recoveryAssistLocation,location);
+  for(let i=0;i<120;i++)w.step(zero);assert.ok(w.bodies.every(p=>Number.isFinite(p.body.getPosition().y)));
+ }
+ assert.ok(torques.shoulder*torques.abdomen<0);assert.equal(torques.head,0);assert.equal(torques.pelvis,0);assert.equal(taskProfile('recover',{recoveryAssistLocation:'invalid'}).recoveryAssistLocation,'shoulder');
 });
