@@ -70,3 +70,6 @@ body[data-page=calendar] .sr-only{position:absolute;width:1px;height:1px;padding
 
 /* Upcoming status badges: current dates, approaching dates, and later dates. */
 .cal-countdown{min-width:66px;padding:6px 10px;font-size:15px;line-height:1.4}.cal-countdown.is-current{background:#dff1e6;color:#30764b}.cal-countdown.is-soon{background:#fff0bb;color:#896816}@media(max-width:600px){.cal-countdown{min-width:61px;font-size:14px;padding:5px 8px}}
+
+/* Edited schedules use the same compact card, with a distinct status badge. */
+.cal-notice-badge.is-updated{background:#f6dfbd;color:#8b5a20}

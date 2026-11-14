@@ -16,14 +16,14 @@
 
 기존 행의 `change_revision=0`을 알림 시작 전 기준으로 삼아 과거 일정 전체가 새 알림으로 쏟아지지 않게 한다. 이후 INSERT는 revision 1/new, 실제 일정 정보가 달라진 UPDATE는 revision 증가/updated로 기록한다. 이전 내용은 `previous_values`에 한 단계만 저장해 재귀적으로 커지지 않는다. 같은 내용 재저장은 변경 시각·버전·알림을 갱신하지 않는다. 서버 trigger는 SECURITY INVOKER이며, 기존 달력 RLS를 유지한다. 클라이언트는 변경 버전·시각·이전 값을 위조할 수 없도록 INSERT/UPDATE 열 권한을 일정 입력 필드에만 부여한다.
 
-알림은 같은 일정의 최신 버전 한 건만 보여준다. 확인은 공유 서버를 변경하지 않고 해당 브라우저 localStorage의 `mydesk.calendar.confirmed.v1:<family>:<event>`에 버전과 마지막 확인 스냅샷을 기록한다. 따라서 다른 기기·브라우저에 영향을 주지 않고 재접속 후에도 유지된다. 같은 브라우저의 탭은 storage 이벤트로 표시를 갱신한다. 수정 전후는 그 브라우저의 마지막 확인 내용과 비교하며, 처음 보는 수정 알림은 서버의 이전 값과 비교한다. 확인 버튼을 누르는 사이 새 버전이 도착하더라도 보지 않은 새 버전을 확인 처리하지 않는다.
+알림은 같은 일정의 최신 버전 한 건만 보여준다. 확인은 공유 서버를 변경하지 않고 해당 브라우저 localStorage의 `mydesk.calendar.confirmed.v1:<family>:<event>`에 버전과 마지막 확인 스냅샷을 기록한다. 따라서 다른 기기·브라우저에 영향을 주지 않고 재접속 후에도 유지된다. 같은 브라우저의 탭은 storage 이벤트로 표시를 갱신한다. 수정 알림은 신규 알림과 같은 구성으로 현재 일정만 표시하고, 주황색 ‘수정’ 배지로 구분한다. 변경 전후 상세는 화면에 표시하지 않는다. 기존 확인 스냅샷과 서버 이전 값은 그대로 보존한다. 확인 버튼을 누르는 사이 새 버전이 도착하더라도 보지 않은 새 버전을 확인 처리하지 않는다.
 
 기존 행도 업데이트 이후 실제로 수정하면 ‘수정’으로 알린다. 새 브라우저는 기능 도입 이후 아직 확인하지 않은 신규·수정을 보여준다. 브라우저 저장소가 차단되거나 가득 차면 현재 화면의 확인 상태만 유지하고 재접속 시 다시 보일 수 있음을 안내한다. 브라우저 데이터 삭제 후에는 확인 정보도 사라진다. 확인해도 일정 자체는 삭제되지 않는다.
 
 ## 검증
 
 - `node --test tests/calendar.test.mjs tests/calendar-activity.test.mjs tests/calendar-identity.test.mjs tests/calendar-holidays.test.mjs`
-- `scripts/verify-calendar-activity.cjs`: 두 개의 격리 브라우저와 메모리 서버로 다중 체크, 미래 월 포함 정렬, 지난 일정 제외, D-day, 신규/수정·최신 한 건, 마지막 확인 전후 비교, 서버에 확인 요청이 없는 점, 4개 화면 크기를 검증한다.
+- `scripts/verify-calendar-activity.cjs`: 두 개의 격리 브라우저와 메모리 서버로 다중 체크, 미래 월 포함 정렬, 지난 일정 제외, D-day, 신규/수정·최신 한 건, 변경 상세 숨김, 서버에 확인 요청이 없는 점, 4개 화면 크기를 검증한다.
 - `scripts/verify-calendar-activity-live.cjs`: 새로운 임시 달력에서 실제 저장·수정 버전·이전 값, 익명 메타데이터 위조 거절, 구형 category 수정 호환, 무변경 재저장, 다른 달력 격리를 확인한다. 자신이 만든 UUID만 삭제한다.
 - 기존 `verify-calendar-views.cjs`·`verify-calendar-spans.cjs`: 월/주/일/목록, 연속 막대, 시각·종일 입력과 기존 데이터 보존을 확인한다.
 
