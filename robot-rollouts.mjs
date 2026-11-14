@@ -1,12 +1,12 @@
-import {recoveryTestStart} from './robot-recovery.mjs?v=update86';
-import {groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update86';
-import {normalizeRobotCount} from './robot-training-options.mjs?v=update86';
-import {taskEnvironment} from './robot-task-settings.mjs?v=update86';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update86';
-import {packRollout} from './robot-transfer.mjs?v=update86';
-import {RobotWorld,createRobotWorld,episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=update86';
-import {COMMAND_CASES} from './robot-goals.mjs?v=update86';
-import {ppoEpisode} from './robot-ppo.mjs?v=update86';
+import {recoveryTestStart} from './robot-recovery.mjs?v=update87';
+import {groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update87';
+import {normalizeRobotCount} from './robot-training-options.mjs?v=update87';
+import {taskEnvironment} from './robot-task-settings.mjs?v=update87';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update87';
+import {packRollout} from './robot-transfer.mjs?v=update87';
+import {RobotWorld,createRobotWorld,episode,VALIDATION_CASES,passedStage} from './robot-core.mjs?v=update87';
+import {COMMAND_CASES} from './robot-goals.mjs?v=update87';
+import {ppoEpisode} from './robot-ppo.mjs?v=update87';
 export const executeTrial=p=>packRollout(p.algorithm==='ppo'?ppoEpisode(p):episode(p.weights,p.task,p.seed,p.options),p);
 // Initial environment checks yield in small physics chunks, so a new terrain
 // request can cancel old work instead of waiting for an entire long episode.
@@ -14,7 +14,7 @@ export async function inspectTrial(prepared,active=()=>true){const {task,seed,op
 // One learner/coordinator computes the first rollout; up to four physics-only
 // workers compute the others. Results always return in prepared index order.
 export class ParallelRollouts {
- constructor({count=2,enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=update86',import.meta.url),{type:'module'})}={}){
+ constructor({count=2,enabled=(globalThis.navigator?.hardwareConcurrency||1)>=4,factory=()=>new Worker(new URL('./robot-rollout-worker.mjs?v=update87',import.meta.url),{type:'module'})}={}){
   this.width=enabled?normalizeRobotCount(count):1;this.lanes=[];this.nextId=0;
   for(let i=1;i<this.width;i++){
    const lane={worker:null,ready:false,pending:null};lane.waiting=new Promise(resolve=>lane.resolveReady=resolve);this.lanes.push(lane);

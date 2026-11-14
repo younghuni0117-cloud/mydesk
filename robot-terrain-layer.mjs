@@ -1,7 +1,7 @@
 // One in-flight raster and one latest request: fast dragging cannot build a queue.
 export class TerrainLayer{
  constructor(artReady,artSources){this.bitmap=null;this.painted=null;this.inFlight=null;this.latest=null;this.serial=0;this.artRevision=0;this.failed=false;this.sentGeometry='';this.terrainIds=new WeakMap();this.nextTerrainId=0;
-  try{this.worker=new Worker(new URL('./robot-terrain-paint-worker.mjs?v=update86',import.meta.url),{type:'module'});this.worker.onmessage=({data})=>{if(data.type==='error'){this.fail();return;}if(data.type!=='painted')return;const request=this.inFlight;if(!request||data.id!==request.id){data.bitmap.close();return;}this.inFlight=null;this.bitmap?.close();this.bitmap=data.bitmap;this.painted=request;this.sendLatest();};this.worker.onerror=e=>{e.preventDefault?.();this.fail();};
+  try{this.worker=new Worker(new URL('./robot-terrain-paint-worker.mjs?v=update87',import.meta.url),{type:'module'});this.worker.onmessage=({data})=>{if(data.type==='error'){this.fail();return;}if(data.type!=='painted')return;const request=this.inFlight;if(!request||data.id!==request.id){data.bitmap.close();return;}this.inFlight=null;this.bitmap?.close();this.bitmap=data.bitmap;this.painted=request;this.sendLatest();};this.worker.onerror=e=>{e.preventDefault?.();this.fail();};
    Promise.resolve(artReady).then(async()=>{if(this.failed)return;const sources=artSources();if(!sources[0]?.naturalWidth||!sources[1]?.naturalWidth)return;const [atlas,cave]=await Promise.all(sources.map(source=>createImageBitmap(source)));if(this.failed){atlas.close();cave.close();return;}this.worker.postMessage({type:'art',atlas,cave},[atlas,cave]);this.artRevision++;}).catch(()=>{});
   }catch{this.fail();}
  }
