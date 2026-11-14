@@ -1,32 +1,46 @@
-# Q-01: independent 3D quadruped prototype
+# Q-02: Spot-style 3D quadruped with arm
 
-Page: `robotdog.html`. This is a new experiment, with its own mechanics, learner, worker, view and local storage. It imports no existing robot/swing physics, policies, rewards or learning modules. Site navigation and the existing pinned Three.js vendor module are shared infrastructure only.
+Page: `robotdog.html`. This remains an independent experiment: no existing biped/swing physics, policy, reward or learner is imported. Site navigation and the pinned Three.js vendor module are shared infrastructure.
 
-## Mechanism and rendering
+## Reference and mechanism
 
-Four independently articulated legs, each with hip abduction/adduction, sagittal hip rotation and knee flexion: 12 actuated DOFs. Chassis is 58 × 28 × 16 cm, with 23.5/24.5 cm leg segments, a 5.5 cm lateral hip link and 2.5 cm rubber contact radius. The graphic model is built from scratch: beveled body shell, layered battery/controller covers, vents, front camera pair, ranging head, separate motor barrels and caps, links, braces, cable conduits, hubs and rubber feet. Visual parts share 15 geometries and materials. The measured initial view has 6,438 triangles and 156 draw calls; there are no remote model/texture downloads, real-time shadow maps, image textures, postprocessing or HDR environments. The already-vendored Three.js 0.160.1 module and its MIT license are reused.
+The user supplied Spot photographs and explicitly requested an upper arm. The procedural model now follows the long, low yellow chassis, continuous black sensor stripe, rounded yellow upper legs, thin open black lower links, recessed motor housings and folded yellow/black arm. It is an approximation based on those pictures, not an official CAD asset or validated hardware replica. No proprietary model files, textures or logos were downloaded.
 
-Pixel ratio is capped at 1.5; antialiasing is requested only on larger fine-pointer screens. The view renders at most 30 times per second and stops redrawing a stationary inspection scene. Device viewport/fold widths use a menu drawer and keep main actions reachable; touch orbit/pinch and desktop orbit/pan/wheel cameras are available.
+The four legs retain 3 independently actuated axes each: abduction/adduction, hip pitch, knee flexion. Experimental dimensions are a body of 88 × 30 × 22 cm, 40/41 cm upper/lower links, 6.5 cm lateral hip offsets and 3.2 cm contact radius. Leg limits are ±0.8, −1.75..1.4, and 0.08..2.8 radians. Simulation torque caps are 55/85/85 N·m; these are model settings, not a claim about the manufacturer's motor ratings.
 
-## Reduced physical model
+The upper arm has six axes (base yaw, shoulder pitch, elbow flexion, elbow roll, wrist pitch, wrist roll) and a separate gripper. Its links are 42/36/23 cm followed by the tool. Fold/reach/raise presets and seven sliders set **manual** targets. The leg policy still outputs only 12 leg targets. Arm movement is displayed continuously; the arm's 8 kg configuration-dependent mass center changes body gravity moments and diagonal inertia. Chassis mass is modeled as 32.7 kg, giving 40.7 kg with the arm. The arm does not learn grasping and has no object/contact manipulation solver in this iteration.
 
-`robotdog-core.mjs` uses SI units with +X forward, +Y up, +Z left. A 12 kg floating chassis has three translational and three rotational dynamics. Articulated leg joints have torque-limited PD targets, bounded speed, damping, inertias and gravity terms. Forward kinematics and analytic foot Jacobians couple compliant foot contact/friction to joints and body forces/moments at 120 Hz. Belly contact and fall termination are simplified. This is a reduced interactive model, not a full rigid-body tree/inverse-dynamics or validated hardware simulator. There is no prescribed gait, body translation animation or injected propulsive force. Initial REST angles are an assembly pose and reset state, never presented as learned motion.
+## Physical terrain and lightweight dynamics
 
-## Actual learning, not a staged demonstration
+`robotdog-terrain.mjs` supplies the same analytic height and normal to display, foot contact and chassis contact:
 
-A 40-input, 8-hidden, 12-output tanh policy (436 weights) observes body height/orientation/velocities, 12 joint angles/velocities, four contacts and a target speed. Outputs are bounded target angle offsets from the assembly pose; PD motors create motion through contact dynamics.
+- `flat`: level experiment floor;
+- `hills`: continuous hills and transverse slope;
+- `rough`: superposed continuous bumps.
 
-The independent CEM learner samples eight candidate policy episodes per batch, uses two elites to update its search distribution and accepts a new execution policy only if it improves the mean reward on the same two held-out seeds. Trial counts represent actual completed simulations. Rewards measure upright height, velocity tracking and real forward progress; falls, side slip, yaw, excessive movement and effort incur costs. Stationary goals get no forward-progress bonus and penalize drift. Graphs contain actual per-goal trailing ten-trial rewards and fixed-condition model validation scores.
+The displayed terrain is a 96 × 64 height-field patch; it shifts around a moving robot without changing the camera's orbit or zoom. Contacts resolve along the actual ground normal with tangent friction. Spawn height/orientation avoid placing feet inside the selected terrain. Body height rewards and failure thresholds are measured above local ground, not global Y. Four underbody points approximate chassis collision.
 
-Learning runs in one worker, yielding at least 12 ms between episodes and more when a trial is expensive. The 3D training view interpolates recorded physical frames, avoiding a duplicate simulation. The optional model execution uses real fixed-step simulation with the current policy. Graph redraws are capped near 4 Hz; physics and display rates are separate.
+The physics runs at a fixed 120 Hz: floating-body translation/rotation, bounded PD-driven joint dynamics, analytic foot Jacobians, compliant contact, gravity and friction. Arm FK is cached when it is stationary. This is still a reduced interactive model, not a full rigid-body-tree/inverse-dynamics or certified hardware simulator. There is no predefined gait, translation animation or injected propulsive force. Assembly pose and manual arm movement are explicitly separated from learning results.
 
-## Persistence and scope
+## Frame rate and graphic cost
 
-Only `mydesk.robotdog.v1` is written. It contains the versioned weights, count and at most 500 graph records. Reset explicitly confirms and affects only this key. Corrupt models are rejected. Other robot models, calendar, blogs, menus and credentials are untouched by this experiment. Training is device-local for this draft; there is no login or model cloud synchronization.
+Display scheduling changes from a 30 fps cap to a **60 fps target**, with physics independent of rendering. Material batching halves measured draw calls (156 → 78) even after adding the arm and non-flat floor. Initial scene: 23,412 triangles and 68 cached geometries. Pixel ratio remains capped at 1.5; AA is requested only on larger fine-pointer devices. Static scenes do not continually redraw. No shadow maps, postprocessing, runtime CDN loads, environment maps or large image textures are used. Pose/FK updates occur at draw time instead of every high-refresh RAF. Actual displayed frame rate depends on the browser/device.
 
-The shared navigation gets one new visible link `robotdog` immediately after `robot`, under the same parent. The already-visible swing link is also made explicit after robotdog, because older navigation code otherwise automatically inserts swing immediately after robot and pushes the dog down. No new swing feature is added. All previously stored menu item data and relative order are verified unchanged (original fingerprint `9a9c39c3e90d5debd57bd036c2488b62` after excluding these two explicit entries). No database schema change is needed.
+Horizontal orbit direction is reversed for mouse and one-finger touch. Right-button pan, wheel zoom, pinch zoom and camera presets remain available.
+
+## Learning and persistence
+
+A 40-input, 8-hidden, 12-output tanh leg policy (436 weights) uses body state, joint states, four contacts and the velocity command. The velocity setting is accepted throughout UI, worker, physics and evaluation up to **10 m/s**; it is a command range, not a guarantee that the mechanism reaches it.
+
+Independent CEM still samples eight candidates, selects two elites and adopts a candidate only after improvement on the same two held-out seeds. Both rollout and validation receive the selected terrain and manual arm pose. Rewards measure upright local-ground height, velocity tracking and real forward progress; falls, side slip, yaw, excessive motion and effort have costs. Stationary goals get no forward-progress bonus. Worker yielding and approximately 4 Hz graph updates remain in place. Training scenes interpolate recorded physics; model execution uses real fixed-step dynamics.
+
+`mydesk.robotdog.v1` is retained. Old weights, attempt totals and history survive loading. `rigVersion: 2` and a context key distinguish new records by body version, target, terrain, episode duration and arm targets, preventing incompatible rewards from being joined into one graph. A changed mechanism requires re-evaluation; previous scores are not presented as new results. There is no cloud model upload. Reset asks for confirmation, preserves the chosen environment and affects only this experiment. Biped, calendar, blogs and menu data are unaffected by this update.
+
+## Navigation
+
+The existing shared `robotdog` item immediately follows `robot`. The already-visible swing link is explicitly stored after it for compatibility with old navigation code. The original menu-item fingerprint, excluding those two entries, remains `9a9c39c3e90d5debd57bd036c2488b62`. This iteration makes no menu/database changes.
 
 ## Verification
 
-- `node --test tests/robotdog.test.mjs tests/navigation.test.mjs`: link lengths/mirroring, all 12 bounded joints, inverse transforms, analytic Jacobian vs finite differences, gravity/contact/torque bounds, deterministic episodes, real reward-driven optimization and held-out acceptance, device-local data isolation and corrupt cache handling.
-- `scripts/verify-robotdog.cjs`: real WebGL/worker, 100 actual learning trials, execution, pause, perturbation, camera changes, graphs, saved state after reload, a separate device, confirmed reset, old robot-data sentinel preserved, no inherited robot-learning modules, four viewport sizes including folded/tablet/landscape, drawer behavior and graphics budgets. Shared REST APIs are mocked to prevent test writes.
+- `node --test tests/robotdog.test.mjs tests/navigation.test.mjs`: 12 bounded leg joints, link lengths, transforms, analytic Jacobians, gravity/contact/torque limits, finite seeded episodes, policy search/held-out improvement, terrain slopes/normals vs finite differences, distinct physical terrain responses, arm reach/limits/mass moment, 10 m/s command propagation, old-cache weights/count/history preservation and isolation from existing apps.
+- `scripts/verify-robotdog.cjs`: actual WebGL and worker, arm and gripper control, three terrains, camera reversal and retained zoom/orbit, 60 fps configuration and reduced draw budget, 100 real trials at the 10 m/s command, graphs, reload persistence, separate device, confirmed reset, existing-robot sentinel preservation, four viewports and drawer behavior. Shared REST APIs are mocked to avoid writes to unrelated live data.
