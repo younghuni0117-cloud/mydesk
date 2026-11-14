@@ -13,6 +13,7 @@ export const DEFAULT_MENUS=[
  {id:'maze',parent_id:'experiments',label:'미로 탐험',kind:'link',href:'maze.html'},
  {id:'cartpole',parent_id:'experiments',label:'카트폴',kind:'link',href:'cartpole.html'},
  {id:'robot',parent_id:'experiments',label:'로봇 강화학습',kind:'link',href:'robot.html'},
+ {id:'robotdog',parent_id:'experiments',label:'로봇독 강화학습',kind:'link',href:'robotdog.html'},
  {id:'swing',parent_id:'experiments',label:'그네타기 강화학습',kind:'link',href:'swing.html'}
 ];
 export function safeMenuHref(href){

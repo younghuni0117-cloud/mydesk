@@ -2,7 +2,7 @@
 const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.getElementById('sidebar');
 const backdrop = document.getElementById('sidebar-backdrop');
-const isGamePage = document.body.classList.contains('game-page');
+const isGamePage = document.body.classList.contains('game-page') || document.body.dataset.page === 'robotdog';
 const mobileMenu = window.matchMedia(isGamePage ? '(max-width: 1100px), (pointer: coarse)' : '(max-width: 760px)');
 function setMenu(open, restoreFocus = false) {
   const visible = open && mobileMenu.matches;
