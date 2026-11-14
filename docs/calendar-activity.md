@@ -45,3 +45,12 @@ calendar15 화면은 신규·수정 알림을 일정별 주황색 박스로 구�
 - `scripts/verify-calendar-holiday-live.cjs`: actual public REST calls in a fresh random test calendar; verifies CRUD, idempotent seed, preserved edits/deletions, capability isolation and timestamps; removes only test rows in finally.
 
 Calendar22 checks upcoming shared schedules before importing holidays, so a newly opened device calculates the same extended window immediately. The browser regression verifies the three-month baseline, adding an April schedule, inclusion of March 1st, exclusion of May holidays, visibility on a second device, and returning to the baseline after deleting that April schedule.
+
+
+## Calendar24: compact editor and fully expanded busy weeks
+
+- The all-day checkbox and the four existing hour/minute selectors share one grid row, including 320px screens. All-day still disables time inputs without hiding them; 10-minute options and automatic end time one hour after the start are unchanged.
+- Cancel/save are moved into a sticky header inside the same form. They remain reachable while a long note is scrolled. Existing close/Escape/delete/save and busy-state behavior is retained.
+- The note starts at one 36px text line, grows with content and wrapping, shrinks after deletion, and measures existing content after opening. Only its visual height changes; all 2,000 permitted characters and newlines are retained.
+- Month/week all-day bars are exactly 15px high with a 1px gap. Every month-week segment is rendered; the previous four-row cutoff and more-link are removed. Only the busy week grows based on its occupied lanes (32px date header + 16px per lane + bottom spacing). Other weeks keep their minimum height. Holiday priority and continuous multi-day segments are unchanged.
+- `scripts/verify-calendar-editor24.cjs`: synthetic 14-schedule busy week versus a quiet week, no clipping or hidden rows, exact 15px bars, all-day disable/show behavior, one-line/growing/shrinking/preexisting notes, sticky top actions, real form submission and preserved values/original records across 320/390/768/1440px widths. All shared API writes are intercepted.
