@@ -1,8 +1,8 @@
-import {TERRAIN_SENSOR_COUNT} from './robot-sensors.mjs?v=update87';
-import {CONTROL_KIND,jointExplorationScale} from './robot-actuation.mjs?v=update87';
+import {TERRAIN_SENSOR_COUNT} from './robot-sensors.mjs?v=update88';
+import {CONTROL_KIND,jointExplorationScale} from './robot-actuation.mjs?v=update88';
 export const POLICY_KIND=CONTROL_KIND;
-// Preserve the learned feature offsets; the retired running slot is always zero.
-export const POLICY_TASK_SLOTS=Object.freeze(['balance','recover','walk',null,'punch','kick','defend','fight']);
+// Preserve the learned feature offsets; retired task and opponent slots stay zero.
+export const POLICY_TASK_SLOTS=Object.freeze(['balance','recover','walk',null,null,null,null,null]);
 export const POLICY_BODY_INPUTS=115,POLICY_INPUTS=115+TERRAIN_SENSOR_COUNT,POLICY_HIDDEN=24,POLICY_OUTPUTS=36;
 export const OUTPUT_START=POLICY_BODY_INPUTS*POLICY_HIDDEN+POLICY_HIDDEN;
 export const BIAS_START=OUTPUT_START+POLICY_HIDDEN*POLICY_OUTPUTS;

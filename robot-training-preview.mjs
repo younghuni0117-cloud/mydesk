@@ -1,4 +1,4 @@
-import {trainingCondition} from './robot-training-ground.mjs?v=update87';
+import {trainingCondition} from './robot-training-ground.mjs?v=update88';
 
 // Manual observation uses the configured distribution. Fixed validation specs
 // belong to evaluation only; a recorded trial must retain its exact condition.

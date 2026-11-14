@@ -1,4 +1,4 @@
-import {createRobotWorld,robotGeometry,DT} from './robot-core.mjs?v=update87';
+import {createRobotWorld,robotGeometry,DT} from './robot-core.mjs?v=update88';
 let generation=0,world=null,weights=null,timer=null,buildTimer=null,paused=true,clock=0,carry=0,lastFrame=null,pending=[],startData=null;
 const emit=data=>postMessage({...data,generation});
 const cancelTimer=()=>{if(timer!==null)clearTimeout(timer);timer=null;};

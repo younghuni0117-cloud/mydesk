@@ -1,6 +1,6 @@
 // Physics lives in its own worker. The page only receives small pose snapshots.
 export class RobotObservation{
- constructor(factory=()=>new Worker(new URL('./robot-observation-worker.mjs?v=update87',import.meta.url),{type:'module'})){
+ constructor(factory=()=>new Worker(new URL('./robot-observation-worker.mjs?v=update88',import.meta.url),{type:'module'})){
   this.factory=factory;this.worker=null;this.generation=0;this.loading=false;this.ready=false;this.paused=true;this.world=null;this.previous=null;this.current=null;this.received=0;
  }
  start(stage,options,weights){this.generation++;this.loading=true;this.ready=false;this.paused=false;

@@ -1,4 +1,4 @@
-import {normalizeBagMass} from './robot-bag.mjs?v=update87';
+import {normalizeBagMass} from './robot-bag.mjs?v=update88';
 // Match rules and observations only. No punches, kicks, guards or recovery poses are scripted.
 export const COMBAT_TASKS=Object.freeze(['punch','kick','defend','fight']);
 export const COMBAT_FEATURE_COUNT=32;

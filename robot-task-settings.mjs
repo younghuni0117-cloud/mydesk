@@ -1,17 +1,13 @@
-import {recoveryAssistLocation} from './robot-recovery.mjs?v=update87';
-import {normalizeActuation} from './robot-actuation.mjs?v=update87';
-import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update87';
-import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update87';
+import {recoveryAssistLocation} from './robot-recovery.mjs?v=update88';
+import {normalizeActuation} from './robot-actuation.mjs?v=update88';
+import {normalizeBalanceTraining} from './robot-training-options.mjs?v=update88';
+import {normalizeEvaluationSettings} from './robot-evaluation.mjs?v=update88';
 
 const common={recoveryEarlyStop:false,recoveryAssistLocation:'shoulder',recoveryAssistSeconds:3,recoveryAssistTimeAutoReduce:false,recoveryAssistForce:0,recoveryAssistAutoReduce:true,algorithm:'ppo',curriculum:true,attemptCount:10000,servoProfile:'standard',targetSpeed:180,targetVelocity:360,residualTorque:.2,balanceEarlyStop:false,balanceFullTrials:false,balanceFullEvery:8,autoPush:true,pushMin:.5,pushMax:3,pushInterval:0,interval:10};
 export const TASK_DEFAULTS=Object.freeze({
  balance:Object.freeze({...common,trainingSeconds:10,validationSeconds:10,monitorSeconds:30,observationSeconds:30,interval:20,balanceEarlyStop:true,balanceFullTrials:true,pushMin:1,pushMax:6}),
  recover:Object.freeze({...common,recoveryAssistForce:120,trainingSeconds:30,validationSeconds:30,monitorSeconds:60,observationSeconds:60,autoPush:false,pushMax:2}),
  walk:Object.freeze({...common,trainingSeconds:15,validationSeconds:15,monitorSeconds:45,observationSeconds:45}),
- punch:Object.freeze({...common,trainingSeconds:15,validationSeconds:10,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:1080,targetVelocity:1200,residualTorque:.35}),
- kick:Object.freeze({...common,trainingSeconds:15,validationSeconds:10,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:900,targetVelocity:1080,residualTorque:.35}),
- defend:Object.freeze({...common,trainingSeconds:20,validationSeconds:15,monitorSeconds:30,observationSeconds:30,autoPush:false,targetSpeed:720,targetVelocity:900}),
- fight:Object.freeze({...common,trainingSeconds:30,validationSeconds:20,monitorSeconds:45,observationSeconds:120,autoPush:false,targetSpeed:1080,targetVelocity:1200,residualTorque:.35}),
 });
 export const TASK_SETTING_KEYS=Object.freeze(Object.keys(TASK_DEFAULTS.balance));
 const integer=(x,lo,hi,fallback)=>Number.isInteger(Number(x))&&Number(x)>=lo&&Number(x)<=hi?Number(x):fallback;

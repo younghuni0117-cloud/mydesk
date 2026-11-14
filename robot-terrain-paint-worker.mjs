@@ -1,4 +1,4 @@
-import {paintTerrain,setTerrainArt} from './robot-scenery.mjs?v=update87';
+import {paintTerrain,setTerrainArt} from './robot-scenery.mjs?v=update88';
 let terrain=null,obstacles=[];
 self.onmessage=({data})=>{
  try{if(data.type==='art'){setTerrainArt(data.atlas,data.cave);return;}

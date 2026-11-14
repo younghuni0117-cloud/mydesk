@@ -7,8 +7,8 @@ import {RobotLearner} from '../robot-learning.mjs';
 
 test('each ability has its own suitable duration, disturbance and motion defaults',()=>{
  const map=loadTaskSettings({});
- assert.deepEqual(Object.values(map).map(p=>[p.trainingSeconds,p.validationSeconds,p.monitorSeconds]),[[10,10,30],[30,30,60],[15,15,45],[15,10,30],[15,10,30],[20,15,30],[30,20,45]]);
- assert.equal(map.recover.autoPush,false);assert.equal(map.fight.autoPush,false);
+ assert.deepEqual(Object.values(map).map(p=>[p.trainingSeconds,p.validationSeconds,p.monitorSeconds]),[[10,10,30],[30,30,60],[15,15,45]]);
+ assert.equal(map.recover.autoPush,false);
  assert.equal(map.balance.autoPush,true);assert.equal(map.walk.targetSpeed,180);
  assert.ok(Object.values(map).every(p=>p.algorithm==='ppo'&&p.attemptCount===10000&&p.monitorSeconds>=p.validationSeconds));
  map.recover.trainingSeconds=45;assert.equal(map.balance.trainingSeconds,10);assert.equal(TASK_DEFAULTS.recover.trainingSeconds,30);

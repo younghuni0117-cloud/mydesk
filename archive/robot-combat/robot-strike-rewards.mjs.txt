@@ -1,4 +1,4 @@
-import {impactDamage} from './robot-combat.mjs?v=update87';
+import {impactDamage} from './robot-combat.mjs?v=update88';
 // Physical outcomes only: never prescribe a punch, kick or recovery motion.
 export const BAG_REWARDS=Object.freeze({base:8,impactBonus:22,fall:100,downPerSecond:4,recovery:3,combination:2,separationSeconds:.08,recoverySeconds:.3,recoveryWindow:1.5,combinationWindow:3});
 export function bagStrikeReward({impulse,closing}){

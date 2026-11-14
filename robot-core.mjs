@@ -1,32 +1,25 @@
-import {BAG_HEIGHT,BAG_HOOK_OFFSET,BAG_ROPE_LENGTH} from './robot-bag.mjs?v=update87';
-import {STANDARD_GRAVITY,ROBOT_BODY_VERSION,ROBOT_MASS,HUMAN_SEGMENTS,MOTOR_TORQUES,segmentMassData} from './robot-body.mjs?v=update87';
-import {recoveryEarlyStopReady,recoveryAssistLocation,recoveryAssistOutput,recoveryStart,recoveryPotential,recoveryLimitCost,recoveryTestStart} from './robot-recovery.mjs?v=update87';
-import {COMBAT_RULES,isCombat,combatSettings,opponentFeatures,freshFighter,updateDownState,matchVerdict,impactDamage} from './robot-combat.mjs?v=update87';
-import {bagStrikeReward,BagStrikeContacts,BagStrikeRecovery} from './robot-strike-rewards.mjs?v=update87';
-import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update87';
-import {taskEnvironment} from './robot-task-settings.mjs?v=update87';
-import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update87';
-import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update87';
-import {distalActivity} from './robot-attention.mjs?v=update87';
-import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update87';
-import {PUSH_PARTS} from './robot-impact.mjs?v=update87';
-import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update87';
-import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update87';
-import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update87';
-import { World, Vec2, Box, Circle, Polygon, RevoluteJoint, RopeJoint } from './vendor/planck.mjs';
-import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update87';
+import {STANDARD_GRAVITY,ROBOT_BODY_VERSION,ROBOT_MASS,HUMAN_SEGMENTS,MOTOR_TORQUES,segmentMassData} from './robot-body.mjs?v=update88';
+import {recoveryEarlyStopReady,recoveryAssistLocation,recoveryAssistOutput,recoveryStart,recoveryPotential,recoveryLimitCost,recoveryTestStart} from './robot-recovery.mjs?v=update88';
+import {trainingCondition,makeTrainingTerrain,groundTestSpec,validationGround} from './robot-training-ground.mjs?v=update88';
+import {taskEnvironment} from './robot-task-settings.mjs?v=update88';
+import {JOINT_SERVOS,JOINT_RANGES,SERVO_PROFILES,normalizeActuation,jointTargetAngle,advanceJointTarget,jointTargetTorque,jointServoTorque} from './robot-actuation.mjs?v=update88';
+import {RewardFeedback,rewardLocations} from './robot-reward-feedback.mjs?v=update88';
+import {distalActivity} from './robot-attention.mjs?v=update88';
+import {sampleEnvironment,sensedSurface} from './robot-sensors.mjs?v=update88';
+import {PUSH_PARTS} from './robot-impact.mjs?v=update88';
+import {normalizeEvaluationSettings,monitorCases} from './robot-evaluation.mjs?v=update88';
+import {motionQuality,walkingSupport,WALK_CRITERIA,RECOVERY_CRITERIA,recoveryStanding} from './robot-performance.mjs?v=update88';
+import {makeTerrain,terrainHeight,rockVertices} from './robot-terrain.mjs?v=update88';
+import { World, Vec2, Box, Circle, Polygon, RevoluteJoint } from './vendor/planck.mjs';
+import {normalizeCommand,commandState,COMMAND_CASES} from './robot-goals.mjs?v=update88';
 export const DT = 1 / 60;
-import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update87';
-import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update87';
-export {POLICY_SIZE} from './robot-policy.mjs?v=update87';
+import {POLICY_SIZE,policyActions,POLICY_TASK_SLOTS} from './robot-policy.mjs?v=update88';
+import {REWARDS,rewardBreakdown} from './robot-rewards.mjs?v=update88';
+export {POLICY_SIZE} from './robot-policy.mjs?v=update88';
 export const STAGES = {
   balance: { label: '균형 잡기', speed: 0, duration: 10 },
   recover: { label: '일어나기', speed: 0, duration: 10 },
   walk: { label: '앞으로 걷기', speed: .55, duration: 10 },
-  punch: {label:'펀치 공격',speed:0,duration:15},
-  kick: {label:'발차기 공격',speed:0,duration:15},
-  defend: {label:'방어',speed:0,duration:20},
-  fight: {label:'격투',speed:0,duration:30},
 };
 export const LOCKED_DISTAL_JOINTS=Object.freeze([]);
 export const JOINTS = ['waist','neck','leftHip','leftKnee','leftAnkle','rightHip','rightKnee','rightAnkle','leftShoulder','leftElbow','rightShoulder','rightElbow'];
@@ -107,7 +100,7 @@ export class RobotWorld {
   }
   transform(x,y){const dy=y-1.03,c=Math.cos(this.spawnAngle),s=Math.sin(this.spawnAngle);return Vec2(this.spawnX+this.facing*(c*x-s*dy),this.spawnY+s*x+c*dy);}
   part(name,x,y,w,h,color,circle=false){
-    const body=this.world.createDynamicBody({position:this.transform(x,y),angle:this.spawnAngle*this.facing,linearDamping:.05,angularDamping:.12,allowSleep:false,bullet:isCombat(this.stage),userData:name});
+    const body=this.world.createDynamicBody({position:this.transform(x,y),angle:this.spawnAngle*this.facing,linearDamping:.05,angularDamping:.12,allowSleep:false,bullet:false,userData:name});
     body.robotOwner=this;const massScale=this.trainingSpec?.massScales?.[this.massIndex++]??1;const mass=HUMAN_SEGMENTS[name].mass,shape=circle?Circle(w):Box(w/2,h/2),area=circle?Math.PI*w*w:w*h;
     body.createFixture(shape,{density:mass*massScale/area,friction:name.includes('Foot')||name.includes('Toe')?1.2:.5,restitution:.015,filterGroupIndex:this.collisionGroup,filterCategoryBits:name.startsWith('left')?2:name.startsWith('right')?4:1});
     const item={name,body,w,h,circle,color,massScale};this.bodies.push(item);this.parts[name]=body;return body;
@@ -115,7 +108,7 @@ export class RobotWorld {
   joint(name,a,b,x,y,lower,upper){
     const torque=MOTOR_TORQUES[name],locked=this.distalLocked&&LOCKED_DISTAL_JOINTS.includes(name);if(locked)lower=upper=0;
     const joint=this.world.createJoint(RevoluteJoint({enableLimit:true,lowerAngle:this.facing===1?lower:-upper,upperAngle:this.facing===1?upper:-lower,enableMotor:false,maxMotorTorque:torque,motorSpeed:0,collideConnected:false},a,b,this.transform(x,y)));
-    this.joints[name]=joint;this.motors.push({name,joint,lower,upper,torque,speedLimit:isCombat(this.stage)?24:9,kp:JOINT_SERVOS[name].kp*SERVO_PROFILES[this.actuation.servoProfile].kp,kd:JOINT_SERVOS[name].kd*SERVO_PROFILES[this.actuation.servoProfile].kd,target:0,locked,bodyA:a,bodyB:b});
+    this.joints[name]=joint;this.motors.push({name,joint,lower,upper,torque,speedLimit:9,kp:JOINT_SERVOS[name].kp*SERVO_PROFILES[this.actuation.servoProfile].kp,kd:JOINT_SERVOS[name].kd*SERVO_PROFILES[this.actuation.servoProfile].kd,target:0,locked,bodyA:a,bodyB:b});
   }
   makeRobot(){
     const pelvis=this.part('pelvis',0,1.06,.3,.18,'#536d8c');
@@ -155,7 +148,7 @@ export class RobotWorld {
   resistWaist(){const j=this.joints.waist,t=clamp(-WAIST_RESISTANCE.stiffness*j.getJointAngle()-WAIST_RESISTANCE.damping*j.getJointSpeed(),-WAIST_RESISTANCE.maxTorque,WAIST_RESISTANCE.maxTorque);j.getBodyB().applyTorque(t,true);j.getBodyA().applyTorque(-t,true);return t;}
   readVision(){const p=this.parts.pelvis.getPosition(),goal=this.goalState();this.lastVision=sampleEnvironment(this.terrain,this.obstacles,p,{left:this.parts.leftFoot.getPosition(),right:this.parts.rightFoot.getPosition()},{...this.parts.head.getPosition(),angle:this.parts.head.getAngle()},goal.target<0?-1:1);this.lastVisionStep=this.steps;return this.lastVision;}
   observations(){const torso=this.parts.torso,pelvis=this.parts.pelvis,p=pelvis.getPosition(),v=pelvis.getLinearVelocity(),a=torso.getAngle()*this.facing,goal=this.goalState(),vision=this.readVision(),direction=goal.target<0?-1:1,ahead=side=>{const foot=this.parts[side+'Foot'].getPosition(),seen=vision.samples.filter(s=>s.side===side&&s.hit&&(s.x-foot.x)*direction>0&&(s.x-foot.x)*direction<.6&&(s.kind==='ground'||s.kind==='obstacle'&&s.object?.shape!=='stalactite'));return seen.length?clamp((Math.max(...seen.map(s=>s.y))-this.groundHeight(foot.x))/.6,-1,1):-1;};
-   return [Math.sin(a),Math.cos(a),clamp(torso.getAngularVelocity()*this.facing/8,-1,1),clamp((p.y-this.groundHeight(p.x))/1.2,-1,1),clamp(v.x*this.facing/3,-1,1),clamp(v.y/3,-1,1),goal.target/2,((this.contacts.get('leftFoot')||0)+(this.contacts.get('leftToePart')||0))>0?1:0,((this.contacts.get('rightFoot')||0)+(this.contacts.get('rightToePart')||0))>0?1:0,ahead('left'),ahead('right'),vision.values[21],...this.motors.map(m=>m.joint.getJointAngle()*this.facing/Math.PI),...this.motors.map(m=>clamp(m.joint.getJointSpeed()*this.facing/8,-1,1)),clamp(goal.error/5,-1,1),goal.positioned?1:0,goal.low?1:0,...(this.previousPolicyActions||Array(36).fill(0)),...POLICY_TASK_SLOTS.map(s=>s===this.stage?1:0),...opponentFeatures(this,this.combatOpponent,this.combatState,this.opponentState),...vision.values];
+   return [Math.sin(a),Math.cos(a),clamp(torso.getAngularVelocity()*this.facing/8,-1,1),clamp((p.y-this.groundHeight(p.x))/1.2,-1,1),clamp(v.x*this.facing/3,-1,1),clamp(v.y/3,-1,1),goal.target/2,((this.contacts.get('leftFoot')||0)+(this.contacts.get('leftToePart')||0))>0?1:0,((this.contacts.get('rightFoot')||0)+(this.contacts.get('rightToePart')||0))>0?1:0,ahead('left'),ahead('right'),vision.values[21],...this.motors.map(m=>m.joint.getJointAngle()*this.facing/Math.PI),...this.motors.map(m=>clamp(m.joint.getJointSpeed()*this.facing/8,-1,1)),clamp(goal.error/5,-1,1),goal.positioned?1:0,goal.low?1:0,...(this.previousPolicyActions||Array(36).fill(0)),...POLICY_TASK_SLOTS.map(s=>s===this.stage?1:0),...Array(32).fill(0),...vision.values];
   }
 
   control(weights){
@@ -194,7 +187,7 @@ export class RobotWorld {
     if(this.steps%this.controlStride===0&&this.lastVisionStep!==this.steps)this.readVision();
     while(this.nextPushIndex<this.pushes.length&&this.time>=this.pushes[this.nextPushIndex].time){const p=this.pushes[this.nextPushIndex++];this.push(p.strength,p.direction,p.location,p.duration||0);this.impactEvents.at(-1).scheduledTime=p.time;this.pushesApplied++;this.lastPushAt=this.time;}
     // Smaller steps resolve loaded servos and fast motion; joint constraints enforce anatomical limits.
-    const stressed=this.motors.some((m,i)=>Math.abs(m.joint.getJointSpeed())>4.5||Math.abs(jointTargetTorque(m,jointTargetAngle(this.actions[i],m.lower,m.upper),m.joint.getJointAngle(),m.joint.getJointSpeed(),(this.actions[12+i]||0)*this.actuation.targetVelocity*Math.PI/180,(this.actions[24+i]||0)*this.actuation.residualTorque))>m.torque*.1),substeps=isCombat(this.stage)?12:stressed?12:2;
+    const stressed=this.motors.some((m,i)=>Math.abs(m.joint.getJointSpeed())>4.5||Math.abs(jointTargetTorque(m,jointTargetAngle(this.actions[i],m.lower,m.upper),m.joint.getJointAngle(),m.joint.getJointSpeed(),(this.actions[12+i]||0)*this.actuation.targetVelocity*Math.PI/180,(this.actions[24+i]||0)*this.actuation.residualTorque))>m.torque*.1),substeps=stressed?12:2;
     if(!this.externalPhysics)for(let i=0;i<substeps;i++){this.resistWaist();if(this.physicsPartner){this.physicsPartner.resistWaist();this.physicsPartner.torqueLoad??=0;this.physicsPartner.externalWork=(this.physicsPartner.externalWork||0)+this.physicsPartner.applyActuation(DT/substeps);this.physicsPartner.configureContinuousCollision(DT/substeps);}work+=this.applyActuation(DT/substeps);this.applyRecoveryAssist(DT/substeps);if(this.sustainedPush&&this.sustainedPush.remaining>0){this.sustainedPush.body.applyForce(this.sustainedPush.vector,this.sustainedPush.body.getWorldPoint(this.sustainedPush.localPoint),true);this.sustainedPush.remaining-=DT/substeps;}this.configureContinuousCollision(DT/substeps);this.world.step(DT/substeps,stressed?10:8,stressed?16:10);this.world.clearForces();}if(this.externalPhysics){work=this.externalWork||0;this.externalWork=0;}this.energy+=work;this.time+=DT;this.steps++;
     const commandChange=this.actions.reduce((sum,v,i)=>sum+(v-(previousActions[i]||0))**2*(i>=12?.15:0),0);
     const actionChange=commandChange+this.motors.reduce((sum,m,i)=>sum+((m.target-previousTargets[i])/DT)**2,0)*DT/this.motors.length;
@@ -238,92 +231,13 @@ export function robotGeometry(sim){
  return {parts:sim.bodies.map(({name,w,h,circle,color})=>({name,w,h,circle,color,attachments:name.endsWith('Forearm')?[{name:name.replace('Forearm','Hand'),x:0,y:-.2,w:.09,h:.13}]:name.endsWith('Foot')?[{name:name.replace('Foot','ToePart'),x:.165,y:-.015,w:.08,h:.07}]:[]})),joints:sim.motors.map(m=>({name:m.name,a:sim.bodies.findIndex(p=>p.body===m.joint.getBodyA()),b:sim.bodies.findIndex(p=>p.body===m.joint.getBodyB()),anchor:[m.joint.getLocalAnchorA().x,m.joint.getLocalAnchorA().y]}))};
 }
 // Two articulated bodies share one solver; neither actor receives scripted poses.
-export class CombatWorld extends RobotWorld{
- constructor(stage='fight',options={}){
-  super(stage,{...options,spawnX:options.spawnX??-.85,disturbances:false,pushes:[],ccdMode:'always',collisionGroup:-1});
-  this.combatOptions=combatSettings(options);this.combatState=freshFighter();this.rivalState=freshFighter();this.avoided=0;this.threats=new Map();this.combatHits=[];this.hitTimes=new Map();this.approaches=new WeakMap();this.bagStrikeContacts=new BagStrikeContacts();this.bagStrikeRecovery=new BagStrikeRecovery();this.decision={done:false,winner:null,reason:null};
-  this.drill=['punch','kick'].includes(stage)?'bag':stage==='defend'?'limited':'selfplay';
-  this.opponentWeights=options.opponentWeights||null;
-  if(this.drill==='bag'||this.drill==='limited'){
-   const glove=stage==='defend',x=.05,y=this.groundHeight(x)+1.2,anchor=this.world.createBody();
-   const body=this.world.createDynamicBody({position:Vec2(x,y),gravityScale:glove?0:1,linearDamping:glove?0:.15,angularDamping:.3,bullet:true,userData:glove?'trainingGlove':'combatBag'});
-   body.createFixture(glove?Circle(.14):Box(.22,.48),{density:glove?50:this.combatOptions.bagMass/(.44*BAG_HEIGHT),friction:.45,restitution:.08,filterGroupIndex:-2});
-   const rope=!glove?this.world.createJoint(RopeJoint({localAnchorA:Vec2(x,y+2.03),localAnchorB:Vec2(0,BAG_HOOK_OFFSET),maxLength:BAG_ROPE_LENGTH},anchor,body)):null;
-   this.bag={body,rope,anchor:[x,y+2.03],radius:glove?.14:.22,height:glove?.28:BAG_HEIGHT,glove};this.combatOpponent=this.bag;this.nextBagSwing=.4;
-   if(glove)body.setPosition(Vec2(4,y));
-
-  }else{
-   const floor=this.world.getBodyList();let ground=floor;for(let b=floor;b;b=b.getNext())if(b.getUserData()==='ground'){ground=b;break;}
-   this.opponent=new RobotWorld(stage,{...options,terrain:'meadow',trainingSpec:null,sharedWorld:this.world,sharedFloor:ground,spawnX:.85,facing:-1,collisionGroup:-2,externalPhysics:true,disturbances:false,pushes:[],ccdMode:'always',seed:(options.seed??31)+101});
-   this.physicsPartner=this.opponent;this.combatOpponent=this.opponent;this.opponent.combatOpponent=this;this.opponent.combatState=this.rivalState;this.opponent.opponentState=this.combatState;
-  }
-  this.opponentState=this.rivalState;
-  const bagLimb=contact=>{if(!this.bag||this.bag.glove)return null;const a=contact.getFixtureA().getBody(),b=contact.getFixtureB().getBody(),limb=a===this.bag.body?b:b===this.bag.body?a:null;return limb?.robotOwner===this&&/Forearm$|Foot$/.test(limb.getUserData())?limb:null;};
-  this.world.on('begin-contact',contact=>{const limb=bagLimb(contact);if(limb)this.bagStrikeContacts.begin(limb,this.time);});
-  this.world.on('end-contact',contact=>{const limb=bagLimb(contact);if(limb)this.bagStrikeContacts.end(limb,this.time);});
-  this.world.on('pre-solve',contact=>{const wm=contact.getWorldManifold();if(!wm?.pointCount)return;const a=contact.getFixtureA().getBody(),b=contact.getFixtureB().getBody();if(!this.isCrossContact(a,b))return;let closing=0;for(let i=0;i<wm.pointCount;i++){const va=a.getLinearVelocityFromWorldPoint(wm.points[i]),vb=b.getLinearVelocityFromWorldPoint(wm.points[i]);closing=Math.max(closing,-((vb.x-va.x)*wm.normal.x+(vb.y-va.y)*wm.normal.y));}this.approaches.set(contact,{closing,point:[wm.points[0].x,wm.points[0].y]});});
-  this.world.on('post-solve',(contact,impulse)=>{const a=contact.getFixtureA().getBody(),b=contact.getFixtureB().getBody();if(!this.isCrossContact(a,b))return;const approach=this.approaches.get(contact);if(!approach)return;const total=Array.from(impulse.normalImpulses||[]).reduce((sum,n)=>sum+Math.max(0,n||0),0);this.registerStrike(a,b,total,approach);this.registerStrike(b,a,total,approach);});
- }
- isCrossContact(a,b){return a.robotOwner&&b.robotOwner&&a.robotOwner!==b.robotOwner||this.bag&&(a===this.bag.body&&b.robotOwner||b===this.bag.body&&a.robotOwner);}
- registerStrike(attacker,target,impulse,approach){
-  const owner=attacker.robotOwner,isBag=this.bag?.body===attacker,targetBag=this.bag?.body===target;if(!owner&&!isBag)return;
-  const name=attacker.getUserData(),kind=isBag?(this.bag.glove?'punch':'bag'):name.endsWith('Forearm')?'punch':name.endsWith('Foot')?'kick':null;if(!kind)return;
-  if(!isBag&&kind==='punch'&&attacker.getLocalPoint(Vec2(...approach.point)).y>-.08)return;
-  const attackerIndex=owner===this||targetBag?0:1,targetIndex=targetBag?1:target.robotOwner===this?0:1;if(attackerIndex===targetIndex&&!targetBag&&!isBag)return;
-  const targetName=targetBag?'torso':target.getUserData(),damage=impactDamage({impulse,closing:approach.closing,target:targetName}),key=attackerIndex+':'+name+':'+targetIndex;
-  if(!damage||this.time-(this.hitTimes.get(key)??-Infinity)<COMBAT_RULES.contactCooldown)return;
-  // One reward per whole limb contact, including compound hand/foot fixtures.
-  // Sustained pushing and solver chatter cannot earn another impact bonus.
-  if(targetBag&&!this.bag.glove&&!this.bagStrikeContacts.claim(attacker))return;this.hitTimes.set(key,this.time);
-  const states=[this.combatState,this.rivalState],source=states[attackerIndex],dest=states[targetIndex];if(!targetBag){dest.health=Math.max(0,dest.health-damage);dest.damageTaken+=damage;}source.damageDealt+=damage;source.hits++;if(kind==='punch')source.punches++;if(kind==='kick')source.kicks++;
-  const guard=/Arm|Forearm|Foot|Shin/.test(targetName);if(guard)dest.blocks++;
-  const event={id:this.combatHits.length?this.combatHits.at(-1).id+1:1,time:this.time,point:approach.point,damage,impulse,speed:approach.closing,kind,attacker:attackerIndex,target:targetIndex,blocked:guard};this.combatHits.push(event);if(this.combatHits.length>20)this.combatHits.shift();
-  const matching=this.stage==='fight'||this.stage===kind;
-  if(attackerIndex===0){const bagAttack=targetBag&&!this.bag.glove&&matching;this.addCombatReward(matching?(bagAttack?bagStrikeReward({impulse,closing:approach.closing}):damage*2):-damage*.15,'strike',this,{body:name,point:approach.point});if(bagAttack){const bonus=this.bagStrikeRecovery.strike(this.time);if(bonus)this.addCombatReward(bonus,'combination',this,{body:name,point:approach.point});}}else if(this.opponent)this.addCombatReward(damage*2,'strike',this.opponent);
-  if(targetIndex===0&&!targetBag)this.addCombatReward(-damage*(this.stage==='defend'?(guard?.5:2):1.5),'damage');else if(!targetBag&&this.opponent)this.addCombatReward(-damage*1.5,'damage',this.opponent);
-  if(guard&&targetIndex===0)this.addCombatReward(Math.min(3,impulse*.1),'block');
- }
- addCombatReward(value,key,actor=this,location=null){if(!Number.isFinite(value)||value===0)return;actor.reward+=value;actor.rewardTerms[key]=(actor.rewardTerms[key]||0)+value;if(value>0)actor.positiveRewardTotal+=value;else actor.negativeRewardTotal-=value;if(actor.rewardFeedback)actor.rewardFeedback.collect(this.time,{[key]:value},()=>[{body:location?.body||'torso',point:location?.point||[actor.parts.torso.getPosition().x,actor.parts.torso.getPosition().y],weight:1}],true);}
- step(weights=Array(POLICY_SIZE).fill(0),report=true,actions=null){
-  if(this.done)return report?this.metrics():undefined;const other=this.opponent,previous=other?.actions;
-  if(other){other.control(this.opponentWeights||weights);this.partnerActions=other.actions.map((a,i)=>this.drill==='sparring'?(i%12===10||i%12===11?0:i%12>=2&&i%12<=7?a*.5:a):a);other.actions=this.partnerActions;other.torqueLoad=0;}
-  if(this.bag?.glove){
-   const body=this.bag.body;
-   if(this.gloveEnds&&this.time>=this.gloveEnds){body.setLinearVelocity(Vec2(0,0));body.setPosition(Vec2(50,5));this.gloveEnds=0;this.threats.clear();}
-   if(this.time>=this.nextBagSwing){
-    const target=this.parts[this.random()<.5?'head':'torso'].getPosition(),side=this.random()<.5?-1:1,speed=1.5+this.random()*5.5;
-    const start=Vec2(target.x+side*1.5,target.y+(this.random()-.5)*.18),dx=target.x-start.x,dy=target.y-start.y,distance=Math.hypot(dx,dy);
-    body.setPosition(start);body.setLinearVelocity(Vec2(dx/distance*speed,dy/distance*speed));body.setAngularVelocity(0);this.bag.direction=-side;
-    this.gloveEnds=this.time+3.1/speed;this.nextBagSwing=this.gloveEnds+.6+this.random()*1.2;this.threats.clear();
-   }
-  }
-  const oldDistance=this.targetDistance(),before=this.reward;super.step(weights,false,actions);
-  if(other){other.actions=previous;other.step(this.opponentWeights||weights,false,this.partnerActions);}
-  const states=[this.combatState,this.rivalState],robots=[this,other];for(let i=0;i<robots.length;i++){const w=robots[i];if(!w)continue;updateDownState(states[i],{dt:DT,bodyDown:['head','torso','pelvis'].some(n=>(w.contacts.get(n)||0)>0),height:w.parts.pelvis.getPosition().y-w.groundHeight(w.parts.pelvis.getPosition().x),standing:Math.abs(w.parts.torso.getAngle())<.5&&w.parts.pelvis.getPosition().y-w.groundHeight(w.parts.pelvis.getPosition().x)>.75&&['leftFoot','rightFoot'].some(n=>(w.contacts.get(n)||0)>0)&&!['torso','pelvis','head'].some(n=>(w.contacts.get(n)||0)>0)});}
-  // Distance potential rewards approach, never indefinite standing or raw limb speed.
-  if(this.bag&&!this.bag.glove)this.addCombatReward(this.bagStrikeRecovery.step(this.time,DT,this.finalUpright&&!this.combatState.down),'strikeRecovery');
-  if(this.stage!=='defend')this.addCombatReward((Math.max(0,oldDistance-.5)-Math.max(0,this.targetDistance()-.5))*1.5,'range');
-  this.trackThreats();
-  if(this.stage==='defend'&&this.finalUpright)this.addCombatReward(DT*.25,'avoidance');
-  this.decision=this.bag?{done:this.time+DT/2>=this.duration||this.combatState.health<=0||this.combatState.count>=10,winner:this.combatState.health<=0||this.combatState.count>=10?'right':null,reason:this.combatState.health<=0?'health':this.combatState.count>=10?'count':'duration'}:matchVerdict(states,this.time,this.duration);
-  if(this.decision.done){this.done=true;this.terminationReason=this.decision.reason==='time'||this.decision.reason==='duration'?'duration':this.decision.reason;if(this.decision.winner)this.addCombatReward(this.decision.winner==='left'?20:this.decision.winner==='right'?-20:0,'outcome');}if(other)other.done=this.done;
-  if(!Number.isFinite(this.reward-before)){this.done=true;this.terminationReason='numerical';}
-  return report?this.metrics():undefined;
- }
- trackThreats(){const head=this.parts.head.getPosition(),velocity=this.parts.head.getLinearVelocity(),bodies=this.bag?[this.bag.body]:['leftForearm','rightForearm','leftFoot','rightFoot'].map(n=>this.opponent.parts[n]);for(let i=0;i<bodies.length;i++){const body=bodies[i],p=body.getPosition(),v=body.getLinearVelocity(),dx=head.x-p.x,dy=head.y-p.y,distance=Math.hypot(dx,dy),closing=((v.x-velocity.x)*dx+(v.y-velocity.y)*dy)/Math.max(.01,distance);let threat=this.threats.get(i);if(!threat&&distance<.9&&closing>1.2){threat={start:this.time,minimum:distance,damage:this.combatState.damageTaken,head:[head.x,head.y],blocks:this.combatState.blocks};this.threats.set(i,threat);}if(!threat)continue;threat.minimum=Math.min(threat.minimum,distance);if(closing<0&&distance>threat.minimum+.2&&this.time-threat.start>.1){if(this.combatState.damageTaken===threat.damage&&this.combatState.blocks===threat.blocks&&this.finalUpright&&Math.hypot(head.x-threat.head[0],head.y-threat.head[1])>.08){this.avoided++;if(this.stage==='defend'||this.stage==='fight')this.addCombatReward(1,'evade');}this.threats.delete(i);}else if(this.time-threat.start>1.5)this.threats.delete(i);}}
- targetDistance(){const p=this.parts.pelvis.getPosition(),q=this.opponent?.parts.pelvis.getPosition()||this.bag?.body.getPosition();return q?Math.hypot(q.x-p.x,q.y-p.y):0;}
- metrics(){const m=super.metrics();if(!this.combatState)return m;return {...m,combat:{fighters:[{...this.combatState},{...this.rivalState}],bagMass:this.bag&&!this.bag.glove?this.bag.body.getMass():null,drill:this.drill,winner:this.decision?.winner||null,reason:this.decision?.reason||null,remaining:Math.max(0,this.duration-this.time),avoided:this.avoided,countSeconds:2}};}
- snapshot(){const frame=super.snapshot();return {...frame,facing:1,opponent:this.opponent?{...this.opponent.snapshot(),facing:-1}:null,bag:this.bag?{mass:this.bag.body.getMass(),ropeLength:this.bag.glove?0:BAG_ROPE_LENGTH,velocity:[this.bag.body.getLinearVelocity().x,this.bag.body.getLinearVelocity().y],angularVelocity:this.bag.body.getAngularVelocity(),position:[this.bag.body.getPosition().x,this.bag.body.getPosition().y],angle:this.bag.body.getAngle(),anchor:[...this.bag.anchor],radius:this.bag.radius,height:this.bag.height,glove:this.bag.glove,direction:this.bag.direction||-1}:null,combatHits:this.combatHits.filter(e=>this.time-e.time<.4)};}
-}
-
-export const createRobotWorld=(stage='balance',options={})=>isCombat(stage)?new CombatWorld(stage,options):new RobotWorld(stage,options);
+export const createRobotWorld=(stage='balance',options={})=>new RobotWorld(stage,options);
 export function episode(weights,stage='balance',seed=1,options={}){
   const sim=createRobotWorld(stage,{...(stage==='balance'?{command:{mode:'hold'}}:{}),seed,...options}),trace=[];
   while(!sim.done){sim.step(weights,false);if(options.record&&sim.steps%2===0)trace.push(sim.snapshot());}
   if(options.record&&trace.at(-1)?.time!==sim.time)trace.push(sim.snapshot());return {task:sim.stage,metrics:sim.metrics(),pushPlan:sim.pushes.map(p=>({...p})),commandSchedule:sim.commandSchedule.map(p=>structuredClone(p)),trace,...(options.summaryOnly?{}:robotGeometry(sim)),obstacles:sim.obstacles,terrain:sim.terrain};
 }
 export function passedStage(metrics,stage,requiredDuration=STAGES[stage].duration){
-  if(isCombat(stage)){const c=metrics.combat?.fighters?.[0];if(!c||!metrics.done)return false;return metrics.upright>.4&&(stage==='defend'?c.health>=90&&(c.blocks>0||metrics.combat.avoided>0):stage==='punch'?c.punches>=1:stage==='kick'?c.kicks>=1:metrics.combat.winner==='left'||c.damageDealt>c.damageTaken+2);}
   if(metrics.terminationReason!=='duration'||!metrics.done||metrics.time+DT/2<requiredDuration)return false;
   if(stage==='balance')return metrics.upright>.95&&metrics.falls===0&&Math.abs(metrics.distance)<1&&metrics.height>.75;
   if(stage==='recover')return metrics.recoveries>=1&&metrics.height>RECOVERY_CRITERIA.height&&metrics.finalUpright===true&&!metrics.recovering&&metrics.stableTime+DT/2>=RECOVERY_CRITERIA.settleSeconds;
@@ -341,7 +255,7 @@ export const VALIDATION_CASES = [
 ];
 export function evaluateAbility(weights,stage,environment={},validationCases=VALIDATION_CASES){
  environment=taskEnvironment(environment,stage);
- const cases=validationCases.map((c,i)=>{const metrics=episode(weights,stage,c.seed,{...environment,...(stage==='recover'?{recoveryEarlyStopTraining:false,recoveryAssistTraining:false,recoveryStart:recoveryTestStart(i,validationCases.length)}:{}),...(isCombat(stage)?{combatDrill:stage==='fight'?'selfplay':stage==='defend'?'limited':'bag',opponentWeights:Array(POLICY_SIZE).fill(0)}:{}),...(environment.terrain==='training'?{trainingSpec:validationGround(c,i)}:{}),observationSeconds:c.seconds??normalizeEvaluationSettings(environment).validationSeconds,pushes:c.pushes,disturbances:false,summaryOnly:true}).metrics;return {id:c.id,label:c.label,passed:passedStage(metrics,stage,c.seconds??normalizeEvaluationSettings(environment).validationSeconds),reward:metrics.reward,metrics};});
+ const cases=validationCases.map((c,i)=>{const metrics=episode(weights,stage,c.seed,{...environment,...(stage==='recover'?{recoveryEarlyStopTraining:false,recoveryAssistTraining:false,recoveryStart:recoveryTestStart(i,validationCases.length)}:{}),...(environment.terrain==='training'?{trainingSpec:validationGround(c,i)}:{}),observationSeconds:c.seconds??normalizeEvaluationSettings(environment).validationSeconds,pushes:c.pushes,disturbances:false,summaryOnly:true}).metrics;return {id:c.id,label:c.label,passed:passedStage(metrics,stage,c.seconds??normalizeEvaluationSettings(environment).validationSeconds),reward:metrics.reward,metrics};});
  return {meanReward:cases.reduce((s,c)=>s+c.reward,0)/cases.length,passRate:cases.filter(c=>c.passed).length/cases.length,cases};
 }
 export function evaluateAbilities(weights,environment={}){return Object.fromEntries(Object.keys(STAGES).map(stage=>[stage,evaluateAbility(weights,stage,environment)]));}
