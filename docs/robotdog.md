@@ -24,7 +24,7 @@ Learning runs in one worker, yielding at least 12 ms between episodes and more w
 
 Only `mydesk.robotdog.v1` is written. It contains the versioned weights, count and at most 500 graph records. Reset explicitly confirms and affects only this key. Corrupt models are rejected. Other robot models, calendar, blogs, menus and credentials are untouched by this experiment. Training is device-local for this draft; there is no login or model cloud synchronization.
 
-The shared navigation gets one link `robotdog` immediately after `robot`, under the same parent. Only that new item is inserted; all existing item data/order are verified unchanged. No database schema change is needed.
+The shared navigation gets one new visible link `robotdog` immediately after `robot`, under the same parent. The already-visible swing link is also made explicit after robotdog, because older navigation code otherwise automatically inserts swing immediately after robot and pushes the dog down. No new swing feature is added. All previously stored menu item data and relative order are verified unchanged (original fingerprint `9a9c39c3e90d5debd57bd036c2488b62` after excluding these two explicit entries). No database schema change is needed.
 
 ## Verification
 
