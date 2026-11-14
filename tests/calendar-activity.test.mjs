@@ -22,7 +22,7 @@ test('storage failure preserves confirmation for the current page without preten
 });
 
 test('participant palette and gradients use selected people, with all-person schedules gray',()=>{
- assert.deepEqual(Object.values(CATEGORIES).map(c=>c.color),['#78818c','#477fc6','#de943c','#966bc8','#d57fa5']);
+ assert.deepEqual(Object.values(CATEGORIES).map(c=>c.color),['#78818c','#477fc6','#de943c','#966bc8','#d57fa5','#c44e57']);
  const pair=eventAppearance({...event,targets:['personal','school']});assert.match(pair.background,/linear-gradient/);assert.ok(pair.background.includes(CATEGORIES.personal.soft)&&pair.background.includes(CATEGORIES.school.soft));assert.ok(!pair.background.includes(CATEGORIES.medical.soft));
  const all=eventAppearance(event);assert.equal(all.background,CATEGORIES.family.soft);assert.equal(all.color,CATEGORIES.family.color);assert.equal(eventAppearance({...event,targets:['other']}).color,CATEGORIES.other.color);
 });

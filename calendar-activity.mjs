@@ -1,4 +1,4 @@
-import {todaySeoul,dateUTC,addDays,eventTargets,targetLabel} from './calendar-data.mjs?v=calendar15';
+import {todaySeoul,dateUTC,addDays,eventTargets,targetLabel} from './calendar-data.mjs?v=calendar20';
 export function eventStart(event){return Date.parse(event.starts_on+'T'+(event.all_day?'00:00':event.start_time.slice(0,5))+':00+09:00');}
 export function eventEnd(event){return Date.parse((event.all_day?addDays(event.ends_on,1):event.ends_on)+'T'+(event.all_day?'00:00':event.end_time.slice(0,5))+':00+09:00');}
 export function upcomingEvents(events,now=new Date()){

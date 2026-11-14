@@ -73,3 +73,6 @@ body[data-page=calendar] .sr-only{position:absolute;width:1px;height:1px;padding
 
 /* Edited schedules use the same compact card, with a distinct status badge. */
 .cal-notice-badge.is-updated{background:#f6dfbd;color:#8b5a20}
+
+.cal-notice-badge{background:#f6dfbd;color:#8b5a20}.cal-notice-badge.is-updated{background:#d1e2fa;color:#426c9e}.cal-holiday-target{color:#c44e57}.cal-event-chip.is-holiday-event,.cal-time-event.is-holiday-event{color:#bb424e}.cal-agenda-event.is-holiday-event .cal-agenda-content strong{color:#bb424e}
+.cal-event-chip:not(.is-holiday-event),.cal-time-event:not(.is-holiday-event){color:#3e4652}

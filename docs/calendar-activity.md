@@ -30,3 +30,16 @@
 운영 스키마 확장 및 임시 달력 검증 후 기존 일정의 건수·전체 기존 내용·시각 해시가 그대로인지 확인했다. 기존 블로그·메뉴·맛집·로봇 데이터와 관리자 비밀번호는 변경하지 않는다.
 
 calendar15 화면은 신규·수정 알림을 일정별 주황색 박스로 구분한다. 공통 제목·건수와 일괄 확인 버튼은 제거하고 개별 확인만 제공한다. 일정 제목은 종전 알림 그룹 제목과 같은 글꼴·크기·굵기를 사용하며, 다가오는 일정의 행 간격은 조금 줄였다. 확인 저장 키·일정 데이터 구조는 바꾸지 않는다. `scripts/verify-calendar-style15.cjs`로 색상·그라데이션·개별 확인 유지·체크 동작과 4개 화면 크기를 검증한다.
+
+
+## Calendar20: shared, editable holidays
+
+- `sync/calendar-holiday-events.sql` extends the existing table with the `holiday` target and source/deletion fields. The original 16 schedules and all their original columns, timestamps and revisions were verified unchanged by fingerprint `ca0eb32a4086d77d6426438cdb048b9e` before/after migration and live tests.
+- `calendar-holidays.mjs` imports the visible range and today through three calendar months later from the pinned Korean holiday catalogue (currently 2018–2027). No future dates are invented outside supported years. Upcoming holidays, including manually entered ones, stop at that inclusive cutoff. Family schedules remain unrestricted.
+- Import IDs are stable per calendar/date/name. Batched inserts use `resolution=ignore-duplicates`, preserving edits. Deleting an imported holiday marks its shared row hidden; later imports cannot resurrect it. Manual holidays use normal deletion. These hidden rows are excluded from calendar, upcoming and activity queries. No existing schedule is deleted by the migration or import.
+- Holidays share the same existing calendar capability and RLS policies as family events. New and edited events are visible to all devices opening that same family calendar; only acknowledgment stays in each browser's existing local receipt storage. Open tabs poll every 20 seconds and refresh when brought back into view.
+- `모두` remains the four relatives; `공휴일` is independent and red. Holiday event bars sort first, including ahead of multi-day family bars. Built-in duplicate holiday text labels are removed; all visible holiday bars open the normal editor and support add/edit/delete.
+- New badges are orange; updated badges are blue. Regular calendar event text is dark gray; holiday text stays red.
+- `tests/calendar-holiday-events.test.mjs`: cutoff/clamping, stable IDs, separate targets, holiday priority, duplicate/deletion protection, deletion requests.
+- `scripts/verify-calendar-holiday-events.cjs`: synthetic shared calendar with import, edit, deletion across two browser profiles, manual CRUD, three-month window, mobile layout, badge colors, dark regular text and existing schedule preservation.
+- `scripts/verify-calendar-holiday-live.cjs`: actual public REST calls in a fresh random test calendar; verifies CRUD, idempotent seed, preserved edits/deletions, capability isolation and timestamps; removes only test rows in finally.
