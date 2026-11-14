@@ -1,4 +1,4 @@
-import {applyClockSky,clockNumberInk} from './calendar-clock-sky.mjs?v=calendar29';
+import {applyClockSky,clockNumberInk} from './calendar-clock-sky.mjs?v=calendar30';
 import {addDays,dateUTC,monthStart,monthDays,shiftMonth,hourLater,validDate} from './calendar-data.mjs?v=calendar20';
 const $=id=>document.getElementById('cal-'+id),el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
 export const minuteChoices=minute=>[...new Set([0,10,20,30,40,50,...(Number.isInteger(Number(minute))&&Number(minute)>=0&&Number(minute)<=59?[Number(minute)]:[])])].sort((a,b)=>a-b);

@@ -7,10 +7,10 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
  await p.click('#cal-create');await p.click('#cal-start-time-button');const observations=[];
  for(const [hour,label] of [[2,'밤'],[6,'새벽'],[9,'오전'],[12,'낮'],[18,'노을'],[21,'밤']]){
  await p.click('#cal-time-start-step');await p.click('[data-period="'+(hour>=12?'pm':'am')+'"]');await p.click('[data-clock-hour="'+(hour%12||12)+'"]');
- await p.click('#cal-clock-hour-step');await p.waitForTimeout(450);const sky=await p.locator('#cal-time-dial').evaluate(e=>({time:e.dataset.skyTime,label:e.dataset.sky,background:getComputedStyle(e).backgroundImage,sun:e.style.getPropertyValue('--clock-sun'),moon:e.style.getPropertyValue('--clock-moon')}));assert.equal(sky.label,label);assert.equal(sky.time,String(hour).padStart(2,'0')+':00');observations.push(sky);
- await p.screenshot({path:'/tmp/calendar29-'+hour+'.png'});
+ await p.click('#cal-clock-hour-step');await p.waitForTimeout(450);const sky=await p.locator('#cal-time-dial').evaluate(e=>({time:e.dataset.skyTime,label:e.dataset.sky,background:getComputedStyle(e).backgroundImage,sun:e.style.getPropertyValue('--clock-sun'),moon:e.style.getPropertyValue('--clock-moon'),sunPosition:getComputedStyle(e,'::before').top,moonPosition:getComputedStyle(e,'::after').top}));assert.equal(sky.label,label);assert.equal(sky.time,String(hour).padStart(2,'0')+':00');observations.push(sky);
+ await p.screenshot({path:'/tmp/calendar30-'+hour+'.png'});
  }
- assert.notEqual(observations[0].background,observations[2].background);assert.equal(observations[0].sun,'0');assert.equal(observations[2].sun,'1');assert.equal(observations[5].sun,'0');
+ assert.notEqual(observations[0].background,observations[2].background);assert.equal(observations[0].sun,'0.35');assert.equal(observations[2].sun,'1');assert.equal(observations[5].sun,'0.35');assert.ok(observations.every(s=>Number(s.sun)>0&&Number(s.moon)>0));
  // Returning to end time renders its own sky and keeps the gray start reference.
  await p.click('#cal-time-end-step');assert.equal(await p.locator('#cal-time-dial').getAttribute('data-sky-time'),'10:00');assert.equal(await p.locator('.cal-clock-reference').count(),1);
  await p.click('#cal-time-picker-cancel');await p.click('#cal-cancel');assert.equal(writes,0);assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,timeOfDay:observations,existingInputsUntouched:true,errors}));}finally{await b.close();}})().catch(e=>{console.error(e);process.exit(1)});
