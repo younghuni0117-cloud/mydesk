@@ -1,4 +1,4 @@
-import {SchedulePickers} from './calendar-pickers.mjs?v=calendar28';
+import {SchedulePickers} from './calendar-pickers.mjs?v=calendar29';
 import {CalendarReceipts,upcomingEvents,countdown,scheduleLabel} from './calendar-activity.mjs?v=calendar20';
 import {parseFamilyLink,resolveFamily} from './calendar-identity.mjs?v=calendar7';
 import {hasHolidayYear} from './data/korean-holidays.mjs?v=calendar3';
