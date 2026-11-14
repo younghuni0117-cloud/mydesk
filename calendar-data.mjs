@@ -1,5 +1,5 @@
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=update69';
-export const CATEGORIES=Object.freeze({family:{label:'모두',color:'#4285f4',soft:'#eaf2ff'},personal:{label:'영훈',color:'#8e63ce',soft:'#f2ebfc'},school:{label:'서정',color:'#df9130',soft:'#fff3df'},medical:{label:'하경',color:'#289c83',soft:'#e6f5f0'},other:{label:'하윤',color:'#788594',soft:'#edf0f4'}});
+export const CATEGORIES=Object.freeze({family:{label:'모두',color:'#78818c',soft:'#e9ebee'},personal:{label:'영훈',color:'#477fc6',soft:'#dce9fb'},school:{label:'서정',color:'#de943c',soft:'#ffead0'},medical:{label:'하경',color:'#966bc8',soft:'#ece0f8'},other:{label:'하윤',color:'#d57fa5',soft:'#f9dfeb'}});
 export function todaySeoul(now=new Date()){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`;}
 export const dateUTC=iso=>new Date(iso+'T00:00:00Z');
 export function addDays(iso,n){const d=dateUTC(iso);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
@@ -25,6 +25,7 @@ export function validDate(s){return /^\d{4}-\d{2}-\d{2}$/.test(s)&&s>='1900-01-0
 export const TARGET_IDS=Object.freeze(['personal','school','medical','other']);
 export function eventTargets(event){return Array.isArray(event.targets)?TARGET_IDS.filter(id=>event.targets.includes(id)):event.category==='family'?[...TARGET_IDS]:TARGET_IDS.includes(event.category)?[event.category]:[];}
 export function targetLabel(event){const targets=eventTargets(event);return targets.length===4?'모두':targets.map(id=>CATEGORIES[id].label).join(' · ');}
+export function eventAppearance(event){const targets=eventTargets(typeof event==='string'?{category:event}:event),keys=targets.length>1&&targets.length<4?targets:[targets.length===1?targets[0]:'family'],colors=keys.map(id=>CATEGORIES[id]);return {color:colors.length===1?colors[0].color:'#566174',soft:colors[0].soft,background:colors.length===1?colors[0].soft:'linear-gradient(110deg, '+colors.map((c,i)=>c.soft+' '+Math.round(i/(colors.length-1)*100)+'%').join(', ')+')'};}
 export function matchesTargets(event,enabled){return eventTargets(event).some(id=>enabled.has(id));}
 export function eventPayload(input){
  const targets=input.targets==null?eventTargets(input):input.targets;if(!Array.isArray(targets)||!targets.length||targets.some(id=>!TARGET_IDS.includes(id)))throw Error('일정 대상을 한 명 이상 선택해 주세요.');const canonical=TARGET_IDS.filter(id=>targets.includes(id));

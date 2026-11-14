@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {CalendarReceipts,upcomingEvents,countdown,changeDiff} from '../calendar-activity.mjs';
-import {eventTargets,eventPayload,targetLabel,matchesTargets} from '../calendar-data.mjs';
+import {CATEGORIES,eventAppearance,eventTargets,eventPayload,targetLabel,matchesTargets} from '../calendar-data.mjs';
 const event={id:'663694dd-db35-457f-8f4a-595658e97c00',title:'가족 약속',category:'family',starts_on:'2026-11-14',ends_on:'2026-11-14',all_day:false,start_time:'10:00',end_time:'11:00',notes:''};
 const storage=()=>{const map=new Map();return {getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v)};};
 test('legacy categories map to targets and partial shared events remain single events',()=>{
@@ -19,4 +19,10 @@ test('updated events reappear once with latest content and diff against last con
 });
 test('storage failure preserves confirmation for the current page without pretending it persisted',()=>{
  const r=new CalendarReceipts('family-a',{getItem:()=>null,setItem:()=>{throw Error('quota');}}),e={...event,change_revision:1,change_kind:'new'};assert.equal(r.acknowledge([e]),false);assert.equal(r.unread([e]).length,0);
+});
+
+test('participant palette and gradients use selected people, with all-person schedules gray',()=>{
+ assert.deepEqual(Object.values(CATEGORIES).map(c=>c.color),['#78818c','#477fc6','#de943c','#966bc8','#d57fa5']);
+ const pair=eventAppearance({...event,targets:['personal','school']});assert.match(pair.background,/linear-gradient/);assert.ok(pair.background.includes(CATEGORIES.personal.soft)&&pair.background.includes(CATEGORIES.school.soft));assert.ok(!pair.background.includes(CATEGORIES.medical.soft));
+ const all=eventAppearance(event);assert.equal(all.background,CATEGORIES.family.soft);assert.equal(all.color,CATEGORIES.family.color);assert.equal(eventAppearance({...event,targets:['other']}).color,CATEGORIES.other.color);
 });
