@@ -1,5 +1,5 @@
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=update69';
-export const CATEGORIES=Object.freeze({family:{label:'공통',color:'#4285f4',soft:'#eaf2ff'},personal:{label:'영훈',color:'#8e63ce',soft:'#f2ebfc'},school:{label:'서정',color:'#df9130',soft:'#fff3df'},medical:{label:'하경',color:'#289c83',soft:'#e6f5f0'},other:{label:'하윤',color:'#788594',soft:'#edf0f4'}});
+export const CATEGORIES=Object.freeze({family:{label:'모두',color:'#4285f4',soft:'#eaf2ff'},personal:{label:'영훈',color:'#8e63ce',soft:'#f2ebfc'},school:{label:'서정',color:'#df9130',soft:'#fff3df'},medical:{label:'하경',color:'#289c83',soft:'#e6f5f0'},other:{label:'하윤',color:'#788594',soft:'#edf0f4'}});
 export function todaySeoul(now=new Date()){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`;}
 export const dateUTC=iso=>new Date(iso+'T00:00:00Z');
 export function addDays(iso,n){const d=dateUTC(iso);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
@@ -22,8 +22,13 @@ export function weekEventSegments(events,days){
  const lanes=[];for(const row of rows){let lane=lanes.findIndex(end=>end<row.start);if(lane<0)lane=lanes.length;lanes[lane]=row.end;row.lane=lane;}return rows;
 }
 export function validDate(s){return /^\d{4}-\d{2}-\d{2}$/.test(s)&&s>='1900-01-01'&&s<='2199-12-31'&&Number.isFinite(dateUTC(s).getTime())&&dateUTC(s).toISOString().slice(0,10)===s;}
+export const TARGET_IDS=Object.freeze(['personal','school','medical','other']);
+export function eventTargets(event){return Array.isArray(event.targets)?TARGET_IDS.filter(id=>event.targets.includes(id)):event.category==='family'?[...TARGET_IDS]:TARGET_IDS.includes(event.category)?[event.category]:[];}
+export function targetLabel(event){const targets=eventTargets(event);return targets.length===4?'모두':targets.map(id=>CATEGORIES[id].label).join(' · ');}
+export function matchesTargets(event,enabled){return eventTargets(event).some(id=>enabled.has(id));}
 export function eventPayload(input){
- const out={id:input.id,title:String(input.title||'').trim(),person:String(input.person||'').trim(),category:input.category,starts_on:input.starts_on,ends_on:input.ends_on,all_day:input.all_day===true,start_time:input.all_day?null:input.start_time?.slice(0,5),end_time:input.all_day?null:input.end_time?.slice(0,5),location:String(input.location||'').trim(),notes:String(input.notes||'').trim()};
+ const targets=input.targets==null?eventTargets(input):input.targets;if(!Array.isArray(targets)||!targets.length||targets.some(id=>!TARGET_IDS.includes(id)))throw Error('일정 대상을 한 명 이상 선택해 주세요.');const canonical=TARGET_IDS.filter(id=>targets.includes(id));
+ const out={targets:canonical,id:input.id,title:String(input.title||'').trim(),person:String(input.person||'').trim(),category:canonical.length===1?canonical[0]:'family',starts_on:input.starts_on,ends_on:input.ends_on,all_day:input.all_day===true,start_time:input.all_day?null:input.start_time?.slice(0,5),end_time:input.all_day?null:input.end_time?.slice(0,5),location:String(input.location||'').trim(),notes:String(input.notes||'').trim()};
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(out.id))throw Error('일정 식별자가 올바르지 않습니다.');
  if(!out.title||out.title.length>120)throw Error('일정 제목을 120자 이내로 입력하세요.');
  if(!CATEGORIES[out.category]||out.person.length>40||out.location.length>200||out.notes.length>2000)throw Error('일정 내용을 입력 범위 안에서 확인하세요.');
@@ -35,7 +40,10 @@ export function sortEvents(a,b){return a.starts_on.localeCompare(b.starts_on)||N
 export class CalendarStore{
  constructor({calendarId,fetcher=globalThis.fetch?.bind(globalThis),url=SHARED_MODEL_URL.replace('/robot_shared_model','/family_calendar_events'),key=SHARED_MODEL_KEY}={}){if(!/^[0-9a-f-]{36}$/i.test(calendarId||''))throw Error('가족 달력 링크를 확인하세요.');Object.assign(this,{calendarId:calendarId.toLowerCase(),fetcher,url,key});}
  async request(query,options={}){const c=new AbortController(),timer=setTimeout(()=>c.abort(),12000);try{const r=await this.fetcher(this.url+query,{cache:'no-store',credentials:'omit',...options,headers:{apikey:this.key,'x-client-info':'mydesk-calendar/'+this.calendarId,Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...options.headers},signal:c.signal});if(!r.ok)throw Error('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');return r.status===204?[]:await r.json();}finally{clearTimeout(timer);}}
- async list(start,end){const all=[];for(let offset=0;;offset+=500){const params=new URLSearchParams({select:'*',calendar_id:'eq.'+this.calendarId,starts_on:'lte.'+end,ends_on:'gte.'+start,order:'starts_on.asc,start_time.asc.nullsfirst,id.asc',limit:'500',offset:String(offset)}),rows=await this.request('?'+params);all.push(...rows);if(rows.length<500)return all.map(row=>({...row,...eventPayload(row)})).sort(sortEvents);}}
- async save(input){const event=eventPayload(input);const rows=await this.request('?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({...event,calendar_id:this.calendarId})});return {...rows[0],...event};}
+ async collect(filters,order='starts_on.asc,start_time.asc.nullsfirst,id.asc'){const all=[];for(let offset=0;;offset+=500){const params=new URLSearchParams({select:'*',calendar_id:'eq.'+this.calendarId,...filters,order,limit:'500',offset:String(offset)}),rows=await this.request('?'+params);all.push(...rows);if(rows.length<500)return all.map(row=>({...row,...eventPayload(row)}));}}
+ async list(start,end){return (await this.collect({starts_on:'lte.'+end,ends_on:'gte.'+start})).sort(sortEvents);}
+ async listUpcoming(day){return this.collect({ends_on:'gte.'+day});}
+ async listActivity(){return this.collect({change_revision:'gt.0'},'changed_at.desc,id.asc');}
+ async save(input){const event=eventPayload(input);const rows=await this.request('?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({...event,calendar_id:this.calendarId})});if(!rows[0])throw Error('일정 저장 결과를 확인하지 못했습니다.');return {...rows[0],...eventPayload(rows[0])};}
  async remove(id){if(!/^[0-9a-f-]{36}$/i.test(id))throw Error('일정을 찾을 수 없습니다.');await this.request('?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'}});}
 }
