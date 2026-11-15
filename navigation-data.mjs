@@ -1,6 +1,7 @@
 export const DEFAULT_MENUS=[
  {id:'home',parent_id:null,label:'홈',kind:'link',href:'index.html'},
  {id:'calendar',parent_id:null,label:'가족 달력',kind:'link',href:'calendar.html'},
+ {id:'mindmap',parent_id:null,label:'마인드맵',kind:'link',href:'mindmap.html'},
  {id:'restaurants',parent_id:null,label:'맛집 기록',kind:'link',href:'restaurants.html'},
  {id:'career',parent_id:null,label:'커리어',kind:'folder',href:null},
  {id:'experienced-jobs',parent_id:'career',label:'경력직 공고',kind:'folder',href:null},
