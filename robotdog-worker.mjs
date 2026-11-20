@@ -1,4 +1,4 @@
-import {DogTrainer,validModel,freshModel} from './robotdog-learning.mjs?v=dog4';
+import {DogTrainer,validModel,freshModel} from './robotdog-learning.mjs?v=dog5';
 let generation=0,trainer=null,paused=false;
 self.onmessage=async({data})=>{
  if(data.type==='pause'){paused=true;if(trainer)postMessage({type:'checkpoint',model:trainer.checkpoint()});return;}if(data.type==='resume'){paused=false;return;}

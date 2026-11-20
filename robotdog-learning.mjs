@@ -1,11 +1,12 @@
-import {terrainKind} from './robotdog-terrain.mjs?v=dog4';
-import {WEIGHTS,RIG_VERSION,GOAL_IDS,goalKind,DogWorld,DOG,episode,worldSuccess} from './robotdog-core.mjs?v=dog4';
-import {DogPPO} from './robotdog-ppo.mjs?v=dog4';
-// Preserve the old CEM key verbatim; incompatible 68-input PPO gets its own checkpoint.
+import {terrainKind} from './robotdog-terrain.mjs?v=dog5';
+import {WEIGHTS,RIG_VERSION,GOAL_IDS,goalKind,DogWorld,DOG,episode,worldSuccess} from './robotdog-core.mjs?v=dog5';
+import {DogPPO} from './robotdog-ppo.mjs?v=dog5';
+// Remove the retired CEM collection; retain the compatible 68-input PPO model.
 export const MODEL_KEY='mydesk.robotdog.ppo.v2',LEGACY_KEY='mydesk.robotdog.v1';
 export function validModel(m){return m?.version===2&&m.algorithm==='PPO'&&m.rigVersion===RIG_VERSION&&Array.isArray(m.weights)&&m.weights.length===WEIGHTS&&m.weights.every(Number.isFinite)&&Number.isSafeInteger(m.attempts)&&m.attempts>=0&&Array.isArray(m.history)&&m.history.length<=1000&&m.history.every(p=>Number.isFinite(p.attempt)&&Number.isFinite(p.reward)&&Number.isFinite(p.best));}
 export function freshModel(){const ppo=new DogPPO();return{version:2,algorithm:'PPO',rigVersion:RIG_VERSION,terrain:'flat',goal:'stand',mixed:true,target:.4,seconds:6,weights:[...ppo.actor.w],learner:ppo.snapshot(),attempts:0,history:[],best:null,metrics:{},skills:Object.fromEntries(GOAL_IDS.map(g=>[g,{attempts:0,reward:0,success:0}]))};}
-export function loadModel(storage=globalThis.localStorage){try{const m=JSON.parse(storage?.getItem(MODEL_KEY)||'null');if(!validModel(m))return freshModel();const ppo=new DogPPO();ppo.restore(m.learner);return{...m,goal:goalKind(m.goal),terrain:terrainKind(m.terrain)};}catch{return freshModel();}}
+export function removeLegacyModel(storage=globalThis.localStorage){try{storage?.removeItem?.(LEGACY_KEY);return !storage?.getItem(LEGACY_KEY);}catch{return false;}}
+export function loadModel(storage=globalThis.localStorage){removeLegacyModel(storage);try{let m=JSON.parse(storage?.getItem(MODEL_KEY)||'null');if(m?.version===2&&m?.algorithm==='PPO'&&m.rigVersion===4)m={...m,rigVersion:RIG_VERSION,best:null,metrics:{},physicsUpdated:true};if(!validModel(m))return freshModel();const ppo=new DogPPO();ppo.restore(m.learner);return{...m,goal:goalKind(m.goal),terrain:terrainKind(m.terrain)};}catch{return freshModel();}}
 export function saveModel(model,storage=globalThis.localStorage){try{if(!validModel(model))return false;storage?.setItem(MODEL_KEY,JSON.stringify(model));return !!storage;}catch{return false;}}
 export const trainingContext=(target,seconds,terrain,goal='stand',mixed=true)=>JSON.stringify([RIG_VERSION,'PPO',Number(target),Number(seconds),terrainKind(terrain),goalKind(goal),!!mixed]);
 const pause=()=>new Promise(r=>setTimeout(r,0));
