@@ -18,3 +18,15 @@ test('create retries confirm identical saved data without overwriting; edits use
 test('empty revision update and invalid image formats surface errors',async()=>{
  const store=new RestaurantStore({fetcher:async()=>new Response('[]',{status:200})});await assert.rejects(store.save(record(),2),/다른 기기/);await assert.rejects(store.upload(id,new Blob(['x'],{type:'image/svg+xml'})),/JPG/);
 });
+
+test('blog URLs are optional, HTTPS-only, credential-free and survive saves',async()=>{
+ const {safeBlogURL}=await import('../restaurant-data.mjs');
+ assert.equal(restaurantPayload(record()).blog_url,'');
+ for(const bad of ['javascript:alert(1)','data:text/html,test','http://blog.example.com/a','https://user:secret@example.com/','https://example.com/'+ '가'.repeat(1000)]){
+  assert.equal(safeBlogURL(bad),'');assert.throws(()=>restaurantPayload({...record(),blog_url:bad}),/블로그 주소/);
+ }
+ const blog='https://blog.example.com/post?id=42&x=1',payload=restaurantPayload({...record(),blog_url:blog}),requests=[];
+ const store=new RestaurantStore({fetcher:async(url,options)=>{requests.push(options);return new Response(JSON.stringify([{...JSON.parse(options.body),revision:1}]),{status:200});}});
+ assert.equal((await store.save({...record(),blog_url:blog},0)).blog_url,blog);
+ assert.equal(JSON.parse(requests[0].body).blog_url,blog);assert.equal('source_url' in payload,false);
+});

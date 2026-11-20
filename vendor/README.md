@@ -17,8 +17,6 @@ The archive integrity was checked before copying the distribution. License text 
 - SHA-256: `76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495`.
 - Used by the swing and independent robotdog experiments; no runtime CDN request is required.
 
-## Leaflet
+## Leaflet (previous restaurant map compatibility)
 
-- Version: 1.9.4, unmodified browser JavaScript and CSS from https://unpkg.com/leaflet@1.9.4/dist/.
-- License: BSD-2-Clause, retained in `leaflet/LICENSE` (https://github.com/Leaflet/Leaflet/tree/v1.9.4).
-- Used only by the restaurant neighbourhood map. Custom vector flags avoid default marker image dependencies. The street tiles remain external; the library itself is served locally.
+Version 1.9.4 JavaScript/CSS and BSD-2-Clause license are retained in `leaflet/` for visitors with the previous restaurant page cached. Current food5 pages neither load Leaflet nor request map tiles. Sources: https://unpkg.com/leaflet@1.9.4/dist/ and https://github.com/Leaflet/Leaflet/tree/v1.9.4.

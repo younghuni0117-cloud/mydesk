@@ -10,15 +10,19 @@ body[data-page=restaurants] main{padding-top:16px!important}
 .food-map-toolbar .food-actions{order:3;flex-shrink:0;gap:5px}
 .food-map-toolbar .food-actions button{padding:5px 9px;font-size:12px;white-space:nowrap}
 .food-map{touch-action:none}
-#food-detail-map{position:absolute;inset:0;z-index:5;background:#edf1eb;font:inherit}
-#food-detail-map .leaflet-control-attribution{font-size:9px;line-height:1.4}
-#food-detail-map .leaflet-pane{font-family:inherit}
-.food-detail-marker{background:none;border:0}
-.food-detail-flag{width:28px;height:32px;position:relative}
-.food-detail-flag svg{position:absolute;left:11px;top:12px;width:12px;height:18px;filter:drop-shadow(0 1px 1px #fff)}
-.food-detail-label{font-size:11px;line-height:1.4;font-family:inherit;color:#364d3c;background:#fffffff0;border:1px solid #dfe6dc;box-shadow:none;padding:2px 5px;border-radius:4px}
-.food-detail-status{position:absolute;left:8px;right:8px;bottom:22px;z-index:6;max-width:450px;margin:0;padding:6px 9px;background:#fffffff0;color:#596d58;border-radius:5px;font-size:11px;pointer-events:none}
-@media(max-width:600px){.food-map-toolbar{gap:7px}.food-map-toolbar>.food-zoom{flex-wrap:wrap}.food-zoom button{white-space:nowrap}.food-map-footer span{line-height:1.6}}
-.food-detail-flag .food-detail-label{position:absolute;left:25px;top:5px;white-space:nowrap;font-family:inherit;font-size:11px;line-height:1.4;color:#364d3c;background:#fffffff0;border:1px solid #dfe6dc;padding:2px 5px;border-radius:4px}
 .food-map-toolbar>div:first-child{display:flex;align-items:center;gap:5px;min-width:130px;white-space:nowrap}
 .food-map-toolbar>div:first-child span{margin-left:0}
+
+.food-neighborhood{fill:#dbe6d7;stroke:#f9fbf6;stroke-width:.8;vector-effect:non-scaling-stroke;pointer-events:none}
+.food-neighborhood:nth-child(3n){fill:#e5ecde}.food-neighborhood:nth-child(3n+1){fill:#cedfc9}
+#food-neighborhood-status{position:absolute;bottom:8px;left:8px;right:8px;font-size:11px;color:#62745f;background:#ffffffe8;padding:6px 8px;border-radius:5px;pointer-events:none}
+.food-blog-address{font-size:12px;overflow-wrap:anywhere}.food-record-body [data-open-blog]{color:#456854;text-decoration:underline;text-underline-offset:3px}
+#food-blog-dialog{width:min(1040px,calc(100% - 20px));height:min(860px,90dvh);max-height:90dvh;padding:0;overflow:hidden;border:1px solid #dce3dd;border-radius:12px}
+#food-blog-dialog[open]{display:flex;flex-direction:column}
+.food-blog-heading{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #e6ebe4;flex-shrink:0}
+.food-blog-heading h2{flex:1;min-width:0;margin:0;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.food-blog-heading a{white-space:nowrap;font-size:12px;color:#456854;text-decoration:underline}
+.food-blog-heading button{padding:6px 10px;white-space:nowrap}
+.food-blog-help{margin:0;padding:8px 16px;font-size:11px;line-height:1.5;color:#788375;background:#f6f8f4;flex-shrink:0}
+#food-blog-frame{flex:1;min-height:0;background:#fff}#food-blog-frame iframe{display:block;width:100%;height:100%;border:0}
+@media(max-width:500px){.food-blog-heading{gap:8px;padding:10px}.food-blog-heading h2{font-size:14px}.food-blog-help{padding:7px 10px}}

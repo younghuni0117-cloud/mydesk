@@ -3,8 +3,13 @@ export const BUCKET='restaurant-menus';
 const root=new URL(SHARED_MODEL_URL).origin;
 export const PHOTO_PATH=/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpeg|png|webp)$/i;
 export const photoURL=path=>PHOTO_PATH.test(path)?`${root}/storage/v1/object/public/${BUCKET}/${path}`:'';
+export function safeBlogURL(value){
+ const text=String(value||'').trim();if(!text)return '';
+ try{const url=new URL(text);if(url.protocol!=='https:'||url.username||url.password||text.length>2048||url.href.length>2048)return '';return url.href;}catch{return '';}
+}
 export function restaurantPayload(input){
- const out={id:input.id,name:String(input.name||'').trim(),address:String(input.address||'').trim(),lat:Number(input.lat),lon:Number(input.lon),dish:String(input.dish||'').trim(),price:String(input.price||'').trim(),menu_text:String(input.menu_text||'').trim(),notes:String(input.notes||'').trim(),visited_on:input.visited_on||null,visit_state:input.visit_state||'saved',photos:input.photos||[]};
+ const out={id:input.id,name:String(input.name||'').trim(),address:String(input.address||'').trim(),lat:Number(input.lat),lon:Number(input.lon),dish:String(input.dish||'').trim(),price:String(input.price||'').trim(),menu_text:String(input.menu_text||'').trim(),notes:String(input.notes||'').trim(),visited_on:input.visited_on||null,visit_state:input.visit_state||'saved',photos:input.photos||[],blog_url:safeBlogURL(input.blog_url)};
+ if(input.blog_url&&!out.blog_url)throw Error('블로그 주소는 https://로 시작하는 올바른 주소를 입력해 주세요.');
  if(!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(out.id||''))throw Error('기록 식별자를 확인해 주세요.');
  for(const [k,min,max] of [['name',1,100],['address',1,250],['dish',0,160],['price',0,80],['menu_text',0,3000],['notes',0,4000]])if(out[k].length<min||out[k].length>max)throw Error('식당 이름·주소와 입력 길이를 확인해 주세요.');
  if(!Number.isFinite(out.lat)||!Number.isFinite(out.lon)||out.lat<33||out.lat>39||out.lon<124||out.lon>132)throw Error('남한 지도 안의 위치를 선택해 주세요.');
