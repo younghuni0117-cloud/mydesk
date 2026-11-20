@@ -1,0 +1,12 @@
+/* Quiet, icon-only navigation; SVGs stay crisp on Fold inner/outer displays. */
+.header-shortcuts{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.header-shortcuts a{display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:42px;height:42px;padding:9px;color:#7892ad;background:#fff;border:1px solid #e1e8f0;border-radius:10px;text-decoration:none;transition:background .15s,border-color .15s}
+.header-shortcuts a:hover{background:#f3f6fa;border-color:#c7d5e4}
+.header-shortcuts a[aria-current=page]{background:#f2f6fb;border-color:#cbd9e8;color:#6c87a3}
+.header-shortcuts a:focus-visible{outline:2px solid #7892ad;outline-offset:3px}
+.header-shortcuts svg{display:block;width:23px;height:23px;flex-shrink:0}
+.topbar-location:has(.header-shortcuts){flex-shrink:0}
+.topbar:has(.header-shortcuts)>:last-child:not(.topbar-location){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-app:has(.map-header-shortcuts){position:relative}
+.map-header-shortcuts{position:absolute;z-index:6;top:57px;left:10px}
+@media(max-width:440px){.header-shortcuts{gap:6px}.topbar:has(.header-shortcuts){gap:10px}.topbar:has(.header-shortcuts)>:last-child:not(.topbar-location){font-size:10px}.map-header-shortcuts{left:7px;top:52px}}
