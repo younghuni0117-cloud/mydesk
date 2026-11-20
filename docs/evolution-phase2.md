@@ -1,5 +1,7 @@
 # Robot Evolution Lab — Phase 2
 
+Historical Phase 2 report. See [Phase 3](evolution-phase3.md) for the current three missions and compact, naturally scrollable layout.
+
 This update implements real CPU PPO for **mission 1: small-angle balance** on the independently validated Planck pendulum. It also provides a compact Fold cover/inner-screen layout. Recovery, Swing-up learning, curriculum, multi-link growth, cloud acceleration and side-by-side policy replay remain later phases. Their manual starting-angle presets are retained under physical experiments; they are not presented as trained missions.
 
 ## Actual learning path

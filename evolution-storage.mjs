@@ -1,6 +1,6 @@
-import {PPO} from './evolution-ppo.mjs?v=evolution2';
+import {PPO} from './evolution-ppo.mjs?v=evolution3';
 const DB='mydesk.evolution.v1';
-export const contextKey=c=>JSON.stringify(['balance',c.length,c.mass,c.width,c.gravity,c.damping,c.maxTorque,c.dt,c.substeps]);
+export const contextKey=c=>JSON.stringify([c.mission||'balance',c.length,c.mass,c.width,c.gravity,c.damping,c.maxTorque,c.dt,c.substeps]);
 export function checksum(data){const s=JSON.stringify(data);let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return (h>>>0).toString(16);}
 function envelope(data){return {version:1,checksum:checksum(data),data,savedAt:Date.now()};}
 function verified(row){if(row?.version!==1||row.checksum!==checksum(row.data))return null;try{const p=new PPO();p.restore(row.data.trainer.network);return row.data;}catch{return null;}}
