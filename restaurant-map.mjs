@@ -12,7 +12,7 @@ export class FoodMap{
   this.containsContext=document.createElement('canvas').getContext('2d');if(region){this.containsPath=new Path2D(region.d);this.host.style.touchAction='none';}
   paintProvinces(this.provinces,paths,onRegion);this.details=el('g');this.land.insertBefore(this.details,this.cities);
   const defs=el('defs'),clip=el('clipPath',{id:prefix+'-clip'});this.clipPath=el('path',{d:region?.d||''});clip.append(this.clipPath);defs.append(clip);this.land.prepend(defs);this.details.setAttribute('clip-path',`url(#${prefix}-clip)`);this.defs=defs;
-  this.neighborhoods=new Map();this.neighborhoodRequests=new Map();this.neighborhoodFailures=new Set();
+  this.neighborhoodNodes=new Map();this.neighborhoods=new Map();this.neighborhoodRequests=new Map();this.neighborhoodFailures=new Set();
   this.provinceBounds=paths.map(p=>({...p,bounds:pathBounds(p.d)}));
   this.neighborhoodLayer=el('g',{'class':'food-neighborhoods'});this.land.insertBefore(this.neighborhoodLayer,this.cities);
   this.neighborhoodStatus=document.createElement('p');this.neighborhoodStatus.id='food-neighborhood-status';this.neighborhoodStatus.setAttribute('role','status');this.neighborhoodStatus.hidden=true;this.host.append(this.neighborhoodStatus);
@@ -39,6 +39,16 @@ export class FoodMap{
  scale(f){this.stopAnimation();this.zoom=Math.max(1,Math.min(128,this.zoom*f));if(this.zoom===1)this.pan=[0,0];this.animateCamera(180);}
  viewBounds(){return [this.camera.x-this.w/(2*this.s),this.camera.y-this.h/(2*this.s),this.camera.x+this.w/(2*this.s),this.camera.y+this.h/(2*this.s)];}
  visibleNeighborhoods(){if(this.s<5)return [];const b=this.viewBounds();return [...this.neighborhoods.values()].flat().filter(n=>(!this.region||n.code.startsWith(this.region.code))&&n.bounds[0]<=b[2]&&n.bounds[2]>=b[0]&&n.bounds[1]<=b[3]&&n.bounds[3]>=b[1]);}
+ syncNeighborhoods(neighborhoods){
+  const visible=new Set(neighborhoods.map(n=>n.code));
+  for(const [code,node] of this.neighborhoodNodes)if(!visible.has(code)){node.remove();this.neighborhoodNodes.delete(code);}
+  for(const n of neighborhoods){if(this.neighborhoodNodes.has(n.code))continue;
+   // Administrative identity fixes the colour, independent of viewport order or file load order.
+   let hash=0;for(const char of n.code)hash=(hash*31+char.charCodeAt(0))>>>0;
+   const node=el('path',{d:n.d,class:'food-neighborhood','fill-rule':'evenodd','data-code':n.code,'data-tone':hash%3});
+   this.neighborhoodNodes.set(n.code,node);this.neighborhoodLayer.append(node);
+  }
+ }
  async loadNeighborhoods(){
   if(this.s<5)return;const b=this.viewBounds(),provinces=this.provinceBounds.filter(p=>(!this.region||p.code===this.region.code)&&p.bounds.x<=b[2]&&p.bounds.x+p.bounds.width>=b[0]&&p.bounds.y<=b[3]&&p.bounds.y+p.bounds.height>=b[1]);
   for(const p of provinces){if(this.neighborhoods.has(p.code)||this.neighborhoodRequests.has(p.code)||this.neighborhoodFailures.has(p.code))continue;
@@ -55,7 +65,7 @@ export class FoodMap{
   const t=`translate(${this.w/2} ${this.h/2}) scale(${this.s}) translate(${-this.camera.x} ${-this.camera.y})`;
   this.land.setAttribute('viewBox',`0 0 ${this.w} ${this.h}`);this.lines.setAttribute('viewBox',`0 0 ${this.w} ${this.h}`);this.provinces.setAttribute('transform',t);this.details?.setAttribute('transform',t);this.neighborhoodLayer?.setAttribute('transform',t);this.cities.replaceChildren();
   const neighborhoods=this.visibleNeighborhoods?.()||[];this.host.dataset.neighborhoods=String(neighborhoods.length);
-  this.neighborhoodLayer?.replaceChildren(...neighborhoods.map(n=>el('path',{d:n.d,class:'food-neighborhood','fill-rule':'evenodd'})));
+  this.syncNeighborhoods(neighborhoods);
   if(this.s>=5&&!this.neighborhoodTimer)this.neighborhoodTimer=setTimeout(()=>{this.neighborhoodTimer=null;this.loadNeighborhoods();},80);
   if(this.s<5)this.neighborhoodStatus.hidden=true;
   const labels=neighborhoods.length?neighborhoods.map(n=>[n.name,...n.center]):this.region?this.districts.map(d=>[d.name,...d.center]):[['서울',...project(37.57,126.98)],['대전',...project(36.35,127.38)],['부산',...project(35.18,129.07)],['제주',...project(33.39,126.55)]];
@@ -79,13 +89,13 @@ export class FoodMap{
  activateRegion(region){
   this.neighborhoodFailures.clear();
   if(!this.region)this.nationalView={zoom:this.zoom,pan:[...this.pan]};if(this.animation)cancelAnimationFrame(this.animation.frame);this.animation=null;
-  this.region=region;this.bounds=pathBounds(region.d);this.center=[this.bounds.x+this.bounds.width/2,this.bounds.y+this.bounds.height/2];this.containsPath=new Path2D(region.d);this.clipPath.setAttribute('d',region.d);this.zoom=1;this.pan=[0,0];this.districts=[];this.details.replaceChildren();this.neighborhoodLayer.replaceChildren();this.host.style.touchAction='none';this.host.classList.add('is-region');this.host.dataset.region=region.name;
+  this.region=region;this.bounds=pathBounds(region.d);this.center=[this.bounds.x+this.bounds.width/2,this.bounds.y+this.bounds.height/2];this.containsPath=new Path2D(region.d);this.clipPath.setAttribute('d',region.d);this.zoom=1;this.pan=[0,0];this.districts=[];this.details.replaceChildren();this.neighborhoodLayer.replaceChildren();this.neighborhoodNodes.clear();this.host.style.touchAction='none';this.host.classList.add('is-region');this.host.dataset.region=region.name;
   for(const path of this.provinces.children){const active=path.dataset.region===region.name;path.classList.toggle('is-selected-region',active);path.setAttribute('tabindex',active?'0':'-1');path.setAttribute('aria-hidden',String(!active));}
   this.$('fit').textContent='전국 지도';this.onViewChange?.(region);this.rows=this.allRows.filter(r=>{const[x,y]=project(r.lat,r.lon);return this.containsContext.isPointInPath(this.containsPath,x,y,'evenodd');});this.animateCamera();
  }
  returnToNational(){
   this.neighborhoodFailures.clear();
-  if(this.animation)cancelAnimationFrame(this.animation.frame);this.animation=null;const view=this.region?this.nationalView:null;this.region=null;this.bounds=null;this.center=[400,350];this.zoom=view?.zoom??1;this.pan=view?.pan?[...view.pan]:[0,0];this.rows=this.allRows;this.districts=[];this.details.replaceChildren();this.neighborhoodLayer.replaceChildren();this.host.style.touchAction='none';this.host.classList.remove('is-region');delete this.host.dataset.region;
+  if(this.animation)cancelAnimationFrame(this.animation.frame);this.animation=null;const view=this.region?this.nationalView:null;this.region=null;this.bounds=null;this.center=[400,350];this.zoom=view?.zoom??1;this.pan=view?.pan?[...view.pan]:[0,0];this.rows=this.allRows;this.districts=[];this.details.replaceChildren();this.neighborhoodLayer.replaceChildren();this.neighborhoodNodes.clear();this.host.style.touchAction='none';this.host.classList.remove('is-region');delete this.host.dataset.region;
   for(const path of this.provinces.children){path.classList.remove('is-selected-region');path.setAttribute('tabindex','0');path.removeAttribute('aria-hidden');}
   this.$('fit').textContent='전체 지도';this.onViewChange?.(null);this.animateCamera();
  }
