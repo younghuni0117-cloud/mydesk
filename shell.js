@@ -5,8 +5,10 @@ function mountHeaderShortcuts() {
   const map = document.querySelector('.map-app');
   if (!location && !map) return;
   const sheet = document.createElement('link');
-  sheet.rel = 'stylesheet'; sheet.href = 'header-shortcuts.css?v=1';
+  sheet.rel = 'stylesheet'; sheet.href = 'header-shortcuts.css?v=2';
   document.head.append(sheet);
+  const toggle = document.getElementById('menu-toggle');
+  if (toggle) toggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
   const nav = document.createElement('nav');
   nav.className = 'header-shortcuts'; nav.setAttribute('aria-label', '바로가기');
   const icons = [

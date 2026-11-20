@@ -10,3 +10,10 @@
 .map-app:has(.map-header-shortcuts){position:relative}
 .map-header-shortcuts{position:absolute;z-index:6;top:57px;left:10px}
 @media(max-width:440px){.header-shortcuts{gap:6px}.topbar:has(.header-shortcuts){gap:10px}.topbar:has(.header-shortcuts)>:last-child:not(.topbar-location){font-size:10px}.map-header-shortcuts{left:7px;top:52px}}
+
+/* A shared, scrolling header: no page-specific text glyphs or pinned shortcut bars. */
+body .topbar:has(.header-shortcuts){position:static;background:#fff;box-shadow:none}
+body .topbar .menu-toggle{box-sizing:border-box;width:26px;height:32px;flex-shrink:0;padding:3px;border:0;border-radius:0;background:transparent;color:#687e9a;box-shadow:none;cursor:pointer;line-height:1}
+body .topbar .menu-toggle svg{display:block;width:20px;height:20px}
+body .topbar .menu-toggle:focus-visible{outline:2px solid #7892ad;outline-offset:3px}
+body[data-page=mindmap]:not(.menu-open) .sidebar{box-shadow:none}
