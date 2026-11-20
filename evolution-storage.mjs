@@ -1,0 +1,12 @@
+import {PPO} from './evolution-ppo.mjs?v=evolution2';
+const DB='mydesk.evolution.v1';
+export const contextKey=c=>JSON.stringify(['balance',c.length,c.mass,c.width,c.gravity,c.damping,c.maxTorque,c.dt,c.substeps]);
+export function checksum(data){const s=JSON.stringify(data);let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return (h>>>0).toString(16);}
+function envelope(data){return {version:1,checksum:checksum(data),data,savedAt:Date.now()};}
+function verified(row){if(row?.version!==1||row.checksum!==checksum(row.data))return null;try{const p=new PPO();p.restore(row.data.trainer.network);return row.data;}catch{return null;}}
+let opened;
+function open(){if(!opened)opened=new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('checkpoints');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});return opened;}
+export async function loadCheckpoint(context){const db=await open();return new Promise((resolve,reject)=>{const tx=db.transaction('checkpoints'),store=tx.objectStore('checkpoints');let latest,backup,success;const a=store.get(context+':latest'),b=store.get(context+':backup'),c=store.get(context+':success');a.onsuccess=()=>latest=a.result;b.onsuccess=()=>backup=b.result;c.onsuccess=()=>success=c.result;tx.oncomplete=()=>{const good=verified(latest);resolve(good?{data:good,recovered:false}:verified(backup)?{data:verified(backup),recovered:true}:verified(success)?{data:verified(success),recovered:true}:{data:null,recovered:!!latest});};tx.onerror=()=>reject(tx.error);});}
+export async function saveCheckpoint(context,data){const db=await open(),row=envelope(data);return new Promise((resolve,reject)=>{const tx=db.transaction('checkpoints','readwrite'),s=tx.objectStore('checkpoints'),get=s.get(context+':latest');get.onsuccess=()=>{if(verified(get.result))s.put(get.result,context+':backup');s.put(row,context+':latest');s.put(data.trainer.config,'last-config');if(data.best)s.put(envelope(data.best),context+':best');if(data.achieved)s.put(row,context+':success');};tx.oncomplete=()=>resolve(row.savedAt);tx.onerror=()=>reject(tx.error);});}
+
+export async function loadLastConfig(){const db=await open();return new Promise((resolve,reject)=>{const r=db.transaction('checkpoints').objectStore('checkpoints').get('last-config');r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);});}

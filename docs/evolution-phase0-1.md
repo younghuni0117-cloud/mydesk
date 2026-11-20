@@ -1,5 +1,7 @@
 # Robot Evolution Lab — Phase 0 / Phase 1
 
+Historical Phase 1 report. The subsequent implemented PPO and Fold layout are documented in [Phase 2](evolution-phase2.md).
+
 ## Scope and repository review
 
 The new page is `robot-evolution.html`, menu ID `robot-evolution`, label **로봇 강화학습2**, directly after `robot` under the existing experiments folder. The existing robot page is retained. This delivery implements Phase 0 and Phase 1 only: **no PPO, learning episodes, reward, success rate, or learned movement is fabricated**.
