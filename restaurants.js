@@ -1,5 +1,5 @@
 import {RestaurantStore,photoURL,restaurantPayload,safeBlogURL,hasRestaurantPosition} from './restaurant-data.mjs?v=food6';
-import {FoodMap,FoodRegions} from './restaurant-map.mjs?v=food6';
+import {FoodMap,FoodRegions} from './restaurant-map.mjs?v=food7';
 import {locateRestaurant} from './restaurant-geocode.mjs?v=food6';
 import {BlogManagement} from './blog-auth.mjs';
 // Refresh an old cached form before binding new fields; stored records are never reset.
