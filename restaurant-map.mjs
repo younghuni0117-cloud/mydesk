@@ -98,7 +98,7 @@ export class FoodMap{
   for(const city of this.cityBoxes||[])if(occupied.some(p=>city.x<p.x+p.w+3&&city.x+city.w>p.x-3&&city.y<p.y+p.h+3&&city.y+city.h>p.y-3))city.node.remove();
  }
  drawCards(visible){
-  const sorted=visible.toSorted((a,b)=>Number(b.id===this.selected)-Number(a.id===this.selected)||a.lat-b.lat).slice(0,6),cardWidth=Math.min(210,this.w*(this.w<600?.29:.21)),sides=[[],[]];sorted.toSorted((a,b)=>b.lat-a.lat).forEach((r,i)=>sides[i%2].push(r));
+  const sorted=visible.toSorted((a,b)=>Number(b.id===this.selected)-Number(a.id===this.selected)||a.lat-b.lat).slice(0,6),cardWidth=Math.min(150,this.w*(this.w<600?.22:.16)),sides=[[],[]];sorted.toSorted((a,b)=>b.lat-a.lat).forEach((r,i)=>sides[i%2].push(r));
   sides.forEach((rows,side)=>{const space=Math.min(143,(this.h-40)/Math.max(1,rows.length));rows.forEach((r,i)=>{const[x,y]=this.point(r),top=Math.max(22,Math.min(this.h-130,65+i*space)),left=side?this.w-cardWidth-12:12,b=document.createElement('button');b.type='button';b.dataset.recordId=r.id;b.className='food-map-card'+(r.id===this.selected?' is-active':'');b.style.left=left+'px';b.style.top=top+'px';b.style.width=cardWidth+'px';const title=document.createElement('strong');title.textContent=r.name;b.append(title);b.onclick=()=>this.onSelect(r.id);this.cards.append(b);const endX=side?left:left+cardWidth,endY=top+Math.min(70,b.offsetHeight)/2;const line=el('path',{d:`M${x},${y-9} C${(x+endX)/2},${y-9} ${(x+endX)/2},${endY} ${endX},${endY}`,class:'food-connection'+(r.id===this.selected?' is-active':'')});this.lines.append(line,el('path',{d:side?`M${endX-4} ${endY-3} L${endX} ${endY} L${endX-4} ${endY+3}`:`M${endX+4} ${endY-3} L${endX} ${endY} L${endX+4} ${endY+3}`,class:'food-connection'}));});});
  }
 }
