@@ -1,3 +1,4 @@
+import {FoodDetailMap} from './restaurant-detail-map.mjs?v=food4';
 export const project=(lat,lon)=>[400+(lon-127.8)*78,40+(38.8-lat)*105];
 export const unproject=(x,y)=>({lat:38.8-(y-40)/105,lon:127.8+(x-400)/78});
 const svgNS='http://www.w3.org/2000/svg';
@@ -13,15 +14,30 @@ export class FoodMap{
   const defs=el('defs'),clip=el('clipPath',{id:prefix+'-clip'});this.clipPath=el('path',{d:region?.d||''});clip.append(this.clipPath);defs.append(clip);this.land.prepend(defs);this.details.setAttribute('clip-path',`url(#${prefix}-clip)`);this.defs=defs;
   this.setDistricts(districts);
   this.resize=new ResizeObserver(()=>this.draw());this.resize.observe(this.host);
-  this.land.onpointerdown=e=>{if(e.button!==0&&e.pointerType==='mouse')return;this.stopAnimation();this.pointer={id:e.pointerId,x:e.clientX,y:e.clientY,pan:[...this.pan],region:e.target.closest('[data-region]')?.dataset.region,moved:false};if(e.pointerType==='mouse'||this.region)this.land.setPointerCapture(e.pointerId);};
-  this.land.onpointermove=e=>{const down=this.pointer;if(!down||down.id!==e.pointerId)return;const dx=e.clientX-down.x,dy=e.clientY-down.y;if(Math.hypot(dx,dy)>6)down.moved=true;if(down.moved&&(e.pointerType==='mouse'||this.region)){this.pan=[down.pan[0]+dx,down.pan[1]+dy];this.draw();}};
-  this.land.onpointerup=e=>{const down=this.pointer;this.pointer=null;if(this.land.hasPointerCapture(e.pointerId))this.land.releasePointerCapture(e.pointerId);if(down&&!down.moved&&down.region)this.onRegion?.(down.region);};this.land.onpointercancel=()=>this.pointer=null;
+  this.host.style.touchAction='none';this.pointers=new Map();
+  this.detail=new FoodDetailMap({host:this.host,onSelect,onChange:active=>{this.$('detail').textContent=active?'지역 지도':'동네 지도';this.$('detail').setAttribute('aria-pressed',String(active));this.detail.setRows(this.allRows,this.selected);}});
+  this.$('detail').onclick=()=>{if(this.detail.active)this.detail.close();else this.openDetail(true);};
+  this.host.onpointerdown=e=>{
+   if(this.detail.active||e.target.closest('.food-map-breadcrumb')||e.button!==0&&e.pointerType==='mouse')return;this.stopAnimation();this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});this.land.setPointerCapture(e.pointerId);
+   if(this.pointers.size===2){const [a,b]=[...this.pointers.values()],rect=this.host.getBoundingClientRect(),x=(a.x+b.x)/2-rect.left,y=(a.y+b.y)/2-rect.top;this.pinch={distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),zoom:this.zoom,anchor:[this.camera.x+(x-this.w/2)/this.s,this.camera.y+(y-this.h/2)/this.s]};this.pointer=null;return;}
+   this.pointer={id:e.pointerId,x:e.clientX,y:e.clientY,pan:[...this.pan],region:e.target.closest('[data-region]')?.dataset.region,record:e.target.closest('[data-record-id]')?.dataset.recordId,moved:false};
+  };
+  this.host.onpointermove=e=>{
+   if(!this.pointers.has(e.pointerId))return;this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   if(this.pinch&&this.pointers.size===2){const [a,b]=[...this.pointers.values()],rect=this.host.getBoundingClientRect(),x=(a.x+b.x)/2-rect.left,y=(a.y+b.y)/2-rect.top;this.zoom=Math.max(1,Math.min(32,this.pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/this.pinch.distance));const scale=this.baseScale()*this.zoom;this.pan=[(this.center[0]-this.pinch.anchor[0])*scale+x-this.w/2,(this.center[1]-this.pinch.anchor[1])*scale+y-this.h/2];this.draw();return;}
+   const down=this.pointer;if(!down||down.id!==e.pointerId)return;const dx=e.clientX-down.x,dy=e.clientY-down.y;if(Math.hypot(dx,dy)>6)down.moved=true;if(down.moved){this.pan=[down.pan[0]+dx,down.pan[1]+dy];this.draw();}
+  };
+  const end=e=>{const down=this.pointer,wasPinch=!!this.pinch;this.pointers.delete(e.pointerId);if(this.land.hasPointerCapture(e.pointerId))this.land.releasePointerCapture(e.pointerId);if(wasPinch){if(!this.pointers.size){this.pinch=null;this.maybeDetail();}return;}this.pointer=null;if(e.type==='pointerup'&&down&&!down.moved){if(down.record)this.onSelect(down.record);else if(down.region)this.onRegion?.(down.region);}};
+  this.host.onpointerup=end;this.host.onpointercancel=e=>{this.pointers.clear();this.pinch=null;this.pointer=null;if(this.land.hasPointerCapture(e.pointerId))this.land.releasePointerCapture(e.pointerId);};
   this.$('zoom-in').onclick=()=>this.scale(1.35);this.$('zoom-out').onclick=()=>this.scale(1/1.35);this.$('fit').onclick=()=>this.returnToNational();
+
  }
- destroy(){this.stopAnimation();this.resize.disconnect();this.details.remove();this.defs?.remove();}
+ destroy(){this.detail.destroy();this.stopAnimation();this.resize.disconnect();this.details.remove();this.defs?.remove();}
  setDistricts(districts){this.districts=districts;this.details?.replaceChildren(...districts.map(d=>el('path',{d:d.d,class:'food-district'})));this.draw();}
- scale(f){this.stopAnimation();this.zoom=Math.max(1,Math.min(this.region?8:6,this.zoom*f));if(this.zoom===1)this.pan=[0,0];this.animateCamera(260);}
- setRows(rows,selected){this.allRows=rows;this.rows=this.region?rows.filter(r=>{const[x,y]=project(r.lat,r.lon);return this.containsContext.isPointInPath(this.containsPath,x,y,'evenodd');}):rows;this.selected=selected;this.draw();}
+ openDetail(atRestaurant=false){this.stopAnimation();const camera=this.targetCamera(),row=atRestaurant&&(this.rows.find(r=>r.id===this.selected)||this.rows[0]),center=row?{lat:row.lat,lon:row.lon}:unproject(camera.x,camera.y);this.detail.open(center,atRestaurant?15:Math.max(11,Math.log2(camera.scale*78*360/256)));this.detail.setRows(this.allRows,this.selected);}
+ maybeDetail(){if(this.zoom>=(this.region?3:6)){this.openDetail();return true;}return false;}
+ scale(f){if(this.detail.active){this.detail.scale(f);return;}this.stopAnimation();this.zoom=Math.max(1,Math.min(32,this.zoom*f));if(this.zoom===1)this.pan=[0,0];if(!this.maybeDetail())this.animateCamera(260);}
+ setRows(rows,selected){this.allRows=rows;this.rows=this.region?rows.filter(r=>{const[x,y]=project(r.lat,r.lon);return this.containsContext.isPointInPath(this.containsPath,x,y,'evenodd');}):rows;this.selected=selected;this.detail.setRows(rows,selected);this.draw();}
  xy(x,y){return[(x-this.camera.x)*this.s+this.w/2,(y-this.camera.y)*this.s+this.h/2];}
  point(row){return this.xy(...project(row.lat,row.lon));}
  draw(){
@@ -33,7 +49,7 @@ export class FoodMap{
   const occupied=[];this.cityBoxes=[];for(const[name,px,py]of labels){const[x,y]=this.xy(px,py),width=name.length*(this.region?11:12)+4,box={x:x-width/2,y:y-6,w:width,h:14};if(x<12||x>this.w-12||y<10||y>this.h-10||this.region&&occupied.some(b=>box.x<b.x+b.w+4&&box.x+box.w>b.x-4&&box.y<b.y+b.h+2&&box.y+box.h>b.y-2))continue;occupied.push(box);const label=el('text',{x,y:y+(this.region?3:16),class:'food-map-city'+(this.region?' food-district-label':'')});label.textContent=name;this.cities.append(label);this.cityBoxes.push({node:label,...box});}
   this.pins.replaceChildren();this.cards.replaceChildren();this.lines.replaceChildren();
   const visible=this.rows.filter(r=>{const[x,y]=this.point(r);return x>12&&x<this.w-12&&y>20&&y<this.h-12;});
-  for(const r of visible){const[x,y]=this.point(r),b=document.createElement('button');b.type='button';b.className='food-pin'+(r.id===this.selected?' is-active':'');b.style.left=x+'px';b.style.top=y+'px';b.setAttribute('aria-label',r.name+' 기록 보기');b.title=r.name;const flag=el('svg',{viewBox:'0 0 20 30','aria-hidden':'true'});flag.append(el('path',{d:'M5 28V3',stroke:'#697860','stroke-width':'1.5'}),el('path',{d:'M6 3Q12 0 18 4V14Q12 10 6 13Z',fill:r.id===this.selected?'#b76845':'#638366'}));b.append(flag);if(this.region){const label=document.createElement('span');label.className='food-pin-label';label.textContent=r.name;b.append(label);}b.onclick=()=>this.onSelect(r.id);this.pins.append(b);}
+  for(const r of visible){const[x,y]=this.point(r),b=document.createElement('button');b.type='button';b.dataset.recordId=r.id;b.className='food-pin'+(r.id===this.selected?' is-active':'');b.style.left=x+'px';b.style.top=y+'px';b.setAttribute('aria-label',r.name+' 기록 보기');b.title=r.name;const flag=el('svg',{viewBox:'0 0 20 30','aria-hidden':'true'});flag.append(el('path',{d:'M5 28V3',stroke:'#697860','stroke-width':'1.5'}),el('path',{d:'M6 3Q12 0 18 4V14Q12 10 6 13Z',fill:r.id===this.selected?'#b76845':'#638366'}));b.append(flag);if(this.region){const label=document.createElement('span');label.className='food-pin-label';label.textContent=r.name;b.append(label);}b.onclick=()=>this.onSelect(r.id);this.pins.append(b);}
   if(this.region)this.positionPinLabels();else this.drawCards(visible);
   const empty=this.$('map-empty');if(empty)empty.hidden=this.rows.length>0;
  }
@@ -48,13 +64,15 @@ export class FoodMap{
   animation.frame=requestAnimationFrame(tick);
  }
  activateRegion(region){
+  this.detail.close();
   if(!this.region)this.nationalView={zoom:this.zoom,pan:[...this.pan]};if(this.animation)cancelAnimationFrame(this.animation.frame);this.animation=null;
   this.region=region;this.bounds=pathBounds(region.d);this.center=[this.bounds.x+this.bounds.width/2,this.bounds.y+this.bounds.height/2];this.containsPath=new Path2D(region.d);this.clipPath.setAttribute('d',region.d);this.zoom=1;this.pan=[0,0];this.districts=[];this.details.replaceChildren();this.host.style.touchAction='none';this.host.classList.add('is-region');this.host.dataset.region=region.name;
   for(const path of this.provinces.children){const active=path.dataset.region===region.name;path.classList.toggle('is-selected-region',active);path.setAttribute('tabindex',active?'0':'-1');path.setAttribute('aria-hidden',String(!active));}
   this.$('fit').textContent='전국 지도';this.onViewChange?.(region);this.rows=this.allRows.filter(r=>{const[x,y]=project(r.lat,r.lon);return this.containsContext.isPointInPath(this.containsPath,x,y,'evenodd');});this.animateCamera();
  }
  returnToNational(){
-  if(this.animation)cancelAnimationFrame(this.animation.frame);this.animation=null;const view=this.region?this.nationalView:null;this.region=null;this.bounds=null;this.center=[400,350];this.zoom=view?.zoom??1;this.pan=view?.pan?[...view.pan]:[0,0];this.rows=this.allRows;this.districts=[];this.details.replaceChildren();this.host.style.touchAction='pan-y';this.host.classList.remove('is-region');delete this.host.dataset.region;
+  this.detail.close();
+  if(this.animation)cancelAnimationFrame(this.animation.frame);this.animation=null;const view=this.region?this.nationalView:null;this.region=null;this.bounds=null;this.center=[400,350];this.zoom=view?.zoom??1;this.pan=view?.pan?[...view.pan]:[0,0];this.rows=this.allRows;this.districts=[];this.details.replaceChildren();this.host.style.touchAction='none';this.host.classList.remove('is-region');delete this.host.dataset.region;
   for(const path of this.provinces.children){path.classList.remove('is-selected-region');path.setAttribute('tabindex','0');path.removeAttribute('aria-hidden');}
   this.$('fit').textContent='전체 지도';this.onViewChange?.(null);this.animateCamera();
  }
@@ -68,7 +86,7 @@ export class FoodMap{
  }
  drawCards(visible){
   const sorted=visible.toSorted((a,b)=>Number(b.id===this.selected)-Number(a.id===this.selected)||a.lat-b.lat).slice(0,6),cardWidth=Math.min(210,this.w*(this.w<600?.29:.21)),sides=[[],[]];sorted.toSorted((a,b)=>b.lat-a.lat).forEach((r,i)=>sides[i%2].push(r));
-  sides.forEach((rows,side)=>{const space=Math.min(143,(this.h-40)/Math.max(1,rows.length));rows.forEach((r,i)=>{const[x,y]=this.point(r),top=Math.max(22,Math.min(this.h-130,65+i*space)),left=side?this.w-cardWidth-12:12,b=document.createElement('button');b.type='button';b.className='food-map-card'+(r.id===this.selected?' is-active':'');b.style.left=left+'px';b.style.top=top+'px';b.style.width=cardWidth+'px';const region=document.createElement('small');region.textContent=r.address.split(' ').slice(0,2).join(' ');const title=document.createElement('strong');title.textContent=r.name;const dish=document.createElement('p');dish.textContent=r.dish||'메뉴를 기록해 주세요';b.append(region,title,dish);if(r.price){const price=document.createElement('span');price.className='food-card-price';price.textContent=r.price;b.append(price);}b.onclick=()=>this.onSelect(r.id);this.cards.append(b);const endX=side?left:left+cardWidth,endY=top+Math.min(70,b.offsetHeight)/2;const line=el('path',{d:`M${x},${y-9} C${(x+endX)/2},${y-9} ${(x+endX)/2},${endY} ${endX},${endY}`,class:'food-connection'+(r.id===this.selected?' is-active':'')});this.lines.append(line,el('path',{d:side?`M${endX-4} ${endY-3} L${endX} ${endY} L${endX-4} ${endY+3}`:`M${endX+4} ${endY-3} L${endX} ${endY} L${endX+4} ${endY+3}`,class:'food-connection'}));});});
+  sides.forEach((rows,side)=>{const space=Math.min(143,(this.h-40)/Math.max(1,rows.length));rows.forEach((r,i)=>{const[x,y]=this.point(r),top=Math.max(22,Math.min(this.h-130,65+i*space)),left=side?this.w-cardWidth-12:12,b=document.createElement('button');b.type='button';b.dataset.recordId=r.id;b.className='food-map-card'+(r.id===this.selected?' is-active':'');b.style.left=left+'px';b.style.top=top+'px';b.style.width=cardWidth+'px';const region=document.createElement('small');region.textContent=r.address.split(' ').slice(0,2).join(' ');const title=document.createElement('strong');title.textContent=r.name;const dish=document.createElement('p');dish.textContent=r.dish||'메뉴를 기록해 주세요';b.append(region,title,dish);if(r.price){const price=document.createElement('span');price.className='food-card-price';price.textContent=r.price;b.append(price);}b.onclick=()=>this.onSelect(r.id);this.cards.append(b);const endX=side?left:left+cardWidth,endY=top+Math.min(70,b.offsetHeight)/2;const line=el('path',{d:`M${x},${y-9} C${(x+endX)/2},${y-9} ${(x+endX)/2},${endY} ${endX},${endY}`,class:'food-connection'+(r.id===this.selected?' is-active':'')});this.lines.append(line,el('path',{d:side?`M${endX-4} ${endY-3} L${endX} ${endY} L${endX-4} ${endY+3}`:`M${endX+4} ${endY-3} L${endX} ${endY} L${endX+4} ${endY+3}`,class:'food-connection'}));});});
  }
 }
 export class FoodRegions{

@@ -1,5 +1,5 @@
 import {RestaurantStore,photoURL,restaurantPayload} from './restaurant-data.mjs?v=food1';
-import {FoodMap,FoodRegions,paintProvinces,project,unproject} from './restaurant-map.mjs?v=food3';
+import {FoodMap,FoodRegions,paintProvinces,project,unproject} from './restaurant-map.mjs?v=food4';
 import {BlogManagement} from './blog-auth.mjs';
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let rows=[],selected=null,token='',map,regions,paths=[],editing=null,photos=[],dirty=false,saving=false,refreshing=false,photoScale=1,lastLookup=0;
