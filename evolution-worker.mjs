@@ -1,0 +1,6 @@
+import {Pendulum,validatePhysics} from './evolution-core.mjs?v=evolution1';
+let sim=new Pendulum(),command=0,timer=null,last=0,debt=0,lastSent=0,running=false,generation=0;
+function frame(){postMessage({type:'frame',generation,frame:sim.frame(),config:sim.config,running});}
+function stop(){running=false;clearTimeout(timer);timer=null;debt=0;}
+function tick(){if(!running)return;try{const now=performance.now();debt+=Math.min(.1,(now-last)/1000);last=now;let n=0;while(debt>=sim.config.dt&&n++<12){sim.step(command);debt-=sim.config.dt;}if(n>12)debt=0;if(now-lastSent>=30){frame();lastSent=now;}timer=setTimeout(tick,8);}catch(e){stop();postMessage({type:'error',message:e.message});}}
+onmessage=({data:d})=>{try{if(d.type==='init'){stop();sim=new Pendulum(d.config);generation=d.generation;command=0;frame();}else if(d.type==='start'){if(!running){running=true;last=performance.now();tick();}frame();}else if(d.type==='pause'){stop();frame();}else if(d.type==='step'){if(!running){sim.step(command);frame();}}else if(d.type==='torque'){if(!Number.isFinite(d.value))throw Error('토크 입력을 확인해 주세요.');command=Math.max(-sim.config.maxTorque,Math.min(sim.config.maxTorque,d.value));}else if(d.type==='validate'){postMessage({type:'validation',result:validatePhysics()});}}catch(e){stop();postMessage({type:'error',message:e.message});}};
