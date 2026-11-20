@@ -1,3 +1,8 @@
-import {DogSearch,validModel,freshModel} from './robotdog-learning.mjs?v=dog2';
-let token=0,search=null;
-self.onmessage=async({data})=>{if(data.type==='stop'){token++;if(search)postMessage({type:'done',model:search.model});return;}if(data.type!=='train')return;const current=++token,count=[100,500,1000,5000].includes(Number(data.count))?Number(data.count):100,target=Math.max(0,Math.min(10,Number(data.target)||0)),seconds=[4,6,8,10].includes(Number(data.seconds))?Number(data.seconds):6;try{search=new DogSearch(validModel(data.model)?data.model:freshModel(),target,seconds,83,data.terrain,data.arm);for(let i=0;i<count;i++){if(current!==token)return;const started=performance.now(),result=search.trial(i%4===0);postMessage({type:'progress',completed:i+1,count,...result,model:i%8===7?search.model:null});await new Promise(resolve=>setTimeout(resolve,Math.max(12,Math.min(40,performance.now()-started))));}if(current===token)postMessage({type:'done',model:search.model});}catch(e){postMessage({type:'error',message:e.message});}};
+import {DogTrainer,validModel,freshModel} from './robotdog-learning.mjs?v=dog4';
+let generation=0,trainer=null,paused=false;
+self.onmessage=async({data})=>{
+ if(data.type==='pause'){paused=true;if(trainer)postMessage({type:'checkpoint',model:trainer.checkpoint()});return;}if(data.type==='resume'){paused=false;return;}
+ if(data.type==='stop'){generation++;paused=false;if(trainer)postMessage({type:'done',model:trainer.checkpoint()});return;}
+ if(data.type!=='train')return;const current=++generation,count=Math.max(1,Math.min(100000,Number(data.count)||100));paused=false;
+ try{trainer=new DogTrainer(validModel(data.model)?data.model:freshModel(),data.options);for(let i=0;i<count;i++){while(paused&&current===generation)await new Promise(r=>setTimeout(r,100));if(current!==generation)return;const started=performance.now(),result=await trainer.trial(i%2===0);if(current!==generation)return;postMessage({type:'progress',completed:i+1,count,...result,model:trainer.checkpoint()});await new Promise(r=>setTimeout(r,Math.max(12,Math.min(80,(performance.now()-started)*.4))));}if(current===generation){await trainer.update();postMessage({type:'done',model:trainer.checkpoint()});}}catch(error){if(current===generation)postMessage({type:'error',message:error.message,model:trainer?.checkpoint()});}
+};
