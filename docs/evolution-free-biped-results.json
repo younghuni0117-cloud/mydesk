@@ -1,0 +1,15 @@
+{
+  "stage":"free-biped-lower-body",
+  "date":"2026-11-20",
+  "bodies":7,"internalJoints":6,"worldRobotJoints":0,
+  "massKg":19.6,"gravityMps2":9.81,
+  "observationDimensions":28,"actionDimensions":6,
+  "physicsChecksPassed":5,
+  "unitTestFilesPassed":8,
+  "nodeBenchmark":{"primary":1,"confirmation":1,"updates":64},
+  "browserBenchmark":{"primary":1,"confirmation":1,"updates":72,"steps":73728,"continuedAfterAchievement":true,"pauseRestartAfterAchievement":true,"checkpointRestored":true,"comparison":true,"foldViewports":4,"pageErrors":[]},
+  "legacyTwoLink":{"updates":28,"primary":1,"confirmation":1,"dataPreserved":true},
+  "legacyArchiveMigrationReset":true,
+  "existingUIIdsPreserved":113,
+  "limits":["Standing only; walking/get-up/upper body are not implemented.","No pretrained policy is loaded at runtime.","Default seeded results are not a success guarantee.","Storage is local; no server/device sync added."]
+}

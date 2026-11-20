@@ -1,5 +1,5 @@
 import {World,Vec2,Box,RevoluteJoint} from './vendor/planck.mjs';
-import {parameters as singleParameters,angleError} from './evolution-core.mjs?v=render6';
+import {parameters as singleParameters,angleError} from './evolution-core.mjs?v=biped7';
 export function twoParameters(input={}){const p=singleParameters(input);p.structure='two-link';p.theta2=input.theta2??p.theta;p.omega2=input.omega2??0;if(!Number.isFinite(p.theta2)||Math.abs(p.theta2)>Math.PI*4||!Number.isFinite(p.omega2)||Math.abs(p.omega2)>20)throw Error('두 번째 링크의 초기 각도와 각속도를 확인해 주세요.');return p;}
 export function massMatrix(q,p){const I=p.mass*(p.length**2+p.width**2)/12,r=p.length/2,c=p.mass*p.length*r;return [I+p.mass*r*r+p.mass*p.length*p.length,c*Math.cos(q[0]-q[1]),I+p.mass*r*r];}
 // Independent Lagrange equation. q are clockwise absolute angles from upright;
