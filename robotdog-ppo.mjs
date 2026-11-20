@@ -1,5 +1,5 @@
 // Independent 12-action CPU PPO. Actual backpropagation, clipped ratios, GAE and Adam.
-import {OBS,HIDDEN,clamp} from './robotdog-core.mjs?v=dog6';
+import {OBS,HIDDEN,clamp} from './robotdog-core.mjs?v=dog7';
 export class Random{constructor(state=83){this.state=state>>>0;}uniform(){this.state=(Math.imul(this.state,1664525)+1013904223)>>>0;return (this.state+.5)/4294967296;}normal(){return Math.sqrt(-2*Math.log(this.uniform()))*Math.cos(2*Math.PI*this.uniform());}}
 export class Network{
  constructor(input,output,random,scale=.01){this.input=input;this.output=output;this.hidden=HIDDEN;this.w=[];for(let h=0;h<HIDDEN;h++){this.w.push(0);for(let i=0;i<input;i++)this.w.push((random.uniform()*2-1)*Math.sqrt(6/(input+HIDDEN)));}for(let o=0;o<output;o++){this.w.push(0);for(let h=0;h<HIDDEN;h++)this.w.push((random.uniform()*2-1)*scale);}}

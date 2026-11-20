@@ -1,6 +1,7 @@
-import {DogTrainer,validModel,freshModel} from './robotdog-learning.mjs?v=dog6';
+import {DogTrainer,validModel,freshModel} from './robotdog-learning.mjs?v=dog7';
 let generation=0,trainer=null,paused=false;
 self.onmessage=async({data})=>{
+ if(data.type==='kick'){trainer?.queueKick(data.strength);return;}
  if(data.type==='pause'){paused=true;if(trainer)postMessage({type:'checkpoint',model:trainer.checkpoint()});return;}if(data.type==='resume'){paused=false;return;}
  if(data.type==='stop'){generation++;paused=false;if(trainer)postMessage({type:'done',model:trainer.checkpoint()});return;}
  if(data.type!=='train')return;const current=++generation,count=Math.max(1,Math.min(100000,Number(data.count)||100));paused=false;
