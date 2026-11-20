@@ -22,11 +22,29 @@ test('empty revision update and invalid image formats surface errors',async()=>{
 test('blog URLs are optional, HTTPS-only, credential-free and survive saves',async()=>{
  const {safeBlogURL}=await import('../restaurant-data.mjs');
  assert.equal(restaurantPayload(record()).blog_url,'');
- for(const bad of ['javascript:alert(1)','data:text/html,test','http://blog.example.com/a','https://user:secret@example.com/','https://example.com/'+ '가'.repeat(1000)]){
+ for(const bad of ['javascript:alert(1)','data:text/html,test','https://user:secret@example.com/','https://example.com/'+ '가'.repeat(1000)]){
   assert.equal(safeBlogURL(bad),'');assert.throws(()=>restaurantPayload({...record(),blog_url:bad}),/블로그 주소/);
  }
  const blog='https://blog.example.com/post?id=42&x=1',payload=restaurantPayload({...record(),blog_url:blog}),requests=[];
  const store=new RestaurantStore({fetcher:async(url,options)=>{requests.push(options);return new Response(JSON.stringify([{...JSON.parse(options.body),revision:1}]),{status:200});}});
  assert.equal((await store.save({...record(),blog_url:blog},0)).blog_url,blog);
  assert.equal(JSON.parse(requests[0].body).blog_url,blog);assert.equal('source_url' in payload,false);
+});
+
+
+test('three-field records can save without coordinates; edits never send protected id',async()=>{
+ const minimal={id,name:'세 항목 기록',address:'경기도 의왕시',blog_url:'blog.example.com/review'};
+ assert.equal(restaurantPayload(minimal).lat,null);assert.equal(restaurantPayload(minimal).lon,null);assert.equal(restaurantPayload(minimal).blog_url,'https://blog.example.com/review');
+ assert.equal(restaurantPayload({...minimal,blog_url:'http://blog.example.com/review'}).blog_url,'https://blog.example.com/review');
+ assert.throws(()=>restaurantPayload({...minimal,lat:37.3}),/위치/);
+ let body;const store=new RestaurantStore({fetcher:async(url,options)=>{body=JSON.parse(options.body);assert.equal('id' in body,false);return new Response(JSON.stringify([{id,...body,revision:2}]),{status:200});}});
+ const old={...record(),dish:'기존 메뉴',menu_text:'기존 메뉴판',notes:'기존 메모',blog_url:'https://example.com/food'};
+ await store.save({...old,name:'이름만 변경'},1);assert.deepEqual(body.photos,[photo]);assert.equal(body.notes,'기존 메모');assert.equal(body.dish,'기존 메뉴');
+});
+
+test('automatic address lookup treats missing, failed or invalid results as unresolved',async()=>{
+ const {locateRestaurant}=await import('../restaurant-geocode.mjs');
+ assert.deepEqual(await locateRestaurant('의왕시',{fetcher:async()=>new Response(JSON.stringify([{lat:'37.3',lon:'127.0'}]))}),{lat:37.3,lon:127});
+ for(const result of [[],[{lat:'NaN',lon:'127'}],[{lat:'0',lon:'0'}]])assert.equal(await locateRestaurant('주소',{fetcher:async()=>new Response(JSON.stringify(result))}),null);
+ assert.equal(await locateRestaurant('주소',{fetcher:async()=>{throw Error('offline');}}),null);
 });

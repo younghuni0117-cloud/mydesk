@@ -1,3 +1,4 @@
+import {hasRestaurantPosition} from './restaurant-data.mjs?v=food6';
 export const project=(lat,lon)=>[400+(lon-127.8)*78,40+(38.8-lat)*105];
 export const unproject=(x,y)=>({lat:38.8-(y-40)/105,lon:127.8+(x-400)/78});
 const svgNS='http://www.w3.org/2000/svg';
@@ -45,7 +46,7 @@ export class FoodMap{
   }
   const failed=provinces.some(p=>this.neighborhoodFailures.has(p.code));this.neighborhoodStatus.hidden=!failed;this.neighborhoodStatus.textContent=failed?'동 경계를 불러오지 못했어요. 지역을 다시 선택해 주세요.':'';
  }
- setRows(rows,selected){this.allRows=rows;this.rows=this.region?rows.filter(r=>{const[x,y]=project(r.lat,r.lon);return this.containsContext.isPointInPath(this.containsPath,x,y,'evenodd');}):rows;this.selected=selected;this.draw();}
+ setRows(rows,selected){this.allRows=rows.filter(hasRestaurantPosition);this.unlocatedCount=rows.length-this.allRows.length;this.rows=this.region?this.allRows.filter(r=>{const[x,y]=project(r.lat,r.lon);return this.containsContext.isPointInPath(this.containsPath,x,y,'evenodd');}):this.allRows;this.selected=selected;this.draw();}
  xy(x,y){return[(x-this.camera.x)*this.s+this.w/2,(y-this.camera.y)*this.s+this.h/2];}
  point(row){return this.xy(...project(row.lat,row.lon));}
  draw(){
@@ -63,7 +64,7 @@ export class FoodMap{
   const visible=this.rows.filter(r=>{const[x,y]=this.point(r);return x>12&&x<this.w-12&&y>20&&y<this.h-12;});
   for(const r of visible){const[x,y]=this.point(r),b=document.createElement('button');b.type='button';b.dataset.recordId=r.id;b.className='food-pin'+(r.id===this.selected?' is-active':'');b.style.left=x+'px';b.style.top=y+'px';b.setAttribute('aria-label',r.name+' 기록 보기');b.title=r.name;const flag=el('svg',{viewBox:'0 0 20 30','aria-hidden':'true'});flag.append(el('path',{d:'M5 28V3',stroke:'#697860','stroke-width':'1.5'}),el('path',{d:'M6 3Q12 0 18 4V14Q12 10 6 13Z',fill:r.id===this.selected?'#b76845':'#638366'}));b.append(flag);if(this.region||this.s>=5){const label=document.createElement('span');label.className='food-pin-label';label.textContent=r.name;b.append(label);}b.onclick=()=>this.onSelect(r.id);this.pins.append(b);}
   if(this.region||this.s>=5)this.positionPinLabels();else this.drawCards(visible);
-  const empty=this.$('map-empty');if(empty)empty.hidden=this.rows.length>0;
+  const empty=this.$('map-empty');if(empty){empty.hidden=this.rows.length>0;empty.textContent=this.unlocatedCount?'위치 확인 전 기록은 아래 목록에서 볼 수 있어요.':'이 지역에 표시할 맛집이 없어요.';}
  }
  baseScale(){return this.bounds?Math.min((this.w-54)/Math.max(.01,this.bounds.width),(this.h-70)/Math.max(.01,this.bounds.height)):Math.min(this.w/(this.w<600?650:800),this.h/700);}
  targetCamera(){const scale=this.baseScale()*this.zoom;return{x:this.center[0]-this.pan[0]/scale,y:this.center[1]-this.pan[1]/scale,scale};}
