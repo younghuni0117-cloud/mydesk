@@ -1,4 +1,4 @@
-import {drawTwo} from './evolution-two-view.mjs?v=evolution5';
+import {drawTwo} from './evolution-two-view.mjs?v=render6';
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 export class EvolutionView{
  constructor(canvas){this.canvas=canvas;this.ctx=canvas.getContext('2d');this.engineering=false;this.resize=new ResizeObserver(()=>{const r=canvas.parentElement.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);canvas.width=r.width*d;canvas.height=r.height*d;this.w=r.width;this.h=r.height;this.ratio=d;this.draw();});this.resize.observe(canvas.parentElement);}

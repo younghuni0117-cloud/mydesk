@@ -1,9 +1,9 @@
-import {missionOf} from './evolution-missions.mjs?v=evolution5';
-import {TwoLink,twoParameters} from './evolution-two-core.mjs?v=evolution5';
-import {angleError} from './evolution-core.mjs?v=evolution5';
-import {VectorPPO,vectorPolicyAction} from './evolution-vector-ppo.mjs?v=evolution5';
-import {Random} from './evolution-ppo.mjs?v=evolution5';
-import {Trainer,ACTION_REPEAT,ROLLOUT} from './evolution-training.mjs?v=evolution5';
+import {missionOf} from './evolution-missions.mjs?v=render6';
+import {TwoLink,twoParameters} from './evolution-two-core.mjs?v=render6';
+import {angleError} from './evolution-core.mjs?v=render6';
+import {VectorPPO,vectorPolicyAction} from './evolution-vector-ppo.mjs?v=render6';
+import {Random} from './evolution-ppo.mjs?v=render6';
+import {Trainer,ACTION_REPEAT,ROLLOUT} from './evolution-training.mjs?v=render6';
 export const twoObserve=w=>w.bodies.flatMap((b,i)=>[Math.sin(w.angles[i]),Math.cos(w.angles[i]),-b.getAngularVelocity()/6]);
 export const twoError=w=>Math.max(...w.angles.map(q=>Math.abs(angleError(q))));
 export function twoAdvance(w,a){for(let i=0;i<ACTION_REPEAT;i++)w.step(a.map(v=>v*w.config.maxTorque),false);}

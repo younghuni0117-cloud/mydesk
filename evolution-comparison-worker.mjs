@@ -1,2 +1,2 @@
-import {comparePolicies} from './evolution-comparison.mjs?v=evolution5';
+import {comparePolicies} from './evolution-comparison.mjs?v=render6';
 onmessage=async({data})=>{try{const it=comparePolicies(data.a,data.b);let r;do{const end=performance.now()+8;do{r=it.next();}while(!r.done&&performance.now()<end);if(!r.done){postMessage({type:'progress',requestId:data.requestId,...r.value});await new Promise(resolve=>setTimeout(resolve,4));}}while(!r.done);postMessage({type:'result',requestId:data.requestId,result:r.value});}catch(e){postMessage({type:'error',requestId:data.requestId,message:e.message});}};

@@ -1,4 +1,4 @@
-import {Random,Adam,gae,logProbability,entropy,clippedObjective,clamp} from './evolution-ppo.mjs?v=evolution5';
+import {Random,Adam,gae,logProbability,entropy,clippedObjective,clamp} from './evolution-ppo.mjs?v=render6';
 class Dense{
  constructor(rng,inputs,outputs,scale=.01,size=24){this.inputs=inputs;this.outputs=outputs;this.size=size;this.w=Array.from({length:size*(inputs+1)+outputs*(size+1)},(_,i)=>i<size*(inputs+1)?(i%(inputs+1)===inputs?0:(rng.uniform()*2-1)*Math.sqrt(6/(inputs+size))):(rng.uniform()*2-1)*scale);}
  forward(x){const n=this.size,k=this.inputs,offset=n*(k+1),h=Array.from({length:n},(_,i)=>Math.tanh(this.w[i*(k+1)+k]+x.reduce((s,v,j)=>s+v*this.w[i*(k+1)+j],0))),values=Array.from({length:this.outputs},(_,o)=>h.reduce((s,v,i)=>s+v*this.w[offset+o*(n+1)+i],this.w[offset+o*(n+1)+n]));return {x,h,values,value:values[0]};}

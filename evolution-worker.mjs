@@ -1,8 +1,8 @@
-import {missionOf,initialCondition} from './evolution-missions.mjs?v=evolution5';
-import {Random} from './evolution-ppo.mjs?v=evolution5';
-import {angleError} from './evolution-core.mjs?v=evolution5';
-import {Pendulum,validatePhysics,isTwo,torqueCommand,poseMagnitude,policyAction} from './evolution-model.mjs?v=evolution5';
-import {Trainer,evaluate,observe,advance,ROLLOUT,BALANCE} from './evolution-engine.mjs?v=evolution5';
+import {missionOf,initialCondition} from './evolution-missions.mjs?v=render6';
+import {Random} from './evolution-ppo.mjs?v=render6';
+import {angleError} from './evolution-core.mjs?v=render6';
+import {Pendulum,validatePhysics,isTwo,torqueCommand,poseMagnitude,policyAction} from './evolution-model.mjs?v=render6';
+import {Trainer,evaluate,observe,advance,ROLLOUT,BALANCE} from './evolution-engine.mjs?v=render6';
 
 let sim=new Pendulum(),command=0,timer=null,last=0,debt=0,lastSent=0,running=false,generation=0,mode='physics',trainer=null,best=null,baseline=null,currentEvaluation=null,confirmation=null,achieved=false,history=[],limit=100000,budget=8,wantTrain=false,busy=false,operation=null,operationKind=null,holdAction=0,evalPolicy=null,candidate=null,evaluationJob=null,evaluationTimer=null,lastCheckpoint=0,lastStats=0,probe=null,updateStart=null,checkpointCount=0;
 const post=(type,data={})=>postMessage({type,generation,...data});

@@ -1,8 +1,8 @@
-import {Pendulum as OneLink,parameters as oneParameters,validatePhysics as validateOne,angleError} from './evolution-core.mjs?v=evolution5';
-import {TwoLink,twoParameters,validateTwoPhysics} from './evolution-two-core.mjs?v=evolution5';
-import {PPO,policyAction as oneAction} from './evolution-ppo.mjs?v=evolution5';
-import {VectorPPO,vectorPolicyAction} from './evolution-vector-ppo.mjs?v=evolution5';
-import {missionOf} from './evolution-missions.mjs?v=evolution5';
+import {Pendulum as OneLink,parameters as oneParameters,validatePhysics as validateOne,angleError} from './evolution-core.mjs?v=render6';
+import {TwoLink,twoParameters,validateTwoPhysics} from './evolution-two-core.mjs?v=render6';
+import {PPO,policyAction as oneAction} from './evolution-ppo.mjs?v=render6';
+import {VectorPPO,vectorPolicyAction} from './evolution-vector-ppo.mjs?v=render6';
+import {missionOf} from './evolution-missions.mjs?v=render6';
 export const isTwo=c=>c?.structure==='two-link';
 export function parameters(c={}){if(c.structure&&!['one-link','two-link'].includes(c.structure))throw Error('아직 지원하지 않는 로봇 구조입니다.');if(isTwo(c)&&c.mission&&c.mission!=='balance')throw Error('2-Link는 현재 균형 잡기만 지원합니다.');return isTwo(c)?twoParameters(c):oneParameters(c);}
 export function Pendulum(c={}){return isTwo(c)?new TwoLink(c):new OneLink(c);}

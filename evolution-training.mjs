@@ -1,6 +1,6 @@
-import {missionOf,initialCondition,missionReward,isStable} from './evolution-missions.mjs?v=evolution5';
-import {Pendulum,DEFAULTS,angleError} from './evolution-core.mjs?v=evolution5';
-import {PPO,Random,policyAction} from './evolution-ppo.mjs?v=evolution5';
+import {missionOf,initialCondition,missionReward,isStable} from './evolution-missions.mjs?v=render6';
+import {Pendulum,DEFAULTS,angleError} from './evolution-core.mjs?v=render6';
+import {PPO,Random,policyAction} from './evolution-ppo.mjs?v=render6';
 export const OBSERVATION_SCALE=6,ACTION_REPEAT=4,ROLLOUT=1024;
 export const observe=world=>[Math.sin(world.theta),Math.cos(world.theta),-world.link.getAngularVelocity()/OBSERVATION_SCALE];
 export const BALANCE={seconds:6,failureAngle:.35,evaluationSeconds:8,successAngle:12*Math.PI/180,rms:4*Math.PI/180,finalAngle:3*Math.PI/180,finalSpeed:.3};
