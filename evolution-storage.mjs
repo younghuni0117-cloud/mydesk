@@ -1,11 +1,10 @@
-import {PPO} from './evolution-ppo.mjs?v=evolution4';
-import {parameters} from './evolution-core.mjs?v=evolution4';
-import {checksum,networkIdentity,policyRecord,mergePolicy,policiesToPrune,mergeHistory} from './evolution-records.mjs?v=evolution4';
+import {createPPO,parameters,isTwo} from './evolution-model.mjs?v=evolution5';
+import {checksum,networkIdentity,policyRecord,mergePolicy,policiesToPrune,mergeHistory} from './evolution-records.mjs?v=evolution5';
 export {checksum};
 const DB='mydesk.evolution.v1';
-export const contextKey=c=>JSON.stringify([c.mission||'balance',c.length,c.mass,c.width,c.gravity,c.damping,c.maxTorque,c.dt,c.substeps]);
+export const contextKey=c=>JSON.stringify([c.mission||'balance',c.length,c.mass,c.width,c.gravity,c.damping,c.maxTorque,c.dt,c.substeps,...(isTwo(c)?['two-link-v1']:[])]);
 function envelope(data){return {version:1,checksum:checksum(data),data,savedAt:Date.now()};}
-function verified(row){if(row?.version!==1||row.checksum!==checksum(row.data))return null;try{const p=new PPO();p.restore(row.data.trainer.network);parameters(row.data.trainer.config);if(!Number.isSafeInteger(row.data.trainer.steps)||row.data.trainer.steps<0)return null;return row.data;}catch{return null;}}
+function verified(row){if(row?.version!==1||row.checksum!==checksum(row.data))return null;try{const p=createPPO(row.data.trainer.config);p.restore(row.data.trainer.network);parameters(row.data.trainer.config);if(!Number.isSafeInteger(row.data.trainer.steps)||row.data.trainer.steps<0)return null;return row.data;}catch{return null;}}
 let opened,epoch;const syncedMetrics=new Map();
 function checkEpoch(tx){const r=tx.objectStore('checkpoints').get('reset-epoch');r.onsuccess=()=>{const current=r.result||null;if(epoch===undefined)epoch=current;else if(epoch!==current)tx.abort();};}
 function open(){if(!opened)opened=new Promise((resolve,reject)=>{const r=indexedDB.open(DB,2);r.onupgradeneeded=()=>{for(const name of ['checkpoints','policies','metrics','trajectories'])if(!r.result.objectStoreNames.contains(name)){const store=r.result.createObjectStore(name);if(name!=='checkpoints')store.createIndex('context','context',{unique:false});}};r.onsuccess=()=>{r.result.onversionchange=()=>{r.result.close();opened=null;};resolve(r.result);};r.onerror=()=>{opened=null;reject(r.error);};r.onblocked=()=>reject(Error('다른 로봇 강화학습2 탭을 닫고 이 페이지를 새로고침해 주세요.'));});return opened;}
