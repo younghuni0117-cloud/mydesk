@@ -1,0 +1,46 @@
+{
+  "phase": 4,
+  "date": "2026-11-20",
+  "unitTestFilesPassed": 7,
+  "browserArchive": {
+    "realPPOUpdates": 8,
+    "steps": 8192,
+    "legacySchema1PolicyPreserved": true,
+    "checkpointAndOptimizerRestored": true,
+    "sameConditionPolicyComparison": true,
+    "evaluationDoesNotTrain": true,
+    "trajectoryReplayAfterReload": true,
+    "longHistoryRowsTested": 2105,
+    "resetCancellation": true,
+    "allMissionReset": true,
+    "otherAppSentinelsPreserved": true,
+    "foldViewports": 4,
+    "pageErrors": []
+  },
+  "browserStorage": {
+    "protectedPolicies": 4,
+    "ordinaryRetentionLimit": 20,
+    "allMetricRowsRetained": 41,
+    "corruptArchiveAndTrajectoryRejected": true,
+    "staleWriterAfterResetRejected": true,
+    "otherActivelyLearningTabStopped": true
+  },
+  "existingBalanceRegression": {
+    "steps": 8192,
+    "updates": 8,
+    "beforeSuccessRate": 0,
+    "primarySuccessRate": 1,
+    "confirmationSuccessRate": 1,
+    "corruptLatestFallback": true,
+    "automaticVisibilityPause": true,
+    "evaluationWeightsUnchanged": true,
+    "layouts": 7
+  },
+  "existingMissionRegressions": [
+    {"mission":"recover","steps":45056,"updates":44,"before":0,"primary":1,"confirmation":1},
+    {"mission":"swing","steps":53248,"updates":52,"before":0,"primary":1,"confirmation":1}
+  ],
+  "existingControlsRetained": 80,
+  "otherBrowserRegressions": ["calendar touch navigation and event preservation", "original robot real PPO and basic tasks"],
+  "limits": ["Isolated synthetic history/retention records are used for storage stress tests, not presented as learned performance.", "Default seeded benchmark success does not guarantee all parameter sets.", "Storage is local to the browser; browser storage clearing or eviction can remove it.", "Multi-link structures and server synchronization remain later phases."]
+}

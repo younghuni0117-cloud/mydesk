@@ -1,4 +1,4 @@
-import {angleError} from './evolution-core.mjs?v=evolution3';
+import {angleError} from './evolution-core.mjs?v=evolution4';
 export const MISSIONS={
  balance:{id:'balance',label:'균형 잡기',seconds:6,evaluationSeconds:8,holdSeconds:8,deadline:0,stages:[{min:0,max:5,omega:.1},{min:0,max:8,omega:.15}]},
  recover:{id:'recover',label:'자세 복구',seconds:10,evaluationSeconds:10,holdSeconds:2,deadline:6,stages:[{min:0,max:10,omega:.1},{min:10,max:25,omega:.15},{min:20,max:45,omega:.2},{min:30,max:60,omega:.25}]},
