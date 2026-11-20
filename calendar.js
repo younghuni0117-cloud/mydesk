@@ -1,3 +1,4 @@
+import {installMonthSwipe} from './calendar-swipe.mjs?v=calendar31';
 import {SchedulePickers} from './calendar-pickers.mjs?v=calendar29';
 import {CalendarReceipts,upcomingEvents,countdown,scheduleLabel} from './calendar-activity.mjs?v=calendar20';
 import {parseFamilyLink,resolveFamily} from './calendar-identity.mjs?v=calendar7';
@@ -85,6 +86,7 @@ $('cancel').onclick=closeEditor;$('editor').addEventListener('cancel',e=>{if(sav
 $('create').onclick=()=>openEditor(null,$('create'));$('add-day').onclick=()=>openEditor(null,$('add-day'));
 $('mini-prev').onclick=()=>moveMonth(-1);$('mini-next').onclick=()=>moveMonth(1);
 function moveView(delta){if(['month','list'].includes(view))return moveMonth(delta);const next=addDays(selected,delta*(view==='week'?7:1));if(next<'1900-01-01'||next>'2199-12-31')return;selected=next;month=monthStart(next);render();void loadEvents();}
+installMonthSwipe($('month-panel'),{enabled:()=>view==='month'&&!$('editor').open,navigate:moveMonth});
 $('prev').onclick=()=>moveView(-1);$('next').onclick=()=>moveView(1);
 $('today').onclick=()=>{selected=today;month=monthStart(today);render();void loadEvents();};
 for(const key of ['month','week','day','list'])$(key+'-view').onclick=()=>{view=key;render();void loadEvents();};
