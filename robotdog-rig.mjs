@@ -1,6 +1,6 @@
-import {surface} from './robotdog-terrain.mjs?v=dog5';
-export const RIG_VERSION=5;
-export const DOG={mass:33.8,chassisMass:24.0,armMass:0,partMasses:{body:24,hip:.9,upper:1.3,lower:.2,foot:.05},body:[.88,.22,.30],upper:.3205,lower:.33,hipOffset:.110945,footRadius:.034,gravity:9.81,dt:1/120,controlSteps:4};
+import {surface} from './robotdog-terrain.mjs?v=dog6';
+export const RIG_VERSION=6;
+export const DOG={mass:33.8,chassisMass:24.0,armMass:0,partMasses:{body:24,hip:.9,upper:1.3,lower:.2,foot:.05},body:[.88,.22,.22],upper:.3205,lower:.33,hipOffset:.110945,footRadius:.034,gravity:9.81,dt:1/120,controlSteps:4};
 export const LEGS=[{id:'FL',label:'앞 왼쪽',x:.29785,z:.055,side:1},{id:'FR',label:'앞 오른쪽',x:.29785,z:-.055,side:-1},{id:'RL',label:'뒤 왼쪽',x:-.29785,z:.055,side:1},{id:'RR',label:'뒤 오른쪽',x:-.29785,z:-.055,side:-1}];
 export const LIMITS=[[-.65,.65],[-1.4,1.25],[.245,2.79]],REST=[0,-.68,1.36],TORQUES=[45,45,115];
 export const jointLimits=(leg,k)=>k===0?(leg.side===1?[-.65,.22]:[-.22,.65]):LIMITS[k];
@@ -17,5 +17,5 @@ export function footJacobian(q,leg=LEGS[0]){const[a,h,k]=q,co=Math.cos(a),si=Mat
 export function policy(weights,obs){const hidden=Array(HIDDEN);let p=0;for(let h=0;h<HIDDEN;h++){let s=weights[p++];for(let i=0;i<OBS;i++)s+=weights[p++]*obs[i];hidden[h]=Math.tanh(s);}return Array.from({length:12},()=>{let s=weights[p++];for(let h=0;h<HIDDEN;h++)s+=weights[p++]*hidden[h];return Math.tanh(s);});}
 export function initialWeights(seed=81){const r=rng(seed);return Array.from({length:WEIGHTS},(_,i)=>(r()-.5)*(i<(OBS+1)*HIDDEN?.2:.02));}
 export function collisionSamples(p,a,q){const out=[];for(let l=0;l<4;l++){const pts=legPoints(LEGS[l],q.slice(l*3,l*3+3));for(let segment=1;segment<3;segment++)for(const t of [0,.25,.5,.75,1]){const local=pts[segment].map((x,j)=>x+(pts[segment+1][j]-x)*t);out.push({local,p:rotate(local,a).map((x,j)=>x+p[j]),radius:segment===1?.069:.030,leg:l,affected:segment===1?2:3,key:`l${l}s${segment}t${t}`});}out.push({local:pts[3],p:rotate(pts[3],a).map((x,j)=>x+p[j]),radius:DOG.footRadius,leg:l,affected:3,foot:l,key:`f${l}`});}
- for(const x of [-.48,0,.48])for(const y of [-.12,.14])for(const z of [-.18,.18]){const local=[x,y,z];out.push({local,p:rotate(local,a).map((v,j)=>v+p[j]),radius:.008,affected:0,key:`b${x},${y},${z}`});}return out;}
+ for(const x of [-.48,0,.48])for(const y of [-.12,.14])for(const z of [-.125,.125]){const local=[x,y,z];out.push({local,p:rotate(local,a).map((v,j)=>v+p[j]),radius:.008,affected:0,key:`b${x},${y},${z}`});}return out;}
 export function clearanceCorrection(frame){let lift=0;for(const s of collisionSamples(frame.p,frame.a,frame.q)){const g=surface(frame.terrain,s.p[0],s.p[2]);lift=Math.max(lift,g.height+s.radius+.004-s.p[1]);}return lift;}
