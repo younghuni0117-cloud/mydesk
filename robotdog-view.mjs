@@ -1,5 +1,5 @@
 import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog10';
-import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog10-body';
+import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog10-rear';
 import * as T from './vendor/three-0.160.1.module.js';
 import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog10';
 import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind} from './robotdog-terrain.mjs?v=dog10';
@@ -20,7 +20,7 @@ export class DogView{
   const mark=sideMarkTexture();for(const side of [-1,1]){const decal=mesh(new T.PlaneGeometry(.26,.038),new T.MeshStandardMaterial({map:mark,transparent:true,roughness:.65,depthWrite:false}),chassis);decal.position.set(-.025,.067,side*.159);decal.rotation.y=side===1?0:Math.PI;}
 
   const stripe=profile([[-.423,.034],[.12,.034],[.22,.063],[.385,.063],[.385,.027],[.223,.019],[.13,.003],[-.423,.003]],.005,.001);
-  for(const side of [-1,1]){const band=mesh(stripe,this.m.black,chassis);band.position.set(0,.012,side*.155);band.scale.y=.55;box([.236,.046,side*.163],[.158,.043,.006],this.m.yellowShade);box([.236,.046,side*.167],[.135,.026,.006],this.m.black);for(const x of [.19,.235,.28]){const lens=mesh(this.cyl,this.m.lens,chassis);lens.rotation.x=Math.PI/2;lens.scale.set(.007,.008,.007);lens.position.set(x,.047,side*.17);}for(const x of [-.39,-.23,.06,.32])this.bolt([x,-.055,side*.154],.005,chassis,[0,0,side]);}
+  for(const side of [-1,1]){const band=mesh(stripe,this.m.black,chassis);band.position.set(0,.012,side*.155);band.scale.y=.55;box([.236,.046,side*.163],[.158,.043,.006],this.m.yellowShade);box([.236,.046,side*.167],[.135,.026,.006],this.m.black);for(const x of [.19,.235,.28]){const lens=mesh(this.cyl,this.m.lens,chassis);lens.rotation.x=Math.PI/2;lens.scale.set(.007,.008,.007);lens.position.set(x,.047,side*.17);}for(const x of [-.39,-.23,.06,.32])this.bolt([x,x<-.28?-.030:x<-.1?-.042:-.055,side*.154],.005,chassis,[0,0,side]);}
   // Industrial sensor cassette: yellow surround, perforated centre, asymmetric-height vertical windows.
   const nose=new T.Group();nose.position.x=.465;nose.rotation.z=-Math.PI/12;chassis.add(nose);this.nose=nose;
   const front=mesh(profile([[-.137,-.073],[-.119,-.094],[.118,-.094],[.137,-.073],[.137,.074],[.117,.095],[-.118,.095],[-.137,.074]],.022,.007),this.m.yellow,nose);front.rotation.y=Math.PI/2;

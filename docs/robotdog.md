@@ -117,3 +117,7 @@ Actor/critic/optimizer and experience history remain compatible. New checkpoints
 ### Photo-guided belly and shoulder shell
 
 The flat body extrusion and rectangular black undertray are replaced by a curved belly silhouette: a rounded dropped central pan, raised concave transitions beside the hip housings, a recessed lower lip and a thin curved side seam. The new shell remains within the existing conservative hull envelope; mass, hinge coordinates and learning interfaces do not change. Shoulder cover width/depth follow the overhead reference with modest local widening (about 85 mm width, 52.9 mm depth), retaining the 36 mm top extent and the approved knee taper. The carrier and motor housing are slightly fuller while all joint centres remain fixed. Measured initial scene: 74 draw calls and about 51,258 triangles. Browser checks cover the shell dimensions, unchanged mesh/hinge alignment, render budget and outer/inner mobile layouts. No checkpoint or learning data is removed.
+
+### Rear-body slimming
+
+The rear lower shell lifts gradually by up to 30 mm in chassis coordinates (up to 25.5 mm after the visual height scale), blending from X −0.02 to −0.28 m. The same deformation is applied to the belly seam and undertray so no old low strip remains behind. The roof, front belly, widths, shoulder geometry and physical/learning parameters stay fixed. Rear side fasteners move up to remain on the slimmer case. Browser checks verify a raised rear contour, unchanged front depth/roof height, hinge alignment and mobile rendering. Existing model data is untouched.
