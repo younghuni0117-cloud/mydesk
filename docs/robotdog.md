@@ -121,3 +121,8 @@ The flat body extrusion and rectangular black undertray are replaced by a curved
 ### Rear-body slimming
 
 The rear lower shell lifts gradually by up to 30 mm in chassis coordinates (up to 25.5 mm after the visual height scale), blending from X −0.02 to −0.28 m. The same deformation is applied to the belly seam and undertray so no old low strip remains behind. The roof, front belly, widths, shoulder geometry and physical/learning parameters stay fixed. Rear side fasteners move up to remain on the slimmer case. Browser checks verify a raised rear contour, unchanged front depth/roof height, hinge alignment and mobile rendering. Existing model data is untouched.
+
+
+### Terrain-focus camera panning
+
+Two-finger gestures now combine centroid translation for panning with finger-spacing changes for zoom. A fixed gesture-start baseline avoids residual zoom or drift after a pure translation/pinch. One-finger drag retains orbit rotation. Mouse right/middle dragging pans using camera-right/camera-up axes and perspective pixel scale, so direction remains correct after orbiting. Pointer capture cancellation rebases gesture state. The fixed terrain focus stays fixed while the pan offset survives scene and terrain updates; robot physics, policy weights and saved learning data are unchanged. Help and canvas accessibility text describe the gestures. A Chromium touch-protocol test verifies pure pan, pure pinch, one-finger orbit, mouse pan, fixed focus and unchanged model state.
