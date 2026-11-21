@@ -1,7 +1,7 @@
-import {upperShell,upperCore,lowerShell,sideMarkTexture,cableGeometry} from './robotdog-shell.mjs?v=dog8';
+import {upperShell,upperCore,lowerShell,sideMarkTexture} from './robotdog-shell.mjs?v=dog9';
 import * as T from './vendor/three-0.160.1.module.js';
-import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog8';
-import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind} from './robotdog-terrain.mjs?v=dog8';
+import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog9';
+import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind} from './robotdog-terrain.mjs?v=dog9';
 const Y=new T.Vector3(0,1,0),vec=p=>new T.Vector3(...p);
 // Merge static subparts by material, retaining the silhouette at a much lower draw-call cost.
 function batch(group){const buckets=new Map();for(const child of [...group.children])if(child.isMesh&&!child.material.map){child.updateMatrix();const g=(child.geometry.index?child.geometry.toNonIndexed():child.geometry.clone()).applyMatrix4(child.matrix),list=buckets.get(child.material)||[];list.push(g);buckets.set(child.material,list);group.remove(child);}for(const [material,parts]of buckets){const size=parts.reduce((s,g)=>s+g.attributes.position.array.length,0),p=new Float32Array(size),n=new Float32Array(size);let offset=0;for(const g of parts){p.set(g.attributes.position.array,offset);n.set(g.attributes.normal.array,offset);offset+=g.attributes.position.array.length;g.dispose();}const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(p,3));g.setAttribute('normal',new T.BufferAttribute(n,3));g.computeBoundingSphere();group.add(new T.Mesh(g,material));}}
@@ -12,7 +12,7 @@ export class DogView{
   this.box=new T.BoxGeometry(1,1,1);this.cyl=new T.CylinderGeometry(1,1,1,14);this.hex=new T.CylinderGeometry(1,1,1,6);this.sphere=new T.SphereGeometry(1,14,10);this.robot=new T.Group();this.robot.rotation.order='ZYX';this.scene.add(this.robot);const chassis=new T.Group();this.robot.add(chassis);this.chassis=chassis;
   const mesh=(g,m,parent=this.robot)=>{const o=new T.Mesh(g,m);parent.add(o);return o;};this.mesh=mesh;const box=(p,size,m,parent=chassis)=>{const o=mesh(this.box,m,parent);o.position.set(...p);o.scale.set(...size);return o;};this.addBox=box;
   // Low, elongated yellow shell and the continuous black camera/control stripe.
-  mesh(profile([[-.435,.075],[.385,.075],[.465,.025],[.445,-.055],[.30,-.102],[-.34,-.10],[-.45,-.045]],.292,.012),this.m.yellow,chassis);
+  mesh(profile([[-.435,.075],[.465,.075],[.43,-.090],[.30,-.102],[-.34,-.10],[-.45,-.045]],.292,.012),this.m.yellow,chassis);
   box([-.025,-.101,0],[.65,.022,.235],this.m.black);box([-.03,.102,0],[.70,.014,.25],this.m.yellow);
   for(const z of [-.106,.106]){box([-.025,.114,z],[.65,.009,.013],this.m.steel);box([-.025,.119,z],[.62,.003,.004],this.m.black);for(let i=0;i<7;i++)this.bolt([-.31+i*.095,.122,z],.0035,chassis);}
   for(const x of [-.24,.22])box([x,.122,0],[.092,.022,.063],this.m.black);
@@ -21,8 +21,9 @@ export class DogView{
   const stripe=profile([[-.423,.034],[.12,.034],[.22,.063],[.385,.063],[.385,.027],[.223,.019],[.13,.003],[-.423,.003]],.005,.001);
   for(const side of [-1,1]){const band=mesh(stripe,this.m.black,chassis);band.position.set(0,.012,side*.155);band.scale.y=.55;box([.236,.046,side*.163],[.158,.043,.006],this.m.yellowShade);box([.236,.046,side*.167],[.135,.026,.006],this.m.black);for(const x of [.19,.235,.28]){const lens=mesh(this.cyl,this.m.lens,chassis);lens.rotation.x=Math.PI/2;lens.scale.set(.007,.008,.007);lens.position.set(x,.047,side*.17);}for(const x of [-.39,-.23,.06,.32])this.bolt([x,-.055,side*.154],.005,chassis,[0,0,side]);}
   // Industrial sensor cassette: yellow surround, perforated centre, asymmetric-height vertical windows.
-  const front=mesh(profile([[-.137,-.073],[-.119,-.094],[.118,-.094],[.137,-.073],[.137,.074],[.117,.095],[-.118,.095],[-.137,.074]],.022,.007),this.m.yellow,chassis);front.rotation.y=Math.PI/2;front.position.x=.465;
-  const sensor=new T.Mesh(new T.PlaneGeometry(.226,.151),new T.MeshStandardMaterial({map:this.sensorTexture(),roughness:.48,metalness:.18}));sensor.rotation.y=Math.PI/2;sensor.position.set(.485,.002,0);chassis.add(sensor);
+  const nose=new T.Group();nose.position.x=.465;nose.rotation.z=-Math.PI/12;chassis.add(nose);this.nose=nose;
+  const front=mesh(profile([[-.137,-.073],[-.119,-.094],[.118,-.094],[.137,-.073],[.137,.074],[.117,.095],[-.118,.095],[-.137,.074]],.022,.007),this.m.yellow,nose);front.rotation.y=Math.PI/2;
+  const sensor=new T.Mesh(new T.PlaneGeometry(.226,.151),new T.MeshStandardMaterial({map:this.sensorTexture(),roughness:.48,metalness:.18}));sensor.rotation.y=Math.PI/2;sensor.position.set(.020,.002,0);nose.add(sensor);
   box([-.445,-.005,0],[.022,.092,.20],this.m.black);
   for(const x of [-.40,.34])for(const z of [-.085,.085])this.bolt([x,.105,z],.0045,chassis);
   for(const leg of LEGS){box([leg.x,-.018,leg.side*.139],[.125,.135,.022],this.m.black);for(const y of [-.055,.032])for(const dx of [-.044,.044])this.bolt([leg.x+dx,y,leg.side*.155],.004,chassis,[0,0,leg.side]);}
@@ -30,17 +31,14 @@ export class DogView{
   // Each mesh belongs to its real hinge parent. Roll is never inferred from a bone direction.
   const upper=upperShell(DOG.upper),core=upperCore(DOG.upper),lower=lowerShell(DOG.lower);
   this.legs=LEGS.map(leg=>{
-   const abFrame=new T.Group();abFrame.position.set(leg.x,-.045,leg.z);this.robot.add(abFrame);
-   const ab=this.hinge(.044,.048,this.m.black,abFrame);ab.rotation.z=-Math.PI/2;const cable=mesh(cableGeometry(leg.side,DOG.hipOffset),this.m.rubber,abFrame);cable.name='shoulder-cable';
+   const abFrame=new T.Group();abFrame.position.set(leg.x,leg.y,leg.z);this.robot.add(abFrame);
+   const ab=this.hinge(.034,.040,this.m.black,abFrame);ab.rotation.z=-Math.PI/2;
    const carrier=mesh(this.cyl,this.m.black,abFrame);carrier.position.z=leg.side*DOG.hipOffset/2;carrier.rotation.x=Math.PI/2;carrier.scale.set(.031,DOG.hipOffset,.031);
    const hipFrame=new T.Group();hipFrame.position.z=leg.side*DOG.hipOffset;abFrame.add(hipFrame);
-   const hip=this.hinge(.062,.060,this.m.black,hipFrame);hip.rotation.x=Math.PI/2;const motor=mesh(core,this.m.vent,hipFrame);motor.position.z=-leg.side*.008;const upperMesh=mesh(upper,this.m.yellow,hipFrame);upperMesh.position.z=leg.side*.033;
-   // Exposed inner heat-sink ribs remain behind the rounded yellow outboard cover.
-   const fins=new T.Group();hipFrame.add(fins);for(let i=0;i<5;i++){const rib=mesh(this.box,this.m.black,fins);rib.position.set(-.031,-.060-i*.017,-leg.side*.027);rib.scale.set(.048,.005,.018);}batch(fins);
-
+   const hip=this.hinge(.029,.040,this.m.black,hipFrame);hip.rotation.x=Math.PI/2;const motor=mesh(core,this.m.vent,hipFrame);motor.position.z=-leg.side*.008;const upperMesh=mesh(upper,this.m.yellow,hipFrame);upperMesh.position.z=leg.side*.015;
    const kneeFrame=new T.Group();kneeFrame.position.y=-DOG.upper;hipFrame.add(kneeFrame);
-   const knee=this.hinge(.026,.053,this.m.black,kneeFrame);knee.rotation.x=Math.PI/2;const lowerMesh=mesh(lower,this.m.black,kneeFrame);
-   const kneePin=mesh(this.cyl,this.m.steel,kneeFrame);kneePin.rotation.x=Math.PI/2;kneePin.position.z=leg.side*.060;kneePin.scale.set(.011,.005,.011);
+   const knee=this.hinge(.021,.043,this.m.black,kneeFrame);knee.rotation.x=Math.PI/2;const lowerMesh=mesh(lower,this.m.black,kneeFrame);
+   const kneePin=mesh(this.cyl,this.m.steel,kneeFrame);kneePin.rotation.x=Math.PI/2;kneePin.position.z=leg.side*.037;kneePin.scale.set(.008,.005,.008);
 
    const foot=new T.Group();foot.name='rubber-contact-pad';kneeFrame.add(foot);foot.position.y=-DOG.lower;
    const pad=mesh(this.sphere,this.m.rubber,foot);pad.scale.set(DOG.footRadius,DOG.footRadius,.026);

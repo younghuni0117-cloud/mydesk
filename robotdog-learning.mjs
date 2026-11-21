@@ -1,8 +1,8 @@
-import {randomConfig,frictionRange} from './robotdog-environment.mjs?v=dog8';
-import {TERRAINS} from './robotdog-terrain.mjs?v=dog8';
-import {terrainKind} from './robotdog-terrain.mjs?v=dog8';
-import {WEIGHTS,RIG_VERSION,GOAL_IDS,goalKind,DogWorld,DOG,episode,worldSuccess} from './robotdog-core.mjs?v=dog8';
-import {DogPPO} from './robotdog-ppo.mjs?v=dog8';
+import {randomConfig,frictionRange} from './robotdog-environment.mjs?v=dog9';
+import {TERRAINS} from './robotdog-terrain.mjs?v=dog9';
+import {terrainKind} from './robotdog-terrain.mjs?v=dog9';
+import {WEIGHTS,RIG_VERSION,GOAL_IDS,goalKind,DogWorld,DOG,episode,worldSuccess} from './robotdog-core.mjs?v=dog9';
+import {DogPPO} from './robotdog-ppo.mjs?v=dog9';
 // Remove the retired CEM collection; retain the compatible 68-input PPO model.
 export const MODEL_KEY='mydesk.robotdog.ppo.v2',LEGACY_KEY='mydesk.robotdog.v1';
 export function validModel(m){return m?.version===2&&m.algorithm==='PPO'&&m.rigVersion===RIG_VERSION&&Array.isArray(m.weights)&&m.weights.length===WEIGHTS&&m.weights.every(Number.isFinite)&&Number.isSafeInteger(m.attempts)&&m.attempts>=0&&Array.isArray(m.history)&&m.history.length<=1000&&m.history.every(p=>Number.isFinite(p.attempt)&&Number.isFinite(p.reward)&&Number.isFinite(p.best));}
