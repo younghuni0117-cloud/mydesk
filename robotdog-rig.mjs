@@ -1,4 +1,4 @@
-import {surface} from './robotdog-terrain.mjs?v=dog7';
+import {surface} from './robotdog-terrain.mjs?v=dog8';
 export const RIG_VERSION=6;
 export const DOG={mass:33.8,chassisMass:24.0,armMass:0,partMasses:{body:24,hip:.9,upper:1.3,lower:.2,foot:.05},body:[.88,.22,.22],upper:.3205,lower:.33,hipOffset:.110945,footRadius:.034,gravity:9.81,dt:1/120,controlSteps:4};
 export const LEGS=[{id:'FL',label:'앞 왼쪽',x:.29785,z:.055,side:1},{id:'FR',label:'앞 오른쪽',x:.29785,z:-.055,side:-1},{id:'RL',label:'뒤 왼쪽',x:-.29785,z:.055,side:1},{id:'RR',label:'뒤 오른쪽',x:-.29785,z:-.055,side:-1}];
