@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+<title id="title">로봇독 측면 비율 검토 시안</title><desc id="desc">낮은 어깨, 긴 상하부 다리, 앞으로 완만하게 휜 가느다란 검은 하부 링크. 실제 프로그램 화면이 아닌 단순 디자인 시안.</desc>
+<defs><linearGradient id="yellow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffde51"/><stop offset="1" stop-color="#dfb620"/></linearGradient><linearGradient id="black" x1="0" x2="1"><stop stop-color="#3f4548"/><stop offset="1" stop-color="#1f2528"/></linearGradient>
+<g id="leg"><path d="M204 416C243 452 335 520 377 597C395 633 399 658 400 682L382 684C379 655 375 634 360 607C320 541 242 481 193 433Z" fill="url(#black)"/><path d="M360 153C389 142 422 163 425 194C428 219 411 243 390 271L226 427C215 439 198 442 190 430C181 417 191 399 203 380L323 184C333 168 345 157 360 153Z" fill="url(#yellow)" stroke="#c5a432" stroke-width="1.2"/><path d="M381 665L395 678L383 679Z" fill="#f8f8f5"/><rect x="373" y="678" width="42" height="26" rx="12" fill="#242b2e"/><circle cx="204" cy="427" r="7" fill="#32393c"/></g></defs>
+<rect width="1200" height="800" fill="#f8f8f5"/>
+<text x="56" y="65" font-family="sans-serif" font-size="27" font-weight="600" fill="#43515a">측면 비율 검토 시안</text>
+<text x="56" y="96" font-family="sans-serif" font-size="16" fill="#78838a">디자인 검토용 · 실제 홈페이지에는 미적용</text>
+<path d="M130 706H1090" stroke="#c2c8c8" stroke-width="1.5"/>
+<g opacity=".35" transform="translate(42 -8)"><use href="#leg"/><use href="#leg" x="520"/></g>
+<path d="M294 152H976L1018 180L1010 267L955 282H307L283 256Z" fill="url(#yellow)" stroke="#c5a432" stroke-width="1.6"/>
+<path d="M307 195H752L801 210H994V225H798L750 211H307Z" fill="#30373a"/>
+<path d="M320 153H944" stroke="#6c7476" stroke-width="6"/>
+<path d="M1000 174L1020 182L1015 257L1001 267Z" fill="#bd9d20"/>
+<use href="#leg"/><use href="#leg" x="520"/>
+<text x="56" y="762" font-family="sans-serif" font-size="17" fill="#68767e">확인할 부분: 어깨 높이 · 몸통 대비 다리 길이 · 검은 하부 링크의 곡선</text>
+</svg>
