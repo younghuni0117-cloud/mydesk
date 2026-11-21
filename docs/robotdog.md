@@ -97,3 +97,7 @@ Yellow upper shells are rounded, slim and nearly constant-width through most of 
 The front sensor cassette rotates downward by 15° within the case group (approximately 17.5° after the existing case-height scale). The case side profile follows the slanted face. The browser test checks the actual world-space sensor normal, not just a CSS or UI label.
 
 The 12-action/68-observation PPO interface, current checkpoint format and shared/local storage keys remain compatible. Learned actor/critic and Adam states, counts and history are retained. Geometry changes can change policy behaviour; existing history points describe their original geometry, while the trainer reevaluates the integrated-policy baseline under the new geometry before judging candidates. No skill improvement is claimed merely from this redesign. Initial measured render budget is about 49,000 triangles and 74 draw calls.
+
+### Shoulder volume refinement
+
+A local smooth falloff adds 12% to the upper-shell lateral radius and 18% to its depth around the shoulder, returning to the approved slim dimensions within the first 40% of the upper link. Top height, link lengths, hinge positions, knee taper, physics, learning and checkpoint formats are unchanged. Browser inspection measured a shoulder width of about 77 mm and depth of 49.6 mm, with the existing 36 mm top extent and knee width retained. Mobile display and mesh/hinge alignment were checked.

@@ -1,4 +1,4 @@
-import {upperShell,upperCore,lowerShell,sideMarkTexture} from './robotdog-shell.mjs?v=dog9';
+import {upperShell,upperCore,lowerShell,sideMarkTexture} from './robotdog-shell.mjs?v=dog9-shoulder';
 import * as T from './vendor/three-0.160.1.module.js';
 import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog9';
 import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind} from './robotdog-terrain.mjs?v=dog9';
