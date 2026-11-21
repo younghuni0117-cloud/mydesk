@@ -1,8 +1,8 @@
-import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog10-labels';
-import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog10-rear';
+import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog11';
+import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog11';
 import * as T from './vendor/three-0.160.1.module.js';
-import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog10';
-import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind} from './robotdog-terrain.mjs?v=dog10';
+import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog11';
+import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind} from './robotdog-terrain.mjs?v=dog11';
 const Y=new T.Vector3(0,1,0),vec=p=>new T.Vector3(...p);
 // Merge static subparts by material, retaining the silhouette at a much lower draw-call cost.
 function batch(group){const buckets=new Map();for(const child of [...group.children])if(child.isMesh&&!child.material.map){child.updateMatrix();const g=(child.geometry.index?child.geometry.toNonIndexed():child.geometry.clone()).applyMatrix4(child.matrix),list=buckets.get(child.material)||[];list.push(g);buckets.set(child.material,list);group.remove(child);}for(const [material,parts]of buckets){const size=parts.reduce((s,g)=>s+g.attributes.position.array.length,0),p=new Float32Array(size),n=new Float32Array(size);let offset=0;for(const g of parts){p.set(g.attributes.position.array,offset);n.set(g.attributes.normal.array,offset);offset+=g.attributes.position.array.length;g.dispose();}const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(p,3));g.setAttribute('normal',new T.BufferAttribute(n,3));g.computeBoundingSphere();group.add(new T.Mesh(g,material));}}

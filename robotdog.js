@@ -1,14 +1,14 @@
-import {DogSharedStore} from './robotdog-shared.mjs?v=dog10';
-import {randomConfig,RANDOM_DEFAULTS,frictionRange} from './robotdog-environment.mjs?v=dog10';
-import {TERRAINS,terrainKind,surface} from './robotdog-terrain.mjs?v=dog10';
-import {DogWorld,DOG,GOALS,GOAL_IDS,goalKind,legPoints,rotate,collisionSamples} from './robotdog-core.mjs?v=dog10';
-import {loadModel,saveModel,freshModel,validModel,trainingContext} from './robotdog-learning.mjs?v=dog10';
-import {slerpOrientation,eulerFromQuaternion} from './robotdog-dynamics.mjs?v=dog10';
-import {DogView} from './robotdog-view.mjs?v=dog10-pan';
-if(document.body.dataset.dogRelease!=='dog10'){const url=new URL(location.href);if(url.searchParams.get('dog-update')!=='dog10'){url.searchParams.set('dog-update','dog10');location.replace(url.href);}}else{
+import {DogSharedStore} from './robotdog-shared.mjs?v=dog11';
+import {randomConfig,RANDOM_DEFAULTS,frictionRange} from './robotdog-environment.mjs?v=dog11';
+import {TERRAINS,terrainKind,surface} from './robotdog-terrain.mjs?v=dog11';
+import {DogWorld,DOG,GOALS,GOAL_IDS,goalKind,legPoints,rotate,collisionSamples} from './robotdog-core.mjs?v=dog11';
+import {loadModel,saveModel,freshModel,validModel,trainingContext} from './robotdog-learning.mjs?v=dog11';
+import {slerpOrientation,eulerFromQuaternion} from './robotdog-dynamics.mjs?v=dog11';
+import {DogView} from './robotdog-view.mjs?v=dog11';
+if(document.body.dataset.dogRelease!=='dog11'){const url=new URL(location.href);if(url.searchParams.get('dog-update')!=='dog11'){url.searchParams.set('dog-update','dog11');location.replace(url.href);}}else{
 const $=id=>document.getElementById('dog-'+id);let model=loadModel(),terrain=terrainKind(model.terrain),world=new DogWorld({terrain,goal:model.goal,target:model.target}),view=null,mode='idle',training=false,paused=false,autoPaused=false,trace=null,pendingTrace=null,traceTime=0,last=0,accumulator=0,lastDraw=0,lastHud=0,lastSaved=0,lastChart=0,shown=world.frame();
 let connecting=true,conflictRow=null,sceneSequence=0;const shared=new DogSharedStore();shared.onstatus=text=>{$('save-note').textContent=text;};
-const worker=new Worker(new URL('./robotdog-worker.mjs?v=dog10',import.meta.url),{type:'module'}),state=text=>{$('status').textContent=text;},options=()=>({terrain,goal:goalKind($('goal').value),target:Number($('target').value),seconds:Number($('seconds').value),mixed:$('mixed').checked,randomization:readEnvironment(),frictionRange:readFriction()});
+const worker=new Worker(new URL('./robotdog-worker.mjs?v=dog11',import.meta.url),{type:'module'}),state=text=>{$('status').textContent=text;},options=()=>({terrain,goal:goalKind($('goal').value),target:Number($('target').value),seconds:Number($('seconds').value),mixed:$('mixed').checked,randomization:readEnvironment(),frictionRange:readFriction()});
 try{view=new DogView($('canvas'));view.update(shown);view.render();}catch(error){$('webgl-error').hidden=false;$('webgl-error').textContent='3D 화면을 시작하지 못했습니다. 브라우저의 하드웨어 가속을 확인해 주세요.';state('3D 화면 연결 오류');}
 const envKeys=Object.keys(RANDOM_DEFAULTS);
 function readEnvironment(){return randomConfig(Object.fromEntries(envKeys.map(k=>{const el=$('env-'+k);return[k,el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value];})));}

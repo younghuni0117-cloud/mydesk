@@ -1,7 +1,7 @@
 // COM-coordinate articulated contact solver. Gravity acts on total COM; motor torques are internal.
 // A coupled 15x15 angular/joint mass matrix replaces vertical body teleports and velocity clamps.
-import {DOG,LEGS,REST,clamp,rotate,inverseRotate,legPoints,jointLimits,TORQUES,collisionSamples} from './robotdog-rig.mjs?v=dog10';
-import {surface} from './robotdog-terrain.mjs?v=dog10';
+import {DOG,LEGS,REST,clamp,rotate,inverseRotate,legPoints,jointLimits,TORQUES,collisionSamples} from './robotdog-rig.mjs?v=dog11';
+import {surface} from './robotdog-terrain.mjs?v=dog11';
 const N=15,DT=DOG.dt,dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),scale=(a,s)=>a.map(v=>v*s),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],axes=[[1,0,0],[0,1,0],[0,0,1]];
 export function quaternionFromEuler(a){const[x,y,z]=a.map(v=>v/2),cx=Math.cos(x),sx=Math.sin(x),cy=Math.cos(y),sy=Math.sin(y),cz=Math.cos(z),sz=Math.sin(z);return[sx*cy*cz-cx*sy*sz,cx*sy*cz+sx*cy*sz,cx*cy*sz-sx*sy*cz,cx*cy*cz+sx*sy*sz];}
 export function eulerFromQuaternion([x,y,z,w]){const m31=2*(x*z-y*w),pitch=Math.asin(clamp(-m31,-1,1));return Math.abs(m31)<.9999999?[Math.atan2(2*(y*z+x*w),1-2*(x*x+y*y)),pitch,Math.atan2(2*(x*y+z*w),1-2*(y*y+z*z))]:[Math.atan2(-2*(y*z-x*w),1-2*(x*x+z*z)),pitch,0];}
