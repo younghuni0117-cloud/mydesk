@@ -1,4 +1,4 @@
-import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog10';
+import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog10-labels';
 import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog10-rear';
 import * as T from './vendor/three-0.160.1.module.js';
 import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog10';
