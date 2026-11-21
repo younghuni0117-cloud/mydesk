@@ -1,5 +1,5 @@
 import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog10';
-import {upperShell,upperCore,lowerShell,sideMarkTexture} from './robotdog-shell.mjs?v=dog10';
+import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog10-body';
 import * as T from './vendor/three-0.160.1.module.js';
 import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog10';
 import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind} from './robotdog-terrain.mjs?v=dog10';
@@ -13,8 +13,8 @@ export class DogView{
   this.box=new T.BoxGeometry(1,1,1);this.cyl=new T.CylinderGeometry(1,1,1,14);this.hex=new T.CylinderGeometry(1,1,1,6);this.sphere=new T.SphereGeometry(1,14,10);this.robot=new T.Group();this.robot.rotation.order='ZYX';this.scene.add(this.robot);const chassis=new T.Group();this.robot.add(chassis);this.chassis=chassis;
   const mesh=(g,m,parent=this.robot)=>{const o=new T.Mesh(g,m);parent.add(o);return o;};this.mesh=mesh;const box=(p,size,m,parent=chassis)=>{const o=mesh(this.box,m,parent);o.position.set(...p);o.scale.set(...size);return o;};this.addBox=box;
   // Low, elongated yellow shell and the continuous black camera/control stripe.
-  mesh(profile([[-.435,.075],[.465,.075],[.43,-.090],[.30,-.102],[-.34,-.10],[-.45,-.045]],.292,.012),this.m.yellow,chassis);
-  box([-.025,-.101,0],[.65,.022,.235],this.m.black);box([-.03,.102,0],[.70,.014,.25],this.m.yellow);
+  const belly=mesh(torsoShell(),this.m.yellow,chassis);belly.name='curved-belly-case';this.belly=belly;mesh(bellyUndertray(),this.m.black,chassis);
+  for(const side of [-1,1]){const seam=mesh(bellySeam(),this.m.yellowShade,chassis);seam.position.z=side*.155;}box([-.03,.102,0],[.70,.014,.25],this.m.yellow);
   for(const z of [-.106,.106]){box([-.025,.114,z],[.65,.009,.013],this.m.steel);box([-.025,.119,z],[.62,.003,.004],this.m.black);for(let i=0;i<7;i++)this.bolt([-.31+i*.095,.122,z],.0035,chassis);}
   for(const x of [-.24,.22])box([x,.122,0],[.092,.022,.063],this.m.black);
   const mark=sideMarkTexture();for(const side of [-1,1]){const decal=mesh(new T.PlaneGeometry(.26,.038),new T.MeshStandardMaterial({map:mark,transparent:true,roughness:.65,depthWrite:false}),chassis);decal.position.set(-.025,.067,side*.159);decal.rotation.y=side===1?0:Math.PI;}
@@ -34,9 +34,9 @@ export class DogView{
   this.legs=LEGS.map(leg=>{
    const abFrame=new T.Group();abFrame.position.set(leg.x,leg.y,leg.z);this.robot.add(abFrame);
    const ab=this.hinge(.034,.040,this.m.black,abFrame);ab.rotation.z=-Math.PI/2;
-   const carrier=mesh(this.cyl,this.m.black,abFrame);carrier.position.z=leg.side*DOG.hipOffset/2;carrier.rotation.x=Math.PI/2;carrier.scale.set(.031,DOG.hipOffset,.031);
+   const carrier=mesh(this.cyl,this.m.black,abFrame);carrier.position.z=leg.side*DOG.hipOffset/2;carrier.rotation.x=Math.PI/2;carrier.scale.set(.035,DOG.hipOffset,.035);
    const hipFrame=new T.Group();hipFrame.position.z=leg.side*DOG.hipOffset;abFrame.add(hipFrame);
-   const hip=this.hinge(.029,.040,this.m.black,hipFrame);hip.rotation.x=Math.PI/2;const motor=mesh(core,this.m.vent,hipFrame);motor.position.z=-leg.side*.008;const upperMesh=mesh(upper,this.m.yellow,hipFrame);upperMesh.position.z=leg.side*.015;
+   const hip=this.hinge(.032,.040,this.m.black,hipFrame);hip.rotation.x=Math.PI/2;const motor=mesh(core,this.m.vent,hipFrame);motor.position.z=-leg.side*.008;const upperMesh=mesh(upper,this.m.yellow,hipFrame);upperMesh.position.z=leg.side*.015;
    const kneeFrame=new T.Group();kneeFrame.position.y=-DOG.upper;hipFrame.add(kneeFrame);
    const knee=this.hinge(.021,.043,this.m.black,kneeFrame);knee.rotation.x=Math.PI/2;const lowerMesh=mesh(lower,this.m.black,kneeFrame);
    const kneePin=mesh(this.cyl,this.m.steel,kneeFrame);kneePin.rotation.x=Math.PI/2;kneePin.position.z=leg.side*.037;kneePin.scale.set(.008,.005,.008);
