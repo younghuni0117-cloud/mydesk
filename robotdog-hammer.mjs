@@ -18,7 +18,7 @@ export class HammerEffect {
   if(!event||!(event.strength>0)||!Number.isFinite(event.strength)||event.point?.length!==3||event.impulse?.length!==3||!event.point.every(Number.isFinite)||!event.impulse.every(Number.isFinite)){this.hide();return false;}
   const newEvent=this.event?.id!==event.id;if(newEvent)this.contactLocked=false;
   this.event=event;this.direction.fromArray(event.impulse);if(this.direction.lengthSq()<1e-12){this.hide();return false;}this.direction.normalize();
-  this.size=.65+.45*Math.sqrt(Math.min(1,event.strength/(event.unit==='N'?1000:100)));this.root.scale.setScalar(this.size);
+  this.size=1.25*(.65+.45*Math.sqrt(Math.min(1,event.strength/(event.unit==='N'?1000:100))));this.root.scale.setScalar(this.size);
   const impact=event.time,start=event.started??impact-.22,age=time-impact;
   if(age>.42){this.hide();return false;}
   this.phase=event.phase==='windup'?'windup':'recoil';

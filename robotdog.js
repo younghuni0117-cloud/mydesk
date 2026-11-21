@@ -5,8 +5,8 @@ import {TERRAINS,terrainKind,surface} from './robotdog-terrain.mjs?v=dog14';
 import {DogWorld,DOG,GOALS,GOAL_IDS,goalKind,legPoints,rotate,collisionSamples} from './robotdog-core.mjs?v=dog14';
 import {loadModel,saveModel,freshModel,validModel,trainingContext} from './robotdog-learning.mjs?v=dog14';
 import {slerpOrientation,eulerFromQuaternion} from './robotdog-dynamics.mjs?v=dog14';
-import {DogView} from './robotdog-view.mjs?v=dog14';
-if(document.body.dataset.dogRelease!=='dog15'){const url=new URL(location.href);if(url.searchParams.get('dog-update')!=='dog15'){url.searchParams.set('dog-update','dog15');location.replace(url.href);}}else{
+import {DogView} from './robotdog-view.mjs?v=dog16';
+if(document.body.dataset.dogRelease!=='dog16'){const url=new URL(location.href);if(url.searchParams.get('dog-update')!=='dog16'){url.searchParams.set('dog-update','dog16');location.replace(url.href);}}else{
 const $=id=>document.getElementById('dog-'+id);let model=loadModel(),terrain=terrainKind(model.terrain),world=new DogWorld({terrain,goal:model.goal,target:model.target}),view=null,mode='idle',training=false,paused=false,autoPaused=false,trace=null,pendingTrace=null,traceTime=0,last=0,accumulator=0,lastDraw=0,lastHud=0,lastSaved=0,lastChart=0,shown=world.frame();
 let connecting=true,conflictRow=null,sceneSequence=0;const shared=new DogSharedStore();shared.onstatus=text=>{$('save-note').textContent=text;};
 const worker=new Worker(new URL('./robotdog-worker.mjs?v=dog14',import.meta.url),{type:'module'}),state=text=>{$('status').textContent=text;},options=()=>({terrain,goal:goalKind($('goal').value),target:Number($('target').value),seconds:Number($('seconds').value),mixed:$('mixed').checked,randomization:readEnvironment(),frictionRange:readFriction()});

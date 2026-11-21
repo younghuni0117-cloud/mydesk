@@ -1,4 +1,4 @@
-import {HammerEffect} from './robotdog-hammer.mjs?v=dog14';
+import {HammerEffect} from './robotdog-hammer.mjs?v=dog16';
 import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog14';
 import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog14';
 import * as T from './vendor/three-0.160.1.module.js';

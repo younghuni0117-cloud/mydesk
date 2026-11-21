@@ -166,3 +166,7 @@ The renderer resolves the visible skin on the same incoming line and rotates aro
 Training traces sample each physics tick through windup and the immediate impact response. Phase interpolation switches to contact at the actual impulse timestamp, including between trace samples. No scripted robot response is added, and no observation input exposes future contact data. PPO dimensions, network/optimizer weights, training epoch, checkpoint keys, counts, rewards and other apps are preserved. Old and new external-disturbance results describe slightly different timing/direction conditions.
 
 Validation covers no force before contact, exactly one impulse afterward, a moving target, inward/exposed surface selection, unchanged episode duration, replay contact timing, seven swing directions, fixed grip pivot, approach direction, all tool vertices remaining outside the contact plane, cap/surface coincidence, reduced size range, fading, real page interaction, PPO/save/reload regression and responsive layouts. These checks establish the simplified model and visual correspondence; they do not turn the illustrative hammer into a separate freely colliding rigid body.
+
+## dog16: moderate hammer enlargement
+
+Increase the whole visual tool uniformly by 25% while retaining the existing strength curve, grip pivot, surface contact, ground clearance and simulation-clock swing. Maximum head length is about 15 cm. Physical impulses, hit timing, rewards and all saved learning data remain unchanged.
