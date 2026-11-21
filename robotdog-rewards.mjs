@@ -1,0 +1,7 @@
+// Real reward accounting. Display thresholds never alter rewards used by PPO.
+export function supportAssessment(support,feet,potential,up,goal){const foot=Math.max(0,support?.foot||0),other=Math.max(0,support?.other||0),sum=foot+other,fraction=sum>1?foot/sum:0,count=feet.filter(Boolean).length,recovering=goal==='recover'&&(potential<.55||up<.55),gate=recovering?1:.15+.85*fraction;return{fraction,count,gate,quality:fraction*Math.min(1,count/2),bonus:potential*fraction,penalty:recovering?0:4*Math.min(1,other/(33.8*9.81))};}
+export class RewardLedger{
+ constructor(episode){this.episode=episode;this.total=0;this.positive=0;this.negative=0;this.pending=new Map();this.events=[];this.sequence=0;this.lastFlush=0;}
+ add(key,label,delta,point,time){if(!Number.isFinite(delta)||!delta)return;this.total+=delta;if(delta>0)this.positive+=delta;else this.negative+=delta;const id=key+(delta>0?'+':'-'),entry=this.pending.get(id)||{key,label,value:0,point:[...point]};entry.value+=delta;entry.point=[...point];this.pending.set(id,entry);}
+ flush(time,force=false){this.events=this.events.filter(e=>time-e.time<1.2);if(!force&&time-this.lastFlush<.5)return;this.lastFlush=time;const qualifying=[...this.pending.values()].filter(e=>e.value>=1||e.value< -1).sort((a,b)=>Math.abs(b.value)-Math.abs(a.value)).slice(0,3);for(const event of qualifying)this.events.push({...event,id:this.episode+':'+(++this.sequence),time});this.events=this.events.slice(-6);this.pending.clear();}
+}

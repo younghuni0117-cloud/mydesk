@@ -1,6 +1,6 @@
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=update88';
-import {DogPPO} from './robotdog-ppo.mjs?v=dog9';
-import {validModel} from './robotdog-learning.mjs?v=dog9';
+import {DogPPO} from './robotdog-ppo.mjs?v=dog10';
+import {validModel} from './robotdog-learning.mjs?v=dog10';
 const META='mydesk.robotdog.sync.v1';
 // A single public checkpoint. CAS prevents an old tab silently overwriting a newer device.
 export class DogSharedStore{
