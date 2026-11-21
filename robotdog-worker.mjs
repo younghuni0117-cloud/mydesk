@@ -1,4 +1,4 @@
-import {DogTrainer,validModel,freshModel} from './robotdog-learning.mjs?v=dog13';
+import {DogTrainer,validModel,freshModel} from './robotdog-learning.mjs?v=dog14';
 let generation=0,trainer=null,paused=false;
 self.onmessage=async({data})=>{
  if(data.type==='kick'){trainer?.queueKick(data.strength);return;}
