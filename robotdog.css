@@ -36,3 +36,6 @@ body[data-page=robotdog]{height:100dvh;overflow:hidden}body[data-page=robotdog] 
 .dog-chart-policy{font-size:10px;color:#768f9b;margin:0 0 3px}
 
 @media(max-height:500px) and (orientation:landscape){.dog-command-buttons button{font-size:9px}}
+
+.dog-command-panel{padding:0}.dog-command-heading{display:flex;align-items:center;gap:8px;min-height:34px;padding:8px 9px;font-size:11px;color:#6c8592;cursor:pointer;list-style:none}.dog-command-heading::-webkit-details-marker{display:none}.dog-command-heading strong{margin-left:auto;font-weight:500}.dog-command-heading::after{content:'＋';color:#90a4ad}.dog-command-panel[open]>.dog-command-heading::after{content:'−'}.dog-command-body{padding:0 9px 9px}
+@media(max-width:760px){.dog-command-heading{min-height:32px;padding:7px;font-size:10px}.dog-command-body{padding:0 7px 7px}}
