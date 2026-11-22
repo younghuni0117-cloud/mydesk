@@ -1,6 +1,26 @@
-# Robotdog Q-04 — Spot-inspired quadruped, shared PPO policies
+# Robotdog — original Menagerie Spot model and shared PPO policies
 
-`robotdog.html` is independent of the existing 2D robot, evolution lab, swing, calendar, mindmap and blogs. No navigation/database rows or other experiments' storage are changed.
+`robotdog.html` remains independent of the existing 2D robot, evolution lab, swing, calendar, mindmap, resume and blogs. The requested learning reset affects only the robotdog checkpoint and its local pending uploads; other apps, menus, permissions and storage are unchanged.
+
+## Current release: dog31 — replace the procedural robot with the public Spot model
+
+Source: Google DeepMind MuJoCo Menagerie, `boston_dynamics_spot`, commit `370c43965323c0944b433b202aac5058b5f907a9`. Original source, BSD-3-Clause licence and conversion notes are shipped in [assets/spot](../assets/spot/PROVENANCE.md). The earlier request to remove the arm is retained: this imports the quadruped `spot.xml`, not the separate arm model. Legacy shell/arm files are not imported by the application.
+
+The original OBJ positions, normals and triangle topology are retained, converted by the proper rotation `(x,y,z) -> (x,z,-y)` and packed into a 3,121,163-byte gzip bundle, about 10 MB unpacked. There is no mesh simplification or replacement body/leg geometry, and no proportion scaling or decorative hinge offsets. Source display colours are interpreted as sRGB in Three.js's linear pipeline. Seventeen unique meshes produce eighteen visible parts and 127,534 rendered robot triangles; the source reuses the left rear lower-leg mesh for the right rear as well. Loading is asynchronous with explicit progress/error text, and training/execution are disabled until the real meshes load and their SHA-256 is verified. No fallback procedural robot is presented as the imported model.
+
+All twelve joint origins, axes and side-specific limits come from the pinned MJCF. Native joint angles are retained: hip abduction +X, pitch and knee along browser -Z. Hip roots are X ±0.29785 m, lateral ±0.055 m, with 0.1108 m carriers; knee offset is `(0.025, -0.32, 0)` in the parent browser frame and foot offset `(0, -0.3365, 0)`, foot sphere radius 0.036 m. Neutral angles are `(0, 1.04, -1.8)` rad. FK, contact Jacobians, rendered frame hierarchy, COMs and the mass matrix all use this same geometry. No separate visual controller makes the legs look stable while the physics differs.
+
+The source defines thirteen rigid bodies totaling 50.34 kg: torso 32.86 kg, each hip 1.68 kg, upper leg 2.34 kg and lower leg 0.35 kg. The foot is part of the lower body, not an additional mass. Full source inertia tensors, inertial rotations and local COM offsets replace the previous estimated mid-link masses. These are published simulation parameters, not a claim of actual Spot product weight or identified hardware dynamics. Gravity remains 9.81 m/s². Published position-drive settings are kp 500, kd 40 and ±1000 N·m simulation force range; source documentation says these gains are heuristic, and they must not be described as real motor specifications.
+
+The existing lightweight browser COM/articulated solver is retained, not replaced with MuJoCo. Contact uses support vertices sampled from the source collision hulls plus the original foot spheres; it remains a reduced contact approximation. Hammer ray intersections use the complete original collision triangles and update the physical point impulse on the appropriate articulated link. No programmed walking/recovery animation, injected propulsion or auxiliary lift is added. PPO's 68 observations and twelve continuous target-angle actions remain real; five independent policies, controls, terrains, plots, manual strikes and shared storage are preserved.
+
+Rig version 9 and epoch `menagerie-spot-20261122` intentionally retire the incompatible previous learners. Weights, Adam state, counts, histories, evaluations, failure replay and curricula restart. Local old pending uploads are discarded, and an old shared row is replaced by a fresh source-model checkpoint with the existing revision compare-and-swap protocol. Terrain and user settings can be retained, but no trained policy is transferred across the changed morphology. New-epoch learned checkpoints continue to restore normally.
+
+Validation: the complete robotdog suite passed 68 tests, including real PPO gradients/updates, all-terrain contact/impulse checks, unchanged episode timing, deterministic simulation, ballistic whole-system COM, native-coordinate FK comparison at random poses, finite-difference joint/COM Jacobians, source tensors and mesh integrity. A further shared-reset test passed, verifying old pending data cannot overwrite the new model. Browser checks passed exact hinge alignment, actual Worker PPO learning (three trials and one update), learning/execution switching, continued simulation after hammer impact, Fold outer/inner layout widths and honest mesh-download failure handling. Regression browser checks also cover the calendar, mindmap, original 2D robot, evolution lab and restaurants. Browser test data uses mocked database requests so it cannot overwrite live learned checkpoints.
+
+## Historical implementation notes through dog30
+
+The sections below describe the earlier procedural approximation, not the current imported model.
 
 ## Mechanism and visual reference
 

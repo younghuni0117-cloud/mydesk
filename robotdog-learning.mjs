@@ -1,12 +1,12 @@
-import {RECOVERY_PROTOCOL} from './robotdog-recovery.mjs?v=dog25';
-import {yieldToMessages as pause} from './robotdog-scheduler.mjs?v=dog22';
-import {randomConfig,frictionRange} from './robotdog-environment.mjs?v=dog21';
-import {TERRAINS,terrainKind} from './robotdog-terrain.mjs?v=dog21';
-import {WEIGHTS,RIG_VERSION,TRAINING_EPOCH,GOAL_IDS,goalKind,DogWorld,DOG,worldSuccess} from './robotdog-core.mjs?v=dog26';
-import {DogPPO} from './robotdog-ppo.mjs?v=dog21';
-import {POLICY_IDS,FAMILY_GOALS,validPolicy,evaluationCases,policyId,familyGoal,freshPolicies,validPolicies,mirrorPolicy,trainingCase,advanceCurriculum,prepareRecovery,advanceRecoveryCurriculum} from './robotdog-policies.mjs?v=dog26';
+import {RECOVERY_PROTOCOL} from './robotdog-recovery.mjs?v=dog31';
+import {yieldToMessages as pause} from './robotdog-scheduler.mjs?v=dog31';
+import {randomConfig,frictionRange} from './robotdog-environment.mjs?v=dog31';
+import {TERRAINS,terrainKind} from './robotdog-terrain.mjs?v=dog31';
+import {WEIGHTS,RIG_VERSION,TRAINING_EPOCH,GOAL_IDS,goalKind,DogWorld,DOG,worldSuccess} from './robotdog-core.mjs?v=dog31';
+import {DogPPO} from './robotdog-ppo.mjs?v=dog31';
+import {POLICY_IDS,FAMILY_GOALS,validPolicy,evaluationCases,policyId,familyGoal,freshPolicies,validPolicies,mirrorPolicy,trainingCase,advanceCurriculum,prepareRecovery,advanceRecoveryCurriculum} from './robotdog-policies.mjs?v=dog31';
 export {POLICY_IDS,policyId,familyGoal};
-// Keep the existing public envelope and physics epoch; migrate three-policy bundles without deleting learned data.
+// Keep the public envelope; the incompatible imported Spot rig starts a fresh learning epoch.
 export const MODEL_KEY='mydesk.robotdog.ppo.v2',LEGACY_KEY='mydesk.robotdog.v1';
 export function validModel(m){return m?.version===2&&m.bundleVersion===2&&m.trainingEpoch===TRAINING_EPOCH&&m.algorithm==='PPO'&&m.rigVersion===RIG_VERSION&&Array.isArray(m.weights)&&m.weights.length===WEIGHTS&&m.weights.every(Number.isFinite)&&validPolicies(m.policies)&&Number.isSafeInteger(m.attempts)&&m.attempts>=0&&Array.isArray(m.history)&&m.history.length<=1000&&m.history.every(p=>Number.isFinite(p.attempt)&&Number.isFinite(p.reward)&&Number.isFinite(p.best));}
 export function freshModel(){const model={version:2,bundleVersion:2,trainingEpoch:TRAINING_EPOCH,rewardVersion:'split-policies-v2',algorithm:'PPO',rigVersion:RIG_VERSION,terrain:'flat',goal:'stand',mixed:false,curriculum:true,target:.4,seconds:6,attempts:0,history:[],policies:freshPolicies(),policySettings:{balance:{target:.4,seconds:6},forward:{target:3,seconds:10},backward:{target:1,seconds:10},turn:{target:.4,seconds:10},recovery:{target:.4,seconds:20}},randomization:randomConfig(),skills:Object.fromEntries(GOAL_IDS.map(g=>[g,{attempts:0,reward:0,success:0}]))};return mirrorPolicy(model,'balance');}
@@ -16,13 +16,14 @@ export function validateLearners(model){for(const id of POLICY_IDS)new DogPPO().
 // The former shared gait seeds independent learners; historical rewards are never relabelled as new-policy evidence.
 export function upgradeModel(value){
  if(validModel(value))return value;
+ if(value?.version===2&&value.algorithm==='PPO'&&Number.isInteger(value.rigVersion)&&value.rigVersion<RIG_VERSION&&typeof value.trainingEpoch==='string')return resetModel(value);
  if(value?.bundleVersion!==1||value.version!==2||value.trainingEpoch!==TRAINING_EPOCH||value.rigVersion!==RIG_VERSION||value.algorithm!=='PPO'||!['balance','gait','recovery'].every(id=>validPolicy(value.policies?.[id]))||!Array.isArray(value.history)||!Number.isSafeInteger(value.attempts)||value.attempts<0)return null;
  try{for(const id of ['balance','gait','recovery'])new DogPPO().restore(value.policies[id].learner);}catch{return null;}
  const m=structuredClone(value),old=m.policies.gait,settings=m.policySettings||{},defaults=freshModel();m.bundleVersion=2;m.rewardVersion='split-policies-v2';m.previousGait={policy:old,settings:settings.gait||defaults.policySettings.forward};m.policies={balance:m.policies.balance,forward:defaults.policies.forward,backward:defaults.policies.backward,turn:defaults.policies.turn,recovery:m.policies.recovery};
  for(const id of ['forward','backward','turn']){const p=m.policies[id];p.weights=[...old.weights];p.learner=structuredClone(old.learner);p.learner.steps=0;p.learner.updates=0;p.learner.last={};p.seededFrom={policy:'gait',attempts:old.attempts};}
  m.policySettings={...defaults.policySettings,...settings,forward:structuredClone(settings.gait||defaults.policySettings.forward)};delete m.policySettings.gait;m.migration={fromBundle:1,legacyGaitAttempts:old.attempts};m.mixed=false;m.goal=familyGoal(policyId(m.goal));mirrorPolicy(m,policyId(m.goal));return validModel(m)?m:null;
 }
-export function loadModel(storage=globalThis.localStorage){removeLegacyModel(storage);let m=null;try{m=JSON.parse(storage?.getItem(MODEL_KEY)||'null');const upgraded=upgradeModel(m);if(upgraded){validateLearners(upgraded);if(upgraded!==m)saveModel(upgraded,storage);return mirrorPolicy(upgraded,policyId(upgraded.goal));}storage?.removeItem?.(MODEL_KEY);let meta=null;try{meta=JSON.parse(storage?.getItem('mydesk.robotdog.sync.v1')||'null');}catch{}if(!upgradeModel(meta?.pending))storage?.removeItem?.('mydesk.robotdog.sync.v1');return resetModel(m);}catch{return resetModel(m);}}
+export function loadModel(storage=globalThis.localStorage){removeLegacyModel(storage);let m=null;try{m=JSON.parse(storage?.getItem(MODEL_KEY)||'null');if(m&&(m.rigVersion!==RIG_VERSION||m.trainingEpoch!==TRAINING_EPOCH))storage?.removeItem?.('mydesk.robotdog.sync.v1');const upgraded=upgradeModel(m);if(upgraded){validateLearners(upgraded);if(upgraded!==m)saveModel(upgraded,storage);return mirrorPolicy(upgraded,policyId(upgraded.goal));}storage?.removeItem?.(MODEL_KEY);let meta=null;try{meta=JSON.parse(storage?.getItem('mydesk.robotdog.sync.v1')||'null');}catch{}if(!meta?.pending||meta.pending.rigVersion!==RIG_VERSION||meta.pending.trainingEpoch!==TRAINING_EPOCH||!upgradeModel(meta.pending))storage?.removeItem?.('mydesk.robotdog.sync.v1');return resetModel(m);}catch{return resetModel(m);}}
 export function saveModel(model,storage=globalThis.localStorage){try{if(!validModel(model))return false;storage?.setItem(MODEL_KEY,JSON.stringify(model));return !!storage;}catch{return false;}}
 export const trainingContext=(target,seconds,terrain,goal='stand',mixed=false,randomization={},frictionBounds=null)=>JSON.stringify([RIG_VERSION,policyId(goal)==='recovery'?RECOVERY_PROTOCOL:'PPO-5',Number(target),Number(seconds),terrainKind(terrain),policyId(goal),!!mixed,randomConfig(randomization),...(frictionRange(frictionBounds)?[frictionRange(frictionBounds)]:[])]);
 export class DogTrainer{

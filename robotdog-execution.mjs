@@ -1,4 +1,4 @@
-import {DOG,policy,rotate,clamp} from './robotdog-rig.mjs?v=dog21';
+import {DOG,policy,rotate,clamp} from './robotdog-rig.mjs?v=dog31';
 export class DogExecution{
  constructor(){this.kind='stop';this.speed=.6;this.yaw=0;this.filteredSpeed=0;this.filteredYaw=0;this.active='balance';this.recovering=false;this.manualRecovery=false;this.lowTime=0;this.uprightTime=0;this.controlTick=0;this.action=Array(12).fill(0);this.previousAction=Array(12).fill(0);this.transition=1;this.switches=[];}
  command(kind,speed=this.speed,yaw){this.speed=clamp(Number(speed)||0,0,10);this.yaw=clamp(Number(yaw??(kind==='stop'?0:this.yaw))||0,-1.5,1.5);if(kind==='recover')this.manualRecovery=true;else{this.kind=kind==='backward'?'backward':kind==='forward'?'forward':'stop';}}

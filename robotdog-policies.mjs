@@ -1,7 +1,7 @@
-import {terrainKind} from './robotdog-terrain.mjs?v=dog21';
-import {RECOVERY_PROTOCOL} from './robotdog-recovery.mjs?v=dog25';
-import {DogPPO} from './robotdog-ppo.mjs?v=dog21';
-import {WEIGHTS} from './robotdog-rig.mjs?v=dog21';
+import {terrainKind} from './robotdog-terrain.mjs?v=dog31';
+import {RECOVERY_PROTOCOL} from './robotdog-recovery.mjs?v=dog31';
+import {DogPPO} from './robotdog-ppo.mjs?v=dog31';
+import {WEIGHTS} from './robotdog-rig.mjs?v=dog31';
 export const POLICY_IDS=['balance','forward','backward','turn','recovery'];
 export const POLICY_LABELS={balance:'균형',forward:'전진',backward:'후진',turn:'제자리 회전',recovery:'일어나기'};
 export const FAMILY_GOALS={balance:['stand'],forward:['move'],backward:['backward'],turn:['turn'],recovery:['recover']};

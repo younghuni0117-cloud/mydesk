@@ -11,9 +11,9 @@ test('a strike winds up without force, follows its moving target, and applies ex
  assert.equal(hits,1);assert.equal(world.pendingStrike,null);assert.ok(world.time<world.seconds);
 });
 test('side strikes arrive inward from the selected outer side; nearer parts stop a ray before inner targets',()=>{
- const w=new DogWorld({goal:'stand'}),parts=kickTargets(w),left=parts.find(p=>p.part==='앞 왼쪽 상부 다리'),right=parts.find(p=>p.part==='앞 오른쪽 상부 다리');assert.ok(inwardDirection(w,left)[2]<0);assert.ok(inwardDirection(w,right)[2]>0);
- const exposed=strikeSurface(w,right,[0,0,-1]);assert.equal(exposed.leg,0);assert.ok(exposed.local[2]>0);assert.equal(exposed.part,'앞 왼쪽 상부 다리');
- const front=strikeSurface(w,parts[0],[-1,0,0]);assert.ok(front.local[0]>.49);assert.equal(front.affected,0);
+ const w=new DogWorld({goal:'stand'}),parts=kickTargets(w),left=parts.find(p=>p.part==='앞 왼쪽 상부 다리'),right=parts.find(p=>p.part==='앞 오른쪽 상부 다리');assert.ok(inwardDirection(w,left)[2]>0);assert.ok(inwardDirection(w,right)[2]<0);
+ const exposed=strikeSurface(w,right,[0,0,1]);assert.equal(exposed.leg,0);assert.ok(exposed.local[2]<0);assert.equal(exposed.part,'앞 왼쪽 상부 다리');
+ const front=strikeSurface(w,parts[0],[-1,0,0]);assert.ok(front.local[0]>.45);assert.equal(front.affected,0);
 });
 test('pending hits keep the same event identity and cannot stack duplicate impulses; episode length is unchanged',()=>{const w=new DogWorld({goal:'recover',seconds:1});const first=w.kick(7);assert.equal(w.kick(50).id,first.id);assert.equal(first.strength,7);while(!w.done)w.stepAction(Array(12).fill(0));assert.ok(Math.abs(w.time-1)<1e-8);assert.equal(w.kickCount,1);assert.equal(w.kickEvent.phase,'impact');});
 

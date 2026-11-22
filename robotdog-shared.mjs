@@ -1,9 +1,9 @@
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=update88';
-import {validModel,validateLearners,upgradeModel} from './robotdog-learning.mjs?v=dog26';
+import {validModel,validateLearners,upgradeModel} from './robotdog-learning.mjs?v=dog31';
 const META='mydesk.robotdog.sync.v1';
 // A single public checkpoint. CAS prevents an old tab silently overwriting a newer device.
 export class DogSharedStore{
- constructor({fetcher=globalThis.fetch?.bind(globalThis),storage=globalThis.localStorage,url=SHARED_MODEL_URL.replace('robot_shared_model','robotdog_shared_model'),key=SHARED_MODEL_KEY}={}){Object.assign(this,{fetcher,storage,url,key});this.revision=null;this.pending=null;this.busy=false;this.loaded=false;this.blocked=false;this.hadMeta=false;try{const meta=JSON.parse(storage.getItem(META)||'null');this.hadMeta=!!meta;this.pending=upgradeModel(meta?.pending);this.base=meta?.revision??null;}catch{}}
+ constructor({fetcher=globalThis.fetch?.bind(globalThis),storage=globalThis.localStorage,url=SHARED_MODEL_URL.replace('robot_shared_model','robotdog_shared_model'),key=SHARED_MODEL_KEY}={}){Object.assign(this,{fetcher,storage,url,key});this.revision=null;this.pending=null;this.busy=false;this.loaded=false;this.blocked=false;this.hadMeta=false;try{const meta=JSON.parse(storage.getItem(META)||'null');this.hadMeta=!!meta;const candidate=upgradeModel(meta?.pending);this.pending=meta?.pending?.rigVersion===candidate?.rigVersion&&meta?.pending?.trainingEpoch===candidate?.trainingEpoch?candidate:null;this.base=meta?.revision??null;}catch{}}
  status(text){this.onstatus?.(text);}
  persist(){try{this.storage.setItem(META,JSON.stringify({revision:this.revision??this.base,pending:this.pending}));}catch{}}
  async request(query='',options={}){const c=new AbortController(),t=setTimeout(()=>c.abort(),10000);try{const r=await this.fetcher(this.url+query,{cache:'no-store',credentials:'omit',...options,headers:{apikey:this.key,Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...options.headers},signal:c.signal});if(!r.ok)throw Error(String(r.status));return await r.json();}finally{clearTimeout(t);}}
