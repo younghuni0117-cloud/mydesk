@@ -1,3 +1,4 @@
+import {terrainKind} from './robotdog-terrain.mjs?v=dog21';
 import {RECOVERY_PROTOCOL} from './robotdog-recovery.mjs?v=dog25';
 import {DogPPO} from './robotdog-ppo.mjs?v=dog21';
 import {WEIGHTS} from './robotdog-rig.mjs?v=dog21';
@@ -18,9 +19,9 @@ export function trainingCase(model,options,id,random){
  const goal=familyGoal(id),limit=Math.max(.1,Math.min(10,Number(options.target)||.4)),maxSpeed=Math.min(limit,easy?.4:[.4,1,3,10][level]),target=.1+(maxSpeed-.1)*random();
  const turnLimit=easy?.25:[.25,.5,.9,1.5][level],moving=id==='forward'||id==='backward',direction=index%3===0?0:index%3===1?-1:1;
  const yawRate=id==='turn'?(index%2?-1:1)*turnLimit:moving&&!easy&&level>=2?direction*(.15+random()*(turnLimit-.15)):0;
- const terrain=easy||level<2?'flat':options.randomization?.enabled&&options.randomization.terrains?Object.keys(options.terrains)[index%Object.keys(options.terrains).length]:options.terrain;
+ const choices=Object.keys(options.terrains||{}),terrain=terrainKind(options.randomization?.enabled&&options.randomization.terrains&&choices.length?choices[index%choices.length]:options.terrain);
  const recoveryLevel=id==='recovery'?(options.curriculum===false?Math.min(3,Math.floor(random()*4)):easy?0:random()<.3?Math.floor(random()*level):level):undefined,recoveryExact=id==='recovery'&&recoveryLevel===3&&random()<.2;
- return {...options,goal,target,yawRate,terrain:id==='recovery'&&options.curriculum!==false&&recoveryLevel<2?'flat':terrain,recoveryLevel,recoveryExact,randomization:easy||level<2||id==='recovery'&&options.curriculum!==false&&recoveryLevel<2?{enabled:false}:options.randomization,frictionRange:easy||level<2||id==='recovery'&&options.curriculum!==false&&recoveryLevel<2?null:options.frictionRange,difficulty:level,easy};
+ return {...options,goal,target,yawRate,terrain,recoveryLevel,recoveryExact,randomization:easy||level<2||id==='recovery'&&options.curriculum!==false&&recoveryLevel<2?{enabled:false}:options.randomization,frictionRange:easy||level<2||id==='recovery'&&options.curriculum!==false&&recoveryLevel<2?null:options.frictionRange,difficulty:level,easy};
 }
 export function evaluationCases(id){
  if(id==='balance')return[{key:'stand',label:'제자리 균형',goal:'stand'}];

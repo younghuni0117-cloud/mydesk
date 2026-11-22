@@ -1,6 +1,6 @@
 import {surface} from './robotdog-terrain.mjs?v=dog21';
 export const RIG_VERSION=8;
-export const TRAINING_EPOCH='skills-split-20261122';
+export const TRAINING_EPOCH='selected-terrain-20261122';
 export const DOG={mass:33.8,chassisMass:24.0,armMass:0,partMasses:{body:24,hip:.9,upper:1.3,lower:.2,foot:.05},body:[.88,.22,.22],upper:.35255,lower:.36,hipOffset:.110945,footRadius:.034,gravity:9.81,dt:1/120,controlSteps:4};
 export const LEGS=[{id:'FL',label:'앞 왼쪽',x:.34,y:.015,z:.055,side:1},{id:'FR',label:'앞 오른쪽',x:.34,y:.015,z:-.055,side:-1},{id:'RL',label:'뒤 왼쪽',x:-.34,y:.015,z:.055,side:1},{id:'RR',label:'뒤 오른쪽',x:-.34,y:.015,z:-.055,side:-1}];
 export const LIMITS=[[-.65,.65],[-1.4,1.25],[.245,2.79]],REST=[0,-.68,1.36],TORQUES=[45,45,115];
