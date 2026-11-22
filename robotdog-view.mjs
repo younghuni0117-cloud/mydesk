@@ -1,6 +1,6 @@
 import {HammerEffect} from './robotdog-hammer.mjs?v=dog21';
 import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog21';
-import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog29';
+import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog30';
 import * as T from './vendor/three-0.160.1.module.js';
 import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog21';
 import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind,groundShade} from './robotdog-terrain.mjs?v=dog21';
@@ -23,9 +23,10 @@ export class DogView{
   const stripe=profile([[-.423,.034],[.12,.034],[.22,.063],[.385,.063],[.385,.027],[.223,.019],[.13,.003],[-.423,.003]],.005,.001);
   for(const side of [-1,1]){const band=mesh(stripe,this.m.black,chassis);band.position.set(0,.012,side*.155);band.scale.y=.55;box([.236,.046,side*.163],[.158,.043,.006],this.m.yellowShade);box([.236,.046,side*.167],[.135,.026,.006],this.m.black);for(const x of [.19,.235,.28]){const lens=mesh(this.cyl,this.m.lens,chassis);lens.rotation.x=Math.PI/2;lens.scale.set(.007,.008,.007);lens.position.set(x,.047,side*.17);}for(const x of [-.39,-.23,.06,.32])this.bolt([x,x<-.28?-.030:x<-.1?-.042:-.055,side*.154],.005,chassis,[0,0,side]);}
   // Industrial sensor cassette: yellow surround, perforated centre, asymmetric-height vertical windows.
-  const nose=new T.Group();nose.position.x=.465;nose.rotation.z=-Math.PI/12;chassis.add(nose);this.nose=nose;
-  const front=mesh(profile([[-.137,-.073],[-.119,-.094],[.118,-.094],[.137,-.073],[.137,.074],[.117,.095],[-.118,.095],[-.137,.074]],.022,.007),this.m.yellow,nose);front.rotation.y=Math.PI/2;
-  const sensor=new T.Mesh(new T.PlaneGeometry(.226,.151),new T.MeshStandardMaterial({map:this.sensorTexture(),roughness:.48,metalness:.18}));sensor.rotation.y=Math.PI/2;sensor.position.set(.020,.002,0);nose.add(sensor);
+  const nose=new T.Group();nose.position.set(.465,-.050,0);nose.rotation.z=-Math.PI/12;chassis.add(nose);this.nose=nose;
+  const bezel=new T.Shape();bezel.moveTo(-.101,-.106);bezel.lineTo(.101,-.106);bezel.quadraticCurveTo(.126,-.106,.126,-.081);bezel.lineTo(.126,.081);bezel.quadraticCurveTo(.126,.106,.101,.106);bezel.lineTo(-.101,.106);bezel.quadraticCurveTo(-.126,.106,-.126,.081);bezel.lineTo(-.126,-.081);bezel.quadraticCurveTo(-.126,-.106,-.101,-.106);const bezelGeometry=new T.ExtrudeGeometry(bezel,{depth:.022,bevelEnabled:true,bevelSize:.005,bevelThickness:.005,bevelSegments:3,curveSegments:8});bezelGeometry.translate(0,0,-.011);const front=mesh(bezelGeometry,this.m.yellow,nose);front.rotation.y=Math.PI/2;
+
+  const sensor=new T.Mesh(new T.PlaneGeometry(.208,.176),new T.MeshStandardMaterial({map:this.sensorTexture(),roughness:.48,metalness:.18}));sensor.rotation.y=Math.PI/2;sensor.position.set(.020,.002,0);nose.add(sensor);
   box([-.445,-.005,0],[.022,.092,.20],this.m.black);
   for(const x of [-.40,.34])for(const z of [-.085,.085])this.bolt([x,.105,z],.0045,chassis);
   for(const leg of LEGS){box([leg.x,-.018,leg.side*.139],[.125,.135,.022],this.m.black);for(const y of [-.055,.032])for(const dx of [-.044,.044])this.bolt([leg.x+dx,y,leg.side*.155],.004,chassis,[0,0,leg.side]);}
@@ -35,9 +36,9 @@ export class DogView{
   this.legs=LEGS.map(leg=>{
    const abFrame=new T.Group();abFrame.position.set(leg.x,leg.y,leg.z);this.robot.add(abFrame);
    const ab=this.hinge(.045,.060,this.m.black,abFrame);ab.rotation.z=-Math.PI/2;
-   const carrier=mesh(this.cyl,this.m.black,abFrame);carrier.position.z=leg.side*DOG.hipOffset/2;carrier.rotation.x=Math.PI/2;carrier.scale.set(.045,DOG.hipOffset,.045);
+   const carrier=mesh(this.cyl,this.m.black,abFrame);carrier.position.z=leg.side*DOG.hipOffset/2;carrier.rotation.x=Math.PI/2;carrier.scale.set(.036,DOG.hipOffset,.036);
    const hipFrame=new T.Group();hipFrame.position.z=leg.side*DOG.hipOffset;abFrame.add(hipFrame);
-   const hip=this.hinge(.049,.072,this.m.black,hipFrame);hip.rotation.x=Math.PI/2;const spacer=mesh(this.cyl,this.m.steel,hipFrame);spacer.rotation.x=Math.PI/2;spacer.position.z=-leg.side*.033;spacer.scale.set(.043,.012,.043);const motorGroup=new T.Group();hipFrame.add(motorGroup);const motor=mesh(core,this.m.black,motorGroup);motor.position.z=-leg.side*.008;for(const y of [-.040,-.051,-.062,-DOG.upper+.045])for(const x of [-.028,.028])box([x,y,-leg.side*.008],[.005,.004,.080],this.m.vent,motorGroup);batch(motorGroup);const upperMesh=mesh(upper,this.m.yellow,hipFrame);upperMesh.position.z=leg.side*.025;upperMesh.scale.z=leg.side;
+   const hip=this.hinge(.046,.080,this.m.black,hipFrame);hip.rotation.x=Math.PI/2;hip.position.x=-.023;const spacer=mesh(this.cyl,this.m.steel,hipFrame);spacer.rotation.x=Math.PI/2;spacer.position.z=-leg.side*.051;spacer.scale.set(.045,.026,.045);const motorGroup=new T.Group();hipFrame.add(motorGroup);const motor=mesh(core,this.m.black,motorGroup);motor.position.z=-leg.side*.008;const coolingRing=new T.TorusGeometry(1,.027,3,20);coolingRing.rotateX(Math.PI/2);for(const y of [-.040,-.051,-.062,-DOG.upper+.045]){const ring=mesh(coolingRing,this.m.vent,motorGroup);ring.position.set(0,y,-leg.side*.008);ring.scale.set(y<-DOG.upper*.65?.024:.027,.035,y<-DOG.upper*.65?.037:.044);}batch(motorGroup);const upperMesh=mesh(upper,this.m.yellow,hipFrame);upperMesh.position.z=leg.side*.025;upperMesh.scale.z=leg.side;
    const kneeFrame=new T.Group();kneeFrame.position.y=-DOG.upper;hipFrame.add(kneeFrame);
    const knee=this.hinge(.021,.043,this.m.black,kneeFrame);knee.rotation.x=Math.PI/2;const lowerMesh=mesh(lower,this.m.black,kneeFrame);
    const kneePin=mesh(this.cyl,this.m.steel,kneeFrame);kneePin.rotation.x=Math.PI/2;kneePin.position.z=leg.side*.037;kneePin.scale.set(.008,.005,.008);
