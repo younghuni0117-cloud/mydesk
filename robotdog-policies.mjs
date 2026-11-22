@@ -1,3 +1,4 @@
+import {RECOVERY_PROTOCOL} from './robotdog-recovery.mjs?v=dog25';
 import {DogPPO} from './robotdog-ppo.mjs?v=dog21';
 import {WEIGHTS} from './robotdog-rig.mjs?v=dog21';
 export const POLICY_IDS=['balance','forward','backward','turn','recovery'];
@@ -18,13 +19,17 @@ export function trainingCase(model,options,id,random){
  const turnLimit=easy?.25:[.25,.5,.9,1.5][level],moving=id==='forward'||id==='backward',direction=index%3===0?0:index%3===1?-1:1;
  const yawRate=id==='turn'?(index%2?-1:1)*turnLimit:moving&&!easy&&level>=2?direction*(.15+random()*(turnLimit-.15)):0;
  const terrain=easy||level<2?'flat':options.randomization?.enabled&&options.randomization.terrains?Object.keys(options.terrains)[index%Object.keys(options.terrains).length]:options.terrain;
- const recoveryLevel=id==='recovery'?(easy?0:Math.min(2,level-1)):undefined;
- return {...options,goal,target,yawRate,terrain,recoveryLevel,randomization:easy||level<2?{enabled:false}:options.randomization,frictionRange:easy||level<2?null:options.frictionRange,difficulty:level,easy};
+ const recoveryLevel=id==='recovery'?(options.curriculum===false?Math.min(3,Math.floor(random()*4)):easy?0:random()<.3?Math.floor(random()*level):level):undefined,recoveryExact=id==='recovery'&&recoveryLevel===3&&random()<.2;
+ return {...options,goal,target,yawRate,terrain:id==='recovery'&&options.curriculum!==false&&recoveryLevel<2?'flat':terrain,recoveryLevel,recoveryExact,randomization:easy||level<2||id==='recovery'&&options.curriculum!==false&&recoveryLevel<2?{enabled:false}:options.randomization,frictionRange:easy||level<2||id==='recovery'&&options.curriculum!==false&&recoveryLevel<2?null:options.frictionRange,difficulty:level,easy};
 }
 export function evaluationCases(id){
  if(id==='balance')return[{key:'stand',label:'제자리 균형',goal:'stand'}];
  if(id==='forward')return[{key:'straight',label:'느린 직진',goal:'move',target:.4,yawRate:0},{key:'running',label:'빠른 직진',goal:'move',target:2,yawRate:0},{key:'left',label:'전진·좌회전',goal:'move',target:.6,yawRate:-.6},{key:'right',label:'전진·우회전',goal:'move',target:.6,yawRate:.6}];
  if(id==='backward')return[{key:'straight',label:'뒤로 직진',goal:'backward',target:.3,yawRate:0},{key:'left',label:'후진·좌회전',goal:'backward',target:.3,yawRate:-.5},{key:'right',label:'후진·우회전',goal:'backward',target:.3,yawRate:.5}];
  if(id==='turn')return[{key:'left',label:'제자리 좌회전',goal:'turn',target:0,yawRate:-.6},{key:'right',label:'제자리 우회전',goal:'turn',target:0,yawRate:.6}];
- return[{key:'crouch',label:'웅크린 자세',goal:'recover',recoveryLevel:0},{key:'side',label:'옆으로 넘어진 자세',goal:'recover',recoveryLevel:1},{key:'supine',label:'뒤집힌 자세',goal:'recover',recoveryLevel:2}];
+ return[{key:'crouch',label:'웅크린 자세',goal:'recover',recoveryLevel:0},{key:'side',label:'옆으로 넘어진 자세',goal:'recover',recoveryLevel:1},{key:'nearInverted',label:'거의 뒤집힌 자세',goal:'recover',recoveryLevel:2},{key:'supine',label:'완전히 뒤집힌 자세',goal:'recover',recoveryLevel:3,recoveryExact:true}];
 }
+
+// A changed task protocol never changes or deletes the saved actor/critic/optimizer.
+export function prepareRecovery(p){if(p.recoveryProtocol===RECOVERY_PROTOCOL)return false;p.previousRecoverySummary={best:p.best,evaluation:p.evaluation,recent:[...p.recent],failures:structuredClone(p.failures||[]),reward:p.reward,success:p.success,curriculum:structuredClone(p.curriculum)};p.recoveryProtocol=RECOVERY_PROTOCOL;p.protocolAttempts=0;p.best=null;p.evaluation=null;p.recent=[];p.reward=0;p.success=0;p.curriculum={level:0,window:[],history:[...p.curriculum.history],stale:0,poseWindows:{}};return true;}
+export function advanceRecoveryCurriculum(p,stage,success,evaluation,enabled,attempt){const c=p.curriculum,key=Math.max(0,Math.min(3,stage??0));c.poseWindows??={};const window=c.poseWindows[key]??=[];window.push(Number(success));c.poseWindows[key]=window.slice(-20);if(!enabled||c.level>=3||key!==c.level||window.length<12)return false;const rate=window.slice(-20).reduce((s,v)=>s+v,0)/Math.min(20,window.length),check=evaluation?.skills?.[['crouch','side','nearInverted','supine'][key]];if(rate<.7||!check||check.success<.5)return false;const previous=c.level;c.level++;c.history.push({attempt,previous,level:c.level,reason:'현재 시작 자세의 최근 성공률 70% 이상·해당 자세 고정 검증 50% 이상'});return true;}

@@ -1,0 +1,8 @@
+// Offline reachability probe only: random joint-target excitation, never used by the application or PPO.
+import assert from 'node:assert/strict';
+import {DogWorld,rng,rotate,clearanceCorrection,DOG,LEGS,jointLimits,TORQUES,collisionSamples} from '../robotdog-core.mjs';
+import {surface} from '../robotdog-terrain.mjs';
+const w=new DogWorld({goal:'recover',seconds:8,seed:131,recoveryLevel:3,recoveryExact:true}),random=rng(439);w.setPose({p:[0,0,0],a:[Math.PI,0,0]});w.setPose({p:[0,clearanceCorrection(w),0]});assert.ok(Math.abs(rotate([0,1,0],w.a)[1]+1)<1e-12);
+const samples=Array.from({length:16},()=>Array.from({length:4},()=>[random()<.5?-1:1,random()<.75?1:random()*2-1,random()<.8?1:random()*2-1]).flat());let groundedUp=-1,maxFootForce=0,minGap=Infinity;
+while(!w.done){w.stepAction(samples[Math.min(15,Math.floor(w.time/.5))]);if(w.support.foot+w.support.other>1)groundedUp=Math.max(groundedUp,rotate([0,1,0],w.a)[1]);maxFootForce=Math.max(maxFootForce,w.support.foot);assert.equal(w.kickEvent,null);assert.equal(w.externalLoad,null);for(let i=0;i<12;i++){const bounds=jointLimits(LEGS[Math.floor(i/3)],i%3);assert.ok(w.q[i]>=bounds[0]&&w.q[i]<=bounds[1]);assert.ok(Math.abs(w.tau[i])<=TORQUES[i%3]+1e-8);}for(const sample of collisionSamples(w.p,w.a,w.q)){const g=surface(w.terrain,sample.p[0],sample.p[2]);minGap=Math.min(minGap,(sample.p[1]-g.height)*g.normal[1]-sample.radius);}}
+assert.ok(groundedUp>.9);assert.ok(maxFootForce>1);assert.ok(minGap>-.003);assert.equal(DOG.mass,33.8);assert.equal(DOG.gravity,9.81);console.log(JSON.stringify({passed:true,physicalEscapeFromExactInversion:true,groundedUp,maxFootForce,minGap,externalAssistance:false,scriptImportedByApp:false,trainedPolicySuccessClaimed:false}));
