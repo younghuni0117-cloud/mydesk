@@ -1,3 +1,4 @@
+import {yieldToMessages as pause} from './robotdog-scheduler.mjs?v=dog22';
 import {randomConfig,frictionRange} from './robotdog-environment.mjs?v=dog21';
 import {TERRAINS,terrainKind} from './robotdog-terrain.mjs?v=dog21';
 import {WEIGHTS,RIG_VERSION,TRAINING_EPOCH,GOAL_IDS,goalKind,DogWorld,DOG,episode,worldSuccess} from './robotdog-core.mjs?v=dog21';
@@ -14,7 +15,6 @@ export function validateLearners(model){for(const id of POLICY_IDS)new DogPPO().
 export function loadModel(storage=globalThis.localStorage){removeLegacyModel(storage);let m=null;try{m=JSON.parse(storage?.getItem(MODEL_KEY)||'null');if(validModel(m)){validateLearners(m);return mirrorPolicy(m,policyId(m.goal));}storage?.removeItem?.(MODEL_KEY);let meta=null;try{meta=JSON.parse(storage?.getItem('mydesk.robotdog.sync.v1')||'null');}catch{}if(!validModel(meta?.pending))storage?.removeItem?.('mydesk.robotdog.sync.v1');return resetModel(m);}catch{return resetModel(m);}}
 export function saveModel(model,storage=globalThis.localStorage){try{if(!validModel(model))return false;storage?.setItem(MODEL_KEY,JSON.stringify(model));return !!storage;}catch{return false;}}
 export const trainingContext=(target,seconds,terrain,goal='stand',mixed=false,randomization={},frictionBounds=null)=>JSON.stringify([RIG_VERSION,'PPO-3',Number(target),Number(seconds),terrainKind(terrain),policyId(goal),!!mixed,randomConfig(randomization),...(frictionRange(frictionBounds)?[frictionRange(frictionBounds)]:[])]);
-const pause=()=>new Promise(r=>setTimeout(r,0));
 export class DogTrainer{
  constructor(model=freshModel(),options={}){
   this.model=structuredClone(model);this.options={target:.4,seconds:6,terrain:'flat',goal:'stand',mixed:false,curriculum:true,...options};this.options.randomization=randomConfig(this.options.randomization);this.options.frictionRange=frictionRange(this.options.frictionRange);this.options.goal=familyGoal(policyId(this.options.goal));this.options.terrain=terrainKind(this.options.terrain);

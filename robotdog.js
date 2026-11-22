@@ -5,13 +5,13 @@ import {DogSharedStore} from './robotdog-shared.mjs?v=dog21';
 import {randomConfig,RANDOM_DEFAULTS,frictionRange} from './robotdog-environment.mjs?v=dog21';
 import {TERRAINS,terrainKind,surface} from './robotdog-terrain.mjs?v=dog21';
 import {DogWorld,DOG,GOALS,GOAL_IDS,goalKind,legPoints,rotate,collisionSamples} from './robotdog-core.mjs?v=dog21';
-import {loadModel,saveModel,freshModel,validModel,trainingContext} from './robotdog-learning.mjs?v=dog21';
+import {loadModel,saveModel,freshModel,validModel,trainingContext} from './robotdog-learning.mjs?v=dog22';
 import {slerpOrientation,eulerFromQuaternion} from './robotdog-dynamics.mjs?v=dog21';
-import {DogView} from './robotdog-view.mjs?v=dog21';
-if(document.body.dataset.dogRelease!=='dog21'){const url=new URL(location.href);if(url.searchParams.get('dog-update')!=='dog21'){url.searchParams.set('dog-update','dog21');location.replace(url.href);}}else{
-const $=id=>document.getElementById('dog-'+id);let model=loadModel(),terrain=terrainKind(model.terrain),world=new DogWorld({terrain,goal:model.goal,target:model.target}),view=null,mode='idle',training=false,paused=false,autoPaused=false,trace=null,pendingTrace=null,traceTime=0,last=0,accumulator=0,lastDraw=0,lastHud=0,lastSaved=0,lastChart=0,lastChartPolicy=null,shown=world.frame();
+import {DogView} from './robotdog-view.mjs?v=dog22';
+if(document.body.dataset.dogRelease!=='dog22'){const url=new URL(location.href);if(url.searchParams.get('dog-update')!=='dog22'){url.searchParams.set('dog-update','dog22');location.replace(url.href);}}else{
+const $=id=>document.getElementById('dog-'+id);let model=loadModel(),terrain=terrainKind(model.terrain),world=new DogWorld({terrain,goal:model.goal,target:model.target}),view=null,mode='idle',training=false,paused=false,autoPaused=false,trace=null,pendingTrace=null,traceTime=0,last=0,accumulator=0,lastHud=0,lastSaved=0,lastChart=0,lastChartPolicy=null,shown=world.frame();
 let connecting=true,conflictRow=null,sceneSequence=0,execution=new DogExecution(),trainingPaused=false,latestTrace=null,formPolicy=policyId(model.goal);const shared=new DogSharedStore();shared.onstatus=text=>{$('save-note').textContent=text;};
-const worker=new Worker(new URL('./robotdog-worker.mjs?v=dog21',import.meta.url),{type:'module'}),state=text=>{$('status').textContent=text;},options=()=>({terrain,goal:goalKind($('goal').value),target:Number($('target').value),seconds:Number($('seconds').value),mixed:$('mixed').checked,curriculum:$('curriculum').checked,randomization:readEnvironment(),frictionRange:readFriction()});
+const worker=new Worker(new URL('./robotdog-worker.mjs?v=dog22',import.meta.url),{type:'module'}),state=text=>{$('status').textContent=text;},options=()=>({terrain,goal:goalKind($('goal').value),target:Number($('target').value),seconds:Number($('seconds').value),mixed:$('mixed').checked,curriculum:$('curriculum').checked,randomization:readEnvironment(),frictionRange:readFriction()});
 try{view=new DogView($('canvas'));view.update(shown);view.render();}catch(error){$('webgl-error').hidden=false;$('webgl-error').textContent='3D 화면을 시작하지 못했습니다. 브라우저의 하드웨어 가속을 확인해 주세요.';state('3D 화면 연결 오류');}
 const commandPanel=$('command-panel');try{commandPanel.open=localStorage.getItem('mydesk.robotdog.commands.open')==='true';}catch{}commandPanel.addEventListener('toggle',()=>{try{localStorage.setItem('mydesk.robotdog.commands.open',String(commandPanel.open));}catch{}});
 const envKeys=Object.keys(RANDOM_DEFAULTS);
@@ -54,7 +54,7 @@ function hud(){const f=shown;if(mode==='learning')$('mode').textContent=GOALS[f.
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.05,(now-(last||now))/1000);last=now;if(!view||document.hidden)return;
  if(!paused){if(mode==='live'&&!world.done){accumulator+=dt;let n=0;while(accumulator>=DOG.dt&&n++<8){const previousPolicy=execution.active;execution.step(world,model);if(previousPolicy!==execution.active)chart();accumulator-=DOG.dt;}shown=world.frame();view.needsRender=true;if(world.done){view.rewardOverlay.receive(shown);setupWorld();controls();state('다음 시도 · '+options().seconds+'초 반복 실행');}}
  else if(mode==='learning'&&trace?.length){traceTime+=dt;if(pendingTrace&&traceTime>=trace.at(-1).time){view.rewardOverlay.receive(trace.at(-1));trace=pendingTrace;pendingTrace=null;traceTime=trace[0].time;}let i=0;while(i<trace.length-2&&trace[i+1].time<traceTime)i++;const a=trace[i],b=trace[Math.min(i+1,trace.length-1)],t=b.time>a.time?Math.min(1,(traceTime-a.time)/(b.time-a.time)):0;shown=interpolate(a,b,t);view.needsRender=true;}}
- if(selectedPolicy()!==lastChartPolicy)chart();if(now-lastDraw>=1000/60-.5&&view.needsRender){view.update(shown);view.render();lastDraw=now;}if(now-lastHud>120){hud();lastHud=now;}
+ if(selectedPolicy()!==lastChartPolicy)chart();if(view.needsRender){view.update(shown);view.render();}if(now-lastHud>120){hud();lastHud=now;}
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden){autoPaused=training&&!trainingPaused;if(autoPaused)worker.postMessage({type:'pause'});storage(training);shared.flush();}else if(autoPaused){autoPaused=false;if(training&&!trainingPaused)worker.postMessage({type:'resume'});}});window.addEventListener('pagehide',()=>{storage(training);shared.flush();worker.postMessage({type:'stop'});});window.addEventListener('beforeunload',()=>worker.terminate());
 Object.defineProperty(window,'robotDogStudy',{get:()=>{
