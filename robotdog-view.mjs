@@ -1,6 +1,6 @@
 import {HammerEffect} from './robotdog-hammer.mjs?v=dog21';
 import {RewardOverlay} from './robotdog-reward-view.mjs?v=dog21';
-import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog28';
+import {upperShell,upperCore,lowerShell,sideMarkTexture,torsoShell,bellySeam,bellyUndertray} from './robotdog-shell.mjs?v=dog29';
 import * as T from './vendor/three-0.160.1.module.js';
 import {DOG,LEGS,clearanceCorrection} from './robotdog-core.mjs?v=dog21';
 import {surface,baseSurface,terrainRocks,terrainStyle,terrainKind,groundShade} from './robotdog-terrain.mjs?v=dog21';
@@ -37,7 +37,7 @@ export class DogView{
    const ab=this.hinge(.045,.060,this.m.black,abFrame);ab.rotation.z=-Math.PI/2;
    const carrier=mesh(this.cyl,this.m.black,abFrame);carrier.position.z=leg.side*DOG.hipOffset/2;carrier.rotation.x=Math.PI/2;carrier.scale.set(.045,DOG.hipOffset,.045);
    const hipFrame=new T.Group();hipFrame.position.z=leg.side*DOG.hipOffset;abFrame.add(hipFrame);
-   const hip=this.hinge(.049,.072,this.m.black,hipFrame);hip.rotation.x=Math.PI/2;const spacer=mesh(this.cyl,this.m.steel,hipFrame);spacer.rotation.x=Math.PI/2;spacer.position.z=-leg.side*.033;spacer.scale.set(.043,.012,.043);const motor=mesh(core,this.m.vent,hipFrame);motor.position.z=-leg.side*.008;const upperMesh=mesh(upper,this.m.yellow,hipFrame);upperMesh.position.z=leg.side*.025;
+   const hip=this.hinge(.049,.072,this.m.black,hipFrame);hip.rotation.x=Math.PI/2;const spacer=mesh(this.cyl,this.m.steel,hipFrame);spacer.rotation.x=Math.PI/2;spacer.position.z=-leg.side*.033;spacer.scale.set(.043,.012,.043);const motorGroup=new T.Group();hipFrame.add(motorGroup);const motor=mesh(core,this.m.black,motorGroup);motor.position.z=-leg.side*.008;for(const y of [-.040,-.051,-.062,-DOG.upper+.045])for(const x of [-.028,.028])box([x,y,-leg.side*.008],[.005,.004,.080],this.m.vent,motorGroup);batch(motorGroup);const upperMesh=mesh(upper,this.m.yellow,hipFrame);upperMesh.position.z=leg.side*.025;upperMesh.scale.z=leg.side;
    const kneeFrame=new T.Group();kneeFrame.position.y=-DOG.upper;hipFrame.add(kneeFrame);
    const knee=this.hinge(.021,.043,this.m.black,kneeFrame);knee.rotation.x=Math.PI/2;const lowerMesh=mesh(lower,this.m.black,kneeFrame);
    const kneePin=mesh(this.cyl,this.m.steel,kneeFrame);kneePin.rotation.x=Math.PI/2;kneePin.position.z=leg.side*.037;kneePin.scale.set(.008,.005,.008);
