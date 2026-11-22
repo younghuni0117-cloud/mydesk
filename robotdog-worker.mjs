@@ -1,5 +1,5 @@
 import {yieldToMessages} from './robotdog-scheduler.mjs?v=dog22';
-import {DogTrainer,validModel,freshModel,POLICY_IDS} from './robotdog-learning.mjs?v=dog23';
+import {DogTrainer,validModel,freshModel,POLICY_IDS} from './robotdog-learning.mjs?v=dog24';
 let generation=0,trainer=null,paused=false;
 self.onmessage=async({data})=>{
  if(data.type==='kick'){trainer?.queueKick(data.strength);return;}
