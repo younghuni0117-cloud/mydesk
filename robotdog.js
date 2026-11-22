@@ -8,8 +8,8 @@ import {TERRAINS,terrainKind,surface} from './robotdog-terrain.mjs?v=dog21';
 import {DogWorld,DOG,GOALS,GOAL_IDS,goalKind,legPoints,rotate,collisionSamples} from './robotdog-core.mjs?v=dog26';
 import {loadModel,saveModel,freshModel,validModel,trainingContext} from './robotdog-learning.mjs?v=dog26';
 import {slerpOrientation,eulerFromQuaternion} from './robotdog-dynamics.mjs?v=dog21';
-import {DogView} from './robotdog-view.mjs?v=dog22';
-if(document.body.dataset.dogRelease!=='dog26'){const url=new URL(location.href);if(url.searchParams.get('dog-update')!=='dog26'){url.searchParams.set('dog-update','dog26');location.replace(url.href);}}else{
+import {DogView} from './robotdog-view.mjs?v=dog27';
+if(document.body.dataset.dogRelease!=='dog27'){const url=new URL(location.href);if(url.searchParams.get('dog-update')!=='dog27'){url.searchParams.set('dog-update','dog27');location.replace(url.href);}}else{
 const $=id=>document.getElementById('dog-'+id);let model=loadModel(),terrain=terrainKind(model.terrain),world=new DogWorld({terrain,goal:model.goal,target:model.target}),view=null,mode='idle',training=false,paused=false,autoPaused=false,trace=null,pendingTrace=null,traceTime=0,last=0,accumulator=0,lastHud=0,lastSaved=0,lastChart=0,lastChartPolicy=null,shown=world.frame();
 let connecting=true,conflictRow=null,sceneSequence=0,execution=new DogExecution(),trainingPaused=false,latestTrace=null,formPolicy=policyId(model.goal);const shared=new DogSharedStore();shared.onstatus=text=>{$('save-note').textContent=text;};
 const worker=new Worker(new URL('./robotdog-worker.mjs?v=dog26',import.meta.url),{type:'module'}),state=text=>{$('status').textContent=text;},options=()=>({terrain,goal:goalKind($('goal').value),target:Number($('target').value),seconds:Number($('seconds').value),mixed:$('mixed').checked,curriculum:$('curriculum').checked,randomization:readEnvironment(),frictionRange:readFriction()});
