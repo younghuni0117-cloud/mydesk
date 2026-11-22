@@ -1,7 +1,7 @@
 // COM-coordinate articulated contact solver. Gravity acts on total COM; motor torques are internal.
 // A coupled 15x15 angular/joint mass matrix replaces vertical body teleports and velocity clamps.
-import {DOG,LEGS,REST,clamp,rotate,inverseRotate,legPoints,jointLimits,TORQUES,collisionSamples} from './robotdog-rig.mjs?v=dog14';
-import {surface} from './robotdog-terrain.mjs?v=dog14';
+import {DOG,LEGS,REST,clamp,rotate,inverseRotate,legPoints,jointLimits,TORQUES,collisionSamples,actionTarget} from './robotdog-rig.mjs?v=dog17';
+import {surface} from './robotdog-terrain.mjs?v=dog17';
 const N=15,DT=DOG.dt,dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),scale=(a,s)=>a.map(v=>v*s),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],axes=[[1,0,0],[0,1,0],[0,0,1]];
 export function quaternionFromEuler(a){const[x,y,z]=a.map(v=>v/2),cx=Math.cos(x),sx=Math.sin(x),cy=Math.cos(y),sy=Math.sin(y),cz=Math.cos(z),sz=Math.sin(z);return[sx*cy*cz-cx*sy*sz,cx*sy*cz+sx*cy*sz,cx*cy*sz-sx*sy*cz,cx*cy*cz+sx*sy*sz];}
 export function eulerFromQuaternion([x,y,z,w]){const m31=2*(x*z-y*w),pitch=Math.asin(clamp(-m31,-1,1));return Math.abs(m31)<.9999999?[Math.atan2(2*(y*z+x*w),1-2*(x*x+y*y)),pitch,Math.atan2(2*(x*y+z*w),1-2*(y*y+z*z))]:[Math.atan2(-2*(y*z-x*w),1-2*(x*x+z*z)),pitch,0];}
@@ -26,7 +26,7 @@ function speed(w,u,c){let v=dot(w.v,c.direction);for(let i=0;i<N;i++)v+=u[i]*c.J
 function impulse(w,u,c,lambda){for(let j=0;j<3;j++)w.v[j]+=c.direction[j]*lambda/DOG.mass;for(let i=0;i<N;i++)u[i]+=c.inv[i]*lambda;}
 function minimumGap(w){let min=Infinity;for(const s of collisionSamples(w.p,w.a,w.q)){const g=surface(w.terrain,s.p[0],s.p[2]);min=Math.min(min,(s.p[1]-g.height)*g.normal[1]-s.radius);}return min;}
 export function advanceDynamics(w,action){let props=massProperties(w);const M=matrix(w,props),L=factor(M),forces=new Float64Array(N),u=velocity(w);w.v[1]-=DOG.gravity*DT;for(let j=0;j<3;j++)forces[j]=-.08*u[j];
- for(let k=0;k<12;k++){const j=k%3,range=jointLimits(LEGS[Math.floor(k/3)],j),target=clamp(REST[j]+action[k]*[.55,1.05,1.15][j],...range),I=M[(k+3)*N+k+3],raw=135*(target-w.q[k])-8*u[k+3],tau=clamp(raw/(1+(8*DT+135*DT*DT)/I),-TORQUES[j],TORQUES[j]);w.tau[k]=tau;forces[k+3]=tau-.02*u[k+3];w.energy+=Math.abs(tau*u[k+3])*DT;}
+ for(let k=0;k<12;k++){const j=k%3,range=jointLimits(LEGS[Math.floor(k/3)],j),target=actionTarget(action[k],LEGS[Math.floor(k/3)],j),I=M[(k+3)*N+k+3],raw=135*(target-w.q[k])-8*u[k+3],tau=clamp(raw/(1+(8*DT+135*DT*DT)/I),-TORQUES[j],TORQUES[j]);w.tau[k]=tau;forces[k+3]=tau-.02*u[k+3];w.energy+=Math.abs(tau*u[k+3])*DT;}
  if(w.externalLoad){const {point,direction,force}=w.externalLoad,F=scale(direction,force),r=rotate(sub(point.local,props.com),w.a),d=pointDerivatives(w,point.local,point.leg,point.affected),moment=cross(r,F);for(let j=0;j<3;j++){w.v[j]+=F[j]/DOG.mass*DT;forces[j]+=moment[j];}for(let k=0;k<12;k++)forces[k+3]+=dot(rotate(sub(d[k],props.derivatives[k]),w.a),F);}
  const acceleration=solve(L,forces);for(let i=0;i<N;i++)u[i]+=acceleration[i]*DT;bounded(w,u);const contacts=[];w.contacts.fill(false);w.support={foot:0,other:0,knee:0,kneePoint:null,point:null,maxOther:0};
  for(const sample of collisionSamples(w.p,w.a,w.q)){const g=surface(w.terrain,sample.p[0],sample.p[2]),gap=(sample.p[1]-g.height)*g.normal[1]-sample.radius,c=constraint(w,props,L,sample,g.normal,u,gap);if(!c)continue;const t=[g.normal[1],-g.normal[0],0],len=Math.hypot(...t),t1=scale(t,1/len),t2=cross(g.normal,t1);contacts.push({sample,g,gap,n:c,t1:constraint(w,props,L,sample,t1),t2:constraint(w,props,L,sample,t2),normal:0,f1:0,f2:0});}
