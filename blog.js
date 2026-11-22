@@ -40,7 +40,7 @@ function render(){
  adminUI();
  const chosen=postId?posts.find(p=>p.id===postId):null,id=chosen?postMenuId(chosen):selectedMenu,menu=menus.find(m=>m.id===id);
  $('blog-heading').textContent=menu?.label||'학습정보';
- $('blog-breadcrumb').textContent=menu?.label||'학습정보';
+ if($('blog-breadcrumb'))$('blog-breadcrumb').textContent=menu?.label||'학습정보';
  $('blog-description').textContent=chosen?'':'관심 있는 자료와 배움의 기록을 메뉴별로 모읍니다.';$('blog-description').hidden=!!chosen;
  document.title=(chosen?.title||menu?.label||'학습정보')+' | My Desk';
  selectNavigationMenu(id);

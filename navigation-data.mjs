@@ -5,6 +5,7 @@ export const DEFAULT_MENUS=[
  {id:'restaurants',parent_id:null,label:'맛집 기록',kind:'link',href:'restaurants.html'},
  {id:'career',parent_id:null,label:'커리어',kind:'folder',href:null},
  {id:'experienced-jobs',parent_id:'career',label:'경력직 공고',kind:'folder',href:null},
+ {id:'career-resume',parent_id:'career',label:'내 이력서',kind:'link',href:'resume.html'},
  {id:'learning',parent_id:null,label:'학습정보',kind:'folder',href:null},
  {id:'ai',parent_id:'learning',label:'AI',kind:'folder',href:null},
  {id:'reinforcement-learning',parent_id:'ai',label:'강화학습',kind:'folder',href:null},

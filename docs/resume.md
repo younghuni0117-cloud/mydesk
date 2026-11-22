@@ -1,0 +1,13 @@
+# Private career resume
+
+`resume.html` is a public shell with no personal resume data. The `career-resume` navigation link is a child of the existing career folder. The protected article is `career-resume-main`; its title and placement are public, while public body/summary must remain empty under the existing blog privacy constraint. Actual content is stored in the existing non-exposed `mydesk_blog_private.post_content` table. No photos, identifying certificate/student/military numbers, personal content or actual passwords are committed to Git.
+
+The page submits a password to the existing `blog_post_read` RPC over HTTPS, with `cache: no-store`, omitted cookies and a reader header. It never loads or uses a saved management session, never automatically unlocks, and never writes the body or password to local/session storage or the URL. Returned rich text is sanitized. The page has a restrictive CSP, no-referrer/noindex metadata and no external embedded image access. Visible content is cleared on explicit locking, page hiding/leaving, BFCache return and 10 minutes of inactivity. In-flight reads are aborted/invalidated when locked.
+
+Initial access uses a server-side copy of the existing management bcrypt verifier; neither its hash nor its password is returned to the client or changed by installation. This creates an independent per-post password: subsequent management-password changes do not rotate it. The owner can edit the article and change its individual password using the existing blog editor. Existing authenticated management authorization retains its normal blog-editing powers. Keep the article private when editing.
+
+Content is organized from user-provided material into source facts, common task descriptions, qualifications/training, expired-language-score status, matching criteria, writing drafts and explicit verification gaps. Draft sentences do not invent project outcomes, salary, seniority or tool experience. This is a prepared reference for later job matching/writing; there is no third-party AI API or automatic transmission of personal data.
+
+Validation: real database anonymous/wrong-password denial, authorized-password reading and private-table denial using a rollback-only synthetic password (original verifier restored); empty public body/summary; synthetic browser checks for management-session independence, wrong/correct passwords, sanitization, no persistence, explicit/idle/visibility/reload locking and five screen sizes; navigation unit regression. Browser fixtures contain synthetic content only.
+
+The blog renderer tolerates the shared shortcut header removing the old breadcrumb element, so the existing protected editor remains usable without changing the header layout.
