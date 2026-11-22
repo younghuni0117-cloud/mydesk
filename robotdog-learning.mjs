@@ -1,8 +1,8 @@
-import {randomConfig,frictionRange} from './robotdog-environment.mjs?v=dog17';
-import {TERRAINS,terrainKind} from './robotdog-terrain.mjs?v=dog17';
-import {WEIGHTS,RIG_VERSION,TRAINING_EPOCH,GOAL_IDS,goalKind,DogWorld,DOG,episode,worldSuccess} from './robotdog-core.mjs?v=dog17';
-import {DogPPO} from './robotdog-ppo.mjs?v=dog17';
-import {POLICY_IDS,FAMILY_GOALS,policyId,familyGoal,freshPolicies,validPolicies,mirrorPolicy,trainingCase,advanceCurriculum} from './robotdog-policies.mjs?v=dog17';
+import {randomConfig,frictionRange} from './robotdog-environment.mjs?v=dog21';
+import {TERRAINS,terrainKind} from './robotdog-terrain.mjs?v=dog21';
+import {WEIGHTS,RIG_VERSION,TRAINING_EPOCH,GOAL_IDS,goalKind,DogWorld,DOG,episode,worldSuccess} from './robotdog-core.mjs?v=dog21';
+import {DogPPO} from './robotdog-ppo.mjs?v=dog21';
+import {POLICY_IDS,FAMILY_GOALS,policyId,familyGoal,freshPolicies,validPolicies,mirrorPolicy,trainingCase,advanceCurriculum} from './robotdog-policies.mjs?v=dog21';
 export {POLICY_IDS,policyId,familyGoal};
 // Keep the public table's envelope; bundleVersion/epoch retire the former single-policy checkpoint.
 export const MODEL_KEY='mydesk.robotdog.ppo.v2',LEGACY_KEY='mydesk.robotdog.v1';

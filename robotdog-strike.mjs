@@ -1,4 +1,4 @@
-import {LEGS,rotate,inverseRotate,collisionSamples} from './robotdog-rig.mjs?v=dog17';
+import {LEGS,rotate,inverseRotate,collisionSamples} from './robotdog-rig.mjs?v=dog21';
 
 // First physical surface along the incoming ray. Never strike through a nearer limb to reach an inner target.
 export function strikeSurface(world,target,direction){

@@ -1,4 +1,4 @@
-import {surface} from './robotdog-terrain.mjs?v=dog17';
+import {surface} from './robotdog-terrain.mjs?v=dog21';
 export const RIG_VERSION=8;
 export const TRAINING_EPOCH='skills-split-20261122';
 export const DOG={mass:33.8,chassisMass:24.0,armMass:0,partMasses:{body:24,hip:.9,upper:1.3,lower:.2,foot:.05},body:[.88,.22,.22],upper:.35255,lower:.36,hipOffset:.110945,footRadius:.034,gravity:9.81,dt:1/120,controlSteps:4};

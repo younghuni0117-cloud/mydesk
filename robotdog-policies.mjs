@@ -1,5 +1,5 @@
-import {DogPPO} from './robotdog-ppo.mjs?v=dog17';
-import {GOAL_IDS,WEIGHTS} from './robotdog-rig.mjs?v=dog17';
+import {DogPPO} from './robotdog-ppo.mjs?v=dog21';
+import {GOAL_IDS,WEIGHTS} from './robotdog-rig.mjs?v=dog21';
 export const POLICY_IDS=['balance','gait','recovery'];
 export const POLICY_LABELS={balance:'균형',gait:'걷기 달리기 회전',recovery:'일어나기'};
 export const FAMILY_GOALS={balance:['stand','push'],gait:['move','backward','turn'],recovery:['recover']};
