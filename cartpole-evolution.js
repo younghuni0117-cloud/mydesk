@@ -1,9 +1,10 @@
-import {DT, LENGTHS, X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=2';
+import {DT, X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=2';
 import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=3';
-import {PreviewEpisode, interpolateFrame} from './cartpole-evolution-preview.mjs?v=3';
+import {PreviewEpisode, interpolateFrame, railProjection} from './cartpole-evolution-preview.mjs?v=4';
 
 const get = name => document.getElementById('cpe-' + name);
-const prefix = 'mydesk.cartpole-evolution.v2.';
+const prefix = 'mydesk.cartpole-evolution.v3.';
+const settingsKey = 'mydesk.cartpole-evolution.v2.settings';
 const labels = {loading: '불러오는 중', ready: '학습 대기', running: 'PPO 학습 중',
   paused: '일시정지', complete: '목표 횟수 완료', evaluating: '고정 평가 중', error: '실행 오류'};
 const numeric = new Intl.NumberFormat('ko-KR');
@@ -12,6 +13,7 @@ let lastCheckpoint = null, storageWarning = '', notice = '';
 let latestPolicy, modelPolicy, preview, replay, recording, lastDraw;
 let savedSettings = read('settings') ?? {};
 let config = options(savedSettings);
+let showAxis = savedSettings.showAxis !== false, showArrow = savedSettings.showArrow !== false;
 let unlocked = read('unlocked');
 unlocked = Number.isInteger(unlocked) ? Math.min(5, Math.max(1, unlocked)) : 1;
 for (let i = 1; i < 5; i++) if (read('level' + i)?.milestone?.passed >= 7) unlocked = Math.max(unlocked, i + 1);
@@ -20,12 +22,12 @@ let count = episodeBudget(savedSettings.count);
 const canvas = get('canvas'), chart = get('chart');
 
 function read(key) {
-  try { return JSON.parse(localStorage.getItem(prefix + key)); } catch { return null; }
+  try { return JSON.parse(localStorage.getItem(key === 'settings' ? settingsKey : prefix + key)); } catch { return null; }
 }
 
 function write(key, value) {
   try {
-    localStorage.setItem(prefix + key, JSON.stringify(value));
+    localStorage.setItem(key === 'settings' ? settingsKey : prefix + key, JSON.stringify(value));
     return true;
   } catch {
     storageWarning = '브라우저 저장소를 사용할 수 없습니다.';
@@ -35,7 +37,7 @@ function write(key, value) {
 }
 
 function saveSettings() {
-  write('settings', {...config, level, count});
+  write('settings', {...config, level, count, showAxis, showArrow});
 }
 
 function renderNotice() {
@@ -72,7 +74,7 @@ function format(value, digits = 2) {
 }
 
 function showStats() {
-  const {recent, evaluation, diagnostics} = metrics ?? {};
+  const {recent, evaluation} = metrics ?? {};
   get('episode').textContent = numeric.format(metrics?.episodes ?? 0);
   get('reward').textContent = format(recent?.mean, 1);
   get('success').textContent = recent ? Math.round(recent.passed / recent.attempts * 100) + '%' : '—';
@@ -82,33 +84,7 @@ function showStats() {
   if (!plan.hidden) {
     plan.textContent = `이번 학습 ${numeric.format(metrics.episodes - metrics.planStart)} / ${numeric.format(metrics.target - metrics.planStart)}회`;
   }
-  const rows = {
-    '환경 Steps': numeric.format(metrics?.steps ?? 0),
-    '학습 처리량': numeric.format(metrics?.rate ?? 0) + ' steps/s',
-    '렌더링': renderFps ? renderFps + ' FPS' : '—',
-    'PPO 업데이트': metrics?.updates ?? 0,
-    '최초 직립 도달': format(metrics?.first) + ' 초',
-    '훈련 최고 직립': format(metrics?.bestHold) + ' 초',
-    '카트 최대 편위': format(metrics?.travel) + ' m',
-    '평가 최고 직립': format(evaluation?.hold) + ' 초',
-    '최고 평가 통과': metrics?.bestEvaluation ? metrics.bestEvaluation.passed + ' / 8' : '—',
-    '평가 정책 업데이트': evaluation?.updates ?? '—',
-    '해금 기록': lastCheckpoint?.milestone ? '업데이트 ' + lastCheckpoint.milestone.updates : '—',
-    'Policy loss': format(diagnostics?.policyLoss, 4),
-    'Value loss': format(diagnostics?.valueLoss, 4),
-    'Entropy': format(diagnostics?.entropy, 4),
-    'Approx. KL': format(diagnostics?.kl, 5),
-    'Clip fraction': format(diagnostics?.clipFraction, 3)
-  };
-  if (get('results').open) {
-    get('details').replaceChildren(...Object.entries(rows).flatMap(([name, value]) => {
-      const dt = document.createElement('dt'), dd = document.createElement('dd');
-      dt.textContent = name;
-      dd.textContent = value;
-      return [dt, dd];
-    }));
-    plot();
-  }
+  plot();
 }
 
 function openLevel(next) {
@@ -150,8 +126,8 @@ function openLevel(next) {
         controls();
       } else if (data.type === 'stats') {
         metrics = data;
-        if (data.pending) { notice = '진행 중인 PPO 수집·업데이트가 끝나면 새 설정을 적용합니다.'; }
-        else if (notice.startsWith('진행 중인 PPO')) notice = '';
+        if (data.pending) { notice = '다음 업데이트 후 설정 적용'; }
+        else if (notice === '다음 업데이트 후 설정 적용') notice = '';
         renderNotice();
         controls();
         showStats();
@@ -195,8 +171,6 @@ function line(ctx, x, y, u, v) {
   ctx.stroke();
 }
 
-let paintCount = 0, fpsTime = performance.now(), renderFps = 0;
-
 function displayFrame(elapsed) {
   if (replay) {
     replay.time += elapsed;
@@ -229,11 +203,8 @@ function draw(time) {
   const surfaceState = surface(canvas);
   if (!surfaceState) return;
   const {ctx, width, height} = surfaceState;
-  const reach = LENGTHS.slice(0, level).reduce((a, b) => a + b, 0);
-  const scale = Math.max(12, Math.min((width - 25) / (2 * (reach + .58)), (height - 80) / (reach * 2 + .23)));
-  const cart = active?.points[0][0] ?? 0, center = .85 * cart;
-  const px = x => width / 2 + (x - center) * scale;
-  const py = y => height / 2 - y * scale;
+  const cart = active?.points[0][0] ?? 0;
+  const {reach, halfRail, railX: px, modelX, modelY: py} = railProjection(width, height, level, cart);
   const railY = py(0) + 16;
   const background = ctx.createLinearGradient(0, 0, 0, height);
   background.addColorStop(0, '#ffffff');
@@ -256,34 +227,21 @@ function draw(time) {
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#536a80';
-  for (const x of [-2.4, -2, -1, 0, 1, 2, 2.4]) {
+  const ticks = halfRail < 79 ? [-X_LIMIT, 0, X_LIMIT] : [-X_LIMIT, -1, 0, 1, X_LIMIT];
+  for (const x of ticks) {
     line(ctx, px(x), railY + 7, px(x), railY + 11);
     ctx.fillText(x === 0 ? '0 m' : String(x), px(x), railY + 25);
   }
 
   if (active) {
     const x = px(cart), y = py(0);
-    const half = Math.min(40, Math.max(17, .18 * scale));
-    ctx.strokeStyle = '#aebdcd';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 5]);
-    line(ctx, x, y, x, py(reach));
-    ctx.setLineDash([]);
-
-    // Polymer-coated links, brushed steel axles and a blue anodized carriage.
-    for (let i = 1; i < active.points.length; i++) {
-      const [a, b] = active.points[i - 1], [u, v] = active.points[i];
-      const ax = px(a), ay = py(b), bx = px(u), by = py(v);
-      const thickness = Math.max(7, 13 - i);
-      ctx.strokeStyle = '#8f4718';
-      ctx.lineWidth = thickness;
-      line(ctx, ax, ay, bx, by);
-      ctx.strokeStyle = '#e59447';
-      ctx.lineWidth = thickness - 2;
-      line(ctx, ax, ay, bx, by);
-      ctx.strokeStyle = '#ffd9a5';
-      ctx.lineWidth = 2;
-      line(ctx, ax - 1.1, ay - 1.1, bx - 1.1, by - 1.1);
+    const half = 24;
+    if (showAxis) {
+      ctx.strokeStyle = '#aebdcd';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 5]);
+      line(ctx, x, y, x, py(reach));
+      ctx.setLineDash([]);
     }
     const cartPaint = ctx.createLinearGradient(0, y - 9, 0, y + 13);
     cartPaint.addColorStop(0, '#568cbb');
@@ -300,12 +258,26 @@ function draw(time) {
     ctx.strokeStyle = '#8ab1d2';
     ctx.lineWidth = 1;
     line(ctx, x - half + 6, y - 5, x + half - 6, y - 5);
+    for (let i = 1; i < active.points.length; i++) {
+      const [a, b] = active.points[i - 1], [u, v] = active.points[i];
+      const ax = modelX(a), ay = py(b), bx = modelX(u), by = py(v);
+      const thickness = Math.max(7, 13 - i);
+      ctx.strokeStyle = '#8f4718';
+      ctx.lineWidth = thickness;
+      line(ctx, ax, ay, bx, by);
+      ctx.strokeStyle = '#e59447';
+      ctx.lineWidth = thickness - 2;
+      line(ctx, ax, ay, bx, by);
+      ctx.strokeStyle = '#ffd9a5';
+      ctx.lineWidth = 2;
+      line(ctx, ax - 1.1, ay - 1.1, bx - 1.1, by - 1.1);
+    }
     for (const [u, v] of active.points) {
-      circle(ctx, px(u), py(v), 4.8, '#27394b');
-      circle(ctx, px(u), py(v), 2.8, '#d0dce7');
+      circle(ctx, modelX(u), py(v), 4.8, '#27394b');
+      circle(ctx, modelX(u), py(v), 2.8, '#d0dce7');
     }
     const tip = x + active.force / MAX_FORCE * 40;
-    if (Math.abs(tip - x) > 4) {
+    if (showArrow && Math.abs(tip - x) > 4) {
       ctx.strokeStyle = '#26746c';
       ctx.lineWidth = 2;
       const direction = Math.sign(tip - x);
@@ -320,14 +292,8 @@ function draw(time) {
     : (modelPolicy ? '모델 실행' : '실시간 관찰') + ' · PPO ' + numeric.format(updates);
   get('time').textContent = format(active?.time ?? 0) + '초';
   get('force').textContent = format(active?.force ?? 0, 1) + ' N';
-  get('hold').textContent = '직립 ' + format(active?.streak ?? 0) + ' / ' + HOLD_SECONDS + '초';
+  get('hold').textContent = format(active?.streak ?? 0) + ' / ' + HOLD_SECONDS + '초';
   get('hold').style.color = active?.success ? '#19704a' : '';
-  paintCount++;
-  if (time - fpsTime >= 1000) {
-    renderFps = Math.round(paintCount * 1000 / (time - fpsTime));
-    paintCount = 0;
-    fpsTime = time;
-  }
   if (!document.hidden && (modelPolicy || ['running', 'complete'].includes(phase)
       || (replay && replay.time < (recording.length - 1) * DT))) requestDraw();
 }
@@ -339,25 +305,30 @@ function plot() {
   const s = surface(chart);
   if (!s) return;
   const {ctx, width, height} = s, history = metrics?.history ?? [];
-  if (!history.length) {
-    ctx.fillStyle = '#475e76';
-    ctx.fillText('완료된 Episode가 쌓이면 추세를 표시합니다.', 4, height / 2);
-    return;
-  }
   const rewards = history.map(row => row.reward);
-  const min = Math.min(0, ...rewards), max = Math.max(1, ...rewards);
-  const px = i => 34 + i * (width - 41) / Math.max(1, rewards.length - 1);
+  const roundTick = (range) => 10 ** Math.floor(Math.log10(range || 1));
+  const low = Math.min(0, ...rewards), high = Math.max(1, ...rewards);
+  const tick = roundTick((high - low) / 4);
+  const min = Math.floor(low / tick) * tick, max = Math.ceil(high / tick) * tick;
+  const px = i => 40 + i * (width - 47) / Math.max(1, rewards.length - 1);
   const py = reward => 8 + (max - reward) / (max - min) * (height - 28);
   ctx.font = '11px sans-serif';
   ctx.fillStyle = '#475e76';
   for (const value of [min, (min + max) / 2, max]) {
     ctx.strokeStyle = '#e0e8ef';
-    line(ctx, 33, py(value), width - 4, py(value));
-    ctx.fillText(format(value, 0), 0, py(value) + 3);
+    line(ctx, 39, py(value), width - 4, py(value));
+    ctx.fillText(numeric.format(value), 1, py(value) + 3, 36);
   }
-  ctx.fillText('EP ' + history[0].episode, 34, height - 2);
+  ctx.strokeStyle = '#aebdcd';
+  line(ctx, 39, py(max), 39, py(min));
+  ctx.fillText('EP ' + (history[0]?.episode ?? 0), 40, height - 2);
+  if (!history.length) {
+    ctx.textAlign = 'center';
+    ctx.fillText('학습 대기', (width + 40) / 2, height / 2 + 10);
+    return;
+  }
   ctx.textAlign = 'right';
-  ctx.fillText('EP ' + history.at(-1).episode, width - 4, height - 2);
+  if (history.length > 1) ctx.fillText('EP ' + history.at(-1).episode, width - 4, height - 2);
   const series = [rewards, rewards.map((_, i) => {
     const window = rewards.slice(Math.max(0, i - 29), i + 1);
     return window.reduce((sum, r) => sum + r, 0) / window.length;
@@ -428,7 +399,14 @@ get('restore').onclick = () => {
   const backup = read('backup' + level);
   if (backup && write('level' + level, backup)) openLevel(level);
 };
-get('results').addEventListener('toggle', showStats);
+get('axis').checked = showAxis;
+get('arrow').checked = showArrow;
+get('axis').onchange = get('arrow').onchange = () => {
+  showAxis = get('axis').checked;
+  showArrow = get('arrow').checked;
+  saveSettings();
+  requestDraw();
+};
 new ResizeObserver(() => { requestDraw(); plot(); }).observe(canvas);
 new ResizeObserver(plot).observe(chart);
 document.addEventListener('visibilitychange', () => {

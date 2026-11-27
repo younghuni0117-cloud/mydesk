@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f8fa">
   <title>Cart-Pole Evolution Lab | My Desk</title>
   <link rel="stylesheet" href="style.css?v=update69">
-  <link rel="stylesheet" href="cartpole-evolution.css?v=3">
+  <link rel="stylesheet" href="cartpole-evolution.css?v=4">
 </head>
 <body class="game-page cpe-page" data-page="cartpole-evolution">
   <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -29,60 +29,58 @@
       <a class="cpe-old" href="cartpole.html">기존 카트폴</a>
     </header>
     <main id="main-content" class="cpe-lab" tabindex="-1">
-      <div class="cpe-heading">
-        <h1>Cart-Pole Evolution Lab</h1>
-        <span>Planck.js · PPO</span>
-      </div>
       <div class="cpe-grid">
+        <div class="cpe-view">
         <section class="cpe-stage" aria-label="실시간 물리">
           <canvas id="cpe-canvas" aria-label="수평 카트와 수동 링크의 현재 물리 상태"></canvas>
           <div class="cpe-overlay cpe-stage-top"><strong id="cpe-state" role="status">불러오는 중</strong><span id="cpe-live">실시간 관찰</span></div>
-          <div class="cpe-overlay cpe-stage-bottom"><span id="cpe-time">0.00초</span><span id="cpe-force">0.0 N</span><span id="cpe-hold">직립 0.00 / 5초</span></div>
         </section>
+          <div class="cpe-stats" aria-label="학습 및 시뮬레이션 지표">
+            <div><span>에피소드</span><strong id="cpe-episode">0</strong></div>
+            <div><span>평균 보상</span><strong id="cpe-reward">—</strong></div>
+            <div><span>훈련 성공률</span><strong id="cpe-success">—</strong></div>
+            <div><span>고정 평가</span><strong id="cpe-test">—</strong></div>
+            <div><span title="화면에 표시된 에피소드 경과 시간">학습시간</span><strong id="cpe-time">0.00초</strong></div>
+            <div><span>하중</span><strong id="cpe-force">0.0 N</strong></div>
+            <div><span>직립</span><strong id="cpe-hold">0.00 / 5초</strong></div>
+          </div>
+        </div>
         <aside class="cpe-panel" aria-label="훈련 설정과 성과" tabindex="0">
+        <section class="cpe-chart-box" aria-label="보상 그래프">
+          <h2>보상 추세</h2>
+          <p class="cpe-caption"><span class="cpe-key"></span>에피소드 <span class="cpe-key cpe-key-average"></span>30회 평균</p>
+          <canvas id="cpe-chart" role="img" aria-label="세로축 누적 보상, 가로축 에피소드"></canvas>
+        </section>
         <section class="cpe-control" aria-label="훈련 조작">
+          <div class="cpe-actions cpe-primary-actions">
+            <button id="cpe-train" type="button" disabled>학습 시작</button>
+            <button id="cpe-model" type="button" disabled>모델 실행</button>
+            <button id="cpe-evaluate" type="button" disabled>평가</button>
+          </div>
           <div class="cpe-inputs">
             <label>레벨<select id="cpe-level"><option value="1">Level 1 · 링크 1개</option></select></label>
             <label>학습 횟수<input id="cpe-count" type="number" min="1" max="100000" step="1" value="1000" inputmode="numeric"></label>
             <label>동시 환경<select id="cpe-env"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
             <label>Episode (초)<input id="cpe-seconds" type="number" min="5" max="60" step="1" value="20" inputmode="numeric"></label>
           </div>
-          <div class="cpe-actions">
-            <button id="cpe-train" type="button" disabled>학습 시작</button>
-            <button id="cpe-model" type="button" disabled>모델 실행</button>
-          </div>
           <p id="cpe-plan" class="cpe-caption" hidden></p>
           <p id="cpe-notice" role="status"></p>
         </section>
-        <section class="cpe-data" aria-label="학습 성과">
-          <div class="cpe-stats">
-            <div><span>Episode</span><strong id="cpe-episode">0</strong></div>
-            <div><span>평균 보상</span><strong id="cpe-reward">—</strong></div>
-            <div><span>훈련 성공률</span><strong id="cpe-success">—</strong></div>
-            <div><span>고정 평가</span><strong id="cpe-test">—</strong></div>
-          </div>
-          <p id="cpe-goal" class="cpe-goal">전 링크 ±10°로 5초 유지 · 고정 평가 7/8회 통과 시 해금</p>
-          <details id="cpe-results">
-            <summary>보상 추세 및 상세 기록</summary>
-            <p class="cpe-caption">최근 240회 · 회당 누적 보상과 최근 30회 이동평균</p>
-            <canvas id="cpe-chart" aria-label="Episode별 누적 보상과 이동평균"></canvas>
-            <button id="cpe-evaluate" type="button" disabled>고정 평가</button>
-            <button id="cpe-replay" type="button" hidden>고정 평가 1번 재생</button>
-            <dl id="cpe-details"></dl>
-          </details>
-          <details>
-            <summary>물리와 저장 설정</summary>
-            <p class="cpe-caption">카트 1 kg · 최대 ±10 N · 중력 9.81 m/s² · 물리 간격 5 ms. 레일은 ±2.4 m이며 직립해도 Episode는 계속됩니다. 고정 평가는 20초씩 8회, 탐색 없이 실행합니다.</p>
-            <p class="cpe-caption">학습 횟수는 시작할 때 추가로 완료할 Episode 수입니다. 관찰 화면은 시도마다 최신 정책을 받아 1배속으로 재생합니다. 모델 실행은 버튼을 누른 시점의 정책을 사용합니다.</p>
-            <p class="cpe-caption">학습과 설정은 이 브라우저에 저장되며 마지막으로 완료된 PPO 업데이트부터 이어집니다.</p>
+          <details class="cpe-options">
+            <summary>상세 옵션</summary>
+            <div class="cpe-switches">
+              <label><input id="cpe-axis" type="checkbox" checked> 대차 중심축</label>
+              <label><input id="cpe-arrow" type="checkbox" checked> 하중 화살표</label>
+            </div>
+            <p class="cpe-caption">직립 ±10° · 5초 / 고정 평가 7/8회 · 다음 레벨</p>
+            <button id="cpe-replay" type="button" hidden>평가 1번 재생</button>
             <div class="cpe-actions"><button id="cpe-reset" type="button" disabled>현재 레벨 초기화</button><button id="cpe-restore" type="button" hidden>초기화 전 기록 복원</button></div>
           </details>
-        </section>
         </aside>
       </div>
     </main>
   </div>
   <script src="shell.js?v=shortcuts2"></script>
-  <script type="module" src="cartpole-evolution.js?v=3"></script>
+  <script type="module" src="cartpole-evolution.js?v=4"></script>
 </body>
 </html>

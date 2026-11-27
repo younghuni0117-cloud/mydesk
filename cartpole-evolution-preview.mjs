@@ -1,5 +1,20 @@
-import {CartPole, DT} from './cartpole-evolution-core.mjs?v=2';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=2';
 import {CartPPO} from './cartpole-evolution-ppo.mjs?v=2';
+
+export function railProjection(width, height, level, cart) {
+  const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);
+  const radius = 105;
+  const scale = radius / reach;
+  const inset = Math.min(radius + 12, width * .39);
+  const halfRail = width / 2 - inset;
+  const railX = x => width / 2 + x * halfRail / X_LIMIT;
+  // Fixed-size model coordinates are relative to the moving pivot.
+  return {
+    reach, halfRail, railX,
+    modelX: x => railX(cart) + (x - cart) * scale,
+    modelY: y => height / 2 - y * scale
+  };
+}
 
 export function interpolateFrame(from, to, fraction) {
   if (!to) return from;

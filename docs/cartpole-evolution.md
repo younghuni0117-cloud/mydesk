@@ -51,5 +51,6 @@ The canvas runs a separate Planck world at normal speed, interpolating each
 display frame between 20 ms policy steps. Training observation uses a frozen copy
 of the newest completed policy at the beginning of each displayed episode.
 Explicit model execution holds the selected snapshot and disables exploration.
-The camera follows the cart to make the real links larger on screen, without
-changing their physical parameters or the checkpoint format.
+The full rail stays fixed on screen. The model uses a fixed local drawing scale
+in portrait and landscape. This release starts fresh training under the v3
+storage keys and retains previous results separately.

@@ -4,7 +4,7 @@ import {Worker} from 'node:worker_threads';
 import {readFileSync} from 'node:fs';
 import {CartPole, DT, GRAVITY, LENGTHS, MASSES, MAX_FORCE, inputSize} from '../cartpole-evolution-core.mjs';
 import {Trainer, evaluate} from '../cartpole-evolution-training.mjs';
-import {PreviewEpisode} from '../cartpole-evolution-preview.mjs';
+import {PreviewEpisode, railProjection} from '../cartpole-evolution-preview.mjs';
 import {DEFAULT_MENUS, validateMenus, withCartPoleEvolution} from '../navigation-data.mjs';
 
 function energy(env) {
@@ -178,4 +178,19 @@ test('preview holds a frozen policy, matches real time at 120 Hz and completes a
   for (let i = 0; i < 481; i++) frame = preview.frame(1 / 120);
   assert.equal(frame.time, 5);
   assert.equal(preview.done, true);
+});
+
+test('portrait and landscape use the same model scale and a fixed rail', () => {
+  for (const level of [1, 5]) {
+    for (const [width, height] of [[320, 300], [730, 252]]) {
+      const left = railProjection(width, height, level, -2.4);
+      const right = railProjection(width, height, level, 2.4);
+      assert.equal(left.railX(-2.4), right.railX(-2.4));
+      assert.ok(left.railX(-2.4) > 0 && right.railX(2.4) < width);
+      assert.equal(right.modelX(2.4), right.railX(2.4));
+      assert.ok(Math.abs(left.modelX(-2.4 + left.reach) - left.modelX(-2.4) - 105) < 1e-9);
+      assert.ok(Math.abs(right.modelY(0) - right.modelY(right.reach) - 105) < 1e-9);
+      assert.ok(left.modelX(-2.4 - left.reach) > 0 && right.modelX(2.4 + right.reach) < width);
+    }
+  }
 });
