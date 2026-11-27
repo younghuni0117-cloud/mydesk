@@ -296,7 +296,7 @@ function draw(time) {
     for (let i = 1; i < active.points.length; i++) {
       const [a, b] = active.points[i - 1], [u, v] = active.points[i];
       const ax = modelX(a), ay = py(b), bx = modelX(u), by = py(v);
-      const thickness = .04 * scale;
+      const thickness = .08 * scale;
       ctx.strokeStyle = '#8f4718';
       ctx.lineWidth = thickness;
       line(ctx, ax, ay, bx, by);
