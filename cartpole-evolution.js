@@ -411,6 +411,34 @@ get('range').onchange = () => {
 };
 new ResizeObserver(() => { requestDraw(); plot(); }).observe(canvas);
 new ResizeObserver(plot).observe(chart);
+const stage = canvas.closest('.cpe-stage');
+const grid = stage.closest('.cpe-grid');
+let layoutFrame = 0;
+function fitDesktopVideo() {
+  layoutFrame = 0;
+  if (!matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    grid.style.removeProperty('--stage-height');
+    return;
+  }
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  const top = stage.getBoundingClientRect().top + window.scrollY;
+  const stats = document.querySelector('.cpe-stats').getBoundingClientRect().height;
+  const progress = document.querySelector('.cpe-progress').getBoundingClientRect().height;
+  const bottomPadding = parseFloat(getComputedStyle(document.querySelector('.cpe-lab')).paddingBottom) || 0;
+  const height = Math.max(100, Math.floor(viewportHeight - top - stats - progress - bottomPadding - 10));
+  grid.style.setProperty('--stage-height', height + 'px');
+}
+function requestFit() {
+  if (!layoutFrame) layoutFrame = requestAnimationFrame(fitDesktopVideo);
+}
+window.addEventListener('resize', requestFit);
+window.visualViewport?.addEventListener('resize', requestFit);
+const layoutObserver = new ResizeObserver(requestFit);
+layoutObserver.observe(document.querySelector('.topbar'));
+layoutObserver.observe(document.querySelector('.cpe-stats'));
+layoutObserver.observe(document.querySelector('.cpe-progress'));
+document.fonts?.ready.then(requestFit);
+requestFit();
 function touchGesture() {
   const points = [...pointers.values()];
   const center = {x: points.reduce((s,p)=>s+p.x,0)/points.length,
