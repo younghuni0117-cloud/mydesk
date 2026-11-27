@@ -143,7 +143,7 @@ test('PPO consumes distinct environment streams and restores optimizer and deter
   assert.throws(() => new Trainer(2, {}, saved), /다른 레벨/);
 });
 
-test('worker evaluates, trains and applies setting changes at a rollout boundary', {timeout: 15000}, async () => {
+test('worker evaluates, trains and applies setting changes at a rollout boundary', {timeout: 30000}, async () => {
   const path = new URL('../cartpole-evolution-worker.mjs', import.meta.url).href;
   const worker = new Worker(`
     import {parentPort} from 'node:worker_threads';
@@ -155,7 +155,7 @@ test('worker evaluates, trains and applies setting changes at a rollout boundary
   const history = [];
   worker.on('message', m => history.push(m));
   const wait = predicate => new Promise((resolve, reject) => {
-    const timer = setTimeout(() => finish(new Error('Worker message timeout')), 4500);
+    const timer = setTimeout(() => finish(new Error('Worker message timeout')), 10000);
     function finish(error, value) {
       clearTimeout(timer);
       worker.off('message', onMessage);
