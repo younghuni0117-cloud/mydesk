@@ -1,5 +1,5 @@
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=2';
-import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=3';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=5';
+import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=5';
 
 let trainer, settled, pending, update, assessment, running = false;
 let timer, lastStats, lastSaved, sampleSteps = 0, planStart = 0, target = 0;
@@ -13,7 +13,7 @@ function stats(now = performance.now()) {
   send('stats', {steps: trainer.steps, episodes: trainer.episodes, planStart, target, envs: trainer.config.envs,
     incomplete: target > 0 && (trainer.episodes < target || trainer.count > 0),
     updates: trainer.policy.updates, diagnostics: trainer.policy.last,
-    recent: summarize(trainer.history.slice(-30)), history: trainer.history.slice(-240),
+    recent: summarize(trainer.history.slice(-30)), history: trainer.history.map(({episode, reward}) => ({episode, reward})),
     first: trainer.first, bestHold: trainer.bestHold, travel: trainer.travel,
     evaluation: trainer.evaluation, bestEvaluation: trainer.bestEvaluation, pending: Boolean(pending),
     rate: running ? Math.round((trainer.steps - sampleSteps) * 1000 / Math.max(1, now - lastStats)) : 0});
@@ -94,6 +94,7 @@ function tick() {
         update = trainer.update();
       } else if (running && trainer.episodes >= target) {
         running = false;
+        if (trainer.evaluation?.updates !== settled.policy.updates) beginEvaluation(false);
         save(true);
         stats();
         send('state', {state: 'complete'});

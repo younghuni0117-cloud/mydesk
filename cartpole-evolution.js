@@ -1,19 +1,20 @@
-import {DT, X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=2';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=3';
-import {PreviewEpisode, interpolateFrame, railProjection} from './cartpole-evolution-preview.mjs?v=4';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=5';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=5';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=5';
 
 const get = name => document.getElementById('cpe-' + name);
-const prefix = 'mydesk.cartpole-evolution.v3.';
+const prefix = 'mydesk.cartpole-evolution.v4.';
 const settingsKey = 'mydesk.cartpole-evolution.v2.settings';
 const labels = {loading: '불러오는 중', ready: '학습 대기', running: 'PPO 학습 중',
   paused: '일시정지', complete: '목표 횟수 완료', evaluating: '고정 평가 중', error: '실행 오류'};
 const numeric = new Intl.NumberFormat('ko-KR');
 let worker, metrics = null, phase = 'loading', raf = 0, autoResume = false;
-let lastCheckpoint = null, storageWarning = '', notice = '';
-let latestPolicy, modelPolicy, preview, replay, recording, lastDraw;
+let lastCheckpoint = null;
+let latestPolicy, modelPolicy, preview, lastDraw;
 let savedSettings = read('settings') ?? {};
 let config = options(savedSettings);
-let showAxis = savedSettings.showAxis !== false, showArrow = savedSettings.showArrow !== false;
+const ranges = [50, 100, 240, 500, 1200];
+let chartRange = ranges.includes(savedSettings.chartRange) ? savedSettings.chartRange : 240;
 let unlocked = read('unlocked');
 unlocked = Number.isInteger(unlocked) ? Math.min(5, Math.max(1, unlocked)) : 1;
 for (let i = 1; i < 5; i++) if (read('level' + i)?.milestone?.passed >= 7) unlocked = Math.max(unlocked, i + 1);
@@ -30,18 +31,12 @@ function write(key, value) {
     localStorage.setItem(key === 'settings' ? settingsKey : prefix + key, JSON.stringify(value));
     return true;
   } catch {
-    storageWarning = '브라우저 저장소를 사용할 수 없습니다.';
-    renderNotice();
     return false;
   }
 }
 
 function saveSettings() {
-  write('settings', {...config, level, count, showAxis, showArrow});
-}
-
-function renderNotice() {
-  get('notice').textContent = [storageWarning, notice].filter(Boolean).join(' ');
+  write('settings', {...config, level, count, chartRange});
 }
 
 function controls() {
@@ -50,18 +45,15 @@ function controls() {
   get('train').textContent = phase === 'running' ? '일시정지' : resumable ? '학습 재개' : '학습 시작';
   get('train').disabled = ['loading', 'evaluating', 'error'].includes(phase);
   get('count').disabled = phase === 'running' || resumable;
-  get('model').textContent = modelPolicy || replay ? '실시간 관찰' : '모델 실행';
-  get('model').disabled = (!latestPolicy?.updates && !replay) || ['loading', 'evaluating', 'error'].includes(phase);
-  get('evaluate').disabled = ['loading', 'evaluating', 'error'].includes(phase);
+  get('model').textContent = modelPolicy ? '실시간 관찰' : '모델 실행';
+  get('model').disabled = !latestPolicy?.updates || ['loading', 'evaluating', 'error'].includes(phase);
   get('reset').disabled = phase === 'loading';
   get('restore').hidden = !read('backup' + level);
-  get('replay').hidden = !recording;
-  get('replay').disabled = phase === 'evaluating' || Boolean(replay);
 }
 
 function showLevels() {
   const choices = Array.from({length: 5}, (_, i) => {
-    const n = i + 1, option = new Option(`Level ${n} · 링크 ${n}개${n > unlocked ? ' (잠김)' : ''}`, n);
+    const n = i + 1, option = new Option(`링크 ${n}개${n > unlocked ? ' (잠김)' : ''}`, n);
     option.disabled = n > unlocked;
     return option;
   });
@@ -77,13 +69,12 @@ function showStats() {
   const {recent, evaluation} = metrics ?? {};
   get('episode').textContent = numeric.format(metrics?.episodes ?? 0);
   get('reward').textContent = format(recent?.mean, 1);
-  get('success').textContent = recent ? Math.round(recent.passed / recent.attempts * 100) + '%' : '—';
   get('test').textContent = evaluation ? evaluation.passed + ' / ' + evaluation.attempts : '—';
-  const plan = get('plan');
-  plan.hidden = !metrics?.target;
-  if (!plan.hidden) {
-    plan.textContent = `이번 학습 ${numeric.format(metrics.episodes - metrics.planStart)} / ${numeric.format(metrics.target - metrics.planStart)}회`;
-  }
+  const total = metrics?.target ? metrics.target - metrics.planStart : 0;
+  const completed = total ? Math.min(total, metrics.episodes - metrics.planStart) : 0;
+  get('progress').max = total || 1;
+  get('progress').value = completed;
+  get('progress-text').textContent = `${numeric.format(completed)} / ${numeric.format(total || count)}`;
   plot();
 }
 
@@ -93,24 +84,22 @@ function openLevel(next) {
   phase = 'loading';
   autoResume = false;
   metrics = null;
-  latestPolicy = modelPolicy = preview = replay = recording = lastDraw = null;
-  notice = '';
+  latestPolicy = modelPolicy = preview = lastDraw = null;
+  get('state').removeAttribute('title');
   lastCheckpoint = read('level' + level);
-  renderNotice();
   saveSettings();
   showLevels();
   controls();
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=3', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=5', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
       if (worker !== instance) return;
       if (data.type === 'ready') {
         phase = 'ready';
-        if (data.warning) { notice = data.warning; renderNotice(); }
         controls();
       } else if (data.type === 'state') {
         phase = data.state;
@@ -121,14 +110,8 @@ function openLevel(next) {
         latestPolicy = data.policy;
         controls();
         requestDraw();
-      } else if (data.type === 'recording') {
-        recording = data.frames;
-        controls();
       } else if (data.type === 'stats') {
         metrics = data;
-        if (data.pending) { notice = '다음 업데이트 후 설정 적용'; }
-        else if (notice === '다음 업데이트 후 설정 적용') notice = '';
-        renderNotice();
         controls();
         showStats();
       } else if (data.type === 'checkpoint') {
@@ -138,8 +121,6 @@ function openLevel(next) {
         unlocked = Math.max(unlocked, Math.min(5, level + 1));
         write('unlocked', unlocked);
         showLevels();
-        notice = level < 5 ? '고정 평가 통과 · 다음 레벨이 열렸습니다.' : '최종 레벨 고정 평가를 통과했습니다.';
-        renderNotice();
       } else if (data.type === 'error') error(data.message);
     };
     instance.postMessage({type: 'init', level, config, checkpoint: lastCheckpoint});
@@ -148,8 +129,7 @@ function openLevel(next) {
 
 function error(message) {
   phase = 'error';
-  notice = message;
-  renderNotice();
+  get('state').title = message;
   controls();
 }
 
@@ -172,12 +152,6 @@ function line(ctx, x, y, u, v) {
 }
 
 function displayFrame(elapsed) {
-  if (replay) {
-    replay.time += elapsed;
-    const position = Math.min(recording.length - 1, replay.time / DT);
-    const i = Math.floor(position);
-    return interpolateFrame(recording[i], recording[i + 1], position - i);
-  }
   const policy = modelPolicy ?? latestPolicy;
   if (!policy) return null;
   const playing = Boolean(modelPolicy) || ['running', 'complete'].includes(phase);
@@ -236,13 +210,11 @@ function draw(time) {
   if (active) {
     const x = px(cart), y = py(0);
     const half = 24;
-    if (showAxis) {
-      ctx.strokeStyle = '#aebdcd';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 5]);
-      line(ctx, x, y, x, py(reach));
-      ctx.setLineDash([]);
-    }
+    ctx.strokeStyle = '#aebdcd';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 5]);
+    line(ctx, x, y, x, py(reach));
+    ctx.setLineDash([]);
     const cartPaint = ctx.createLinearGradient(0, y - 9, 0, y + 13);
     cartPaint.addColorStop(0, '#568cbb');
     cartPaint.addColorStop(.35, '#32678f');
@@ -277,7 +249,7 @@ function draw(time) {
       circle(ctx, modelX(u), py(v), 2.8, '#d0dce7');
     }
     const tip = x + active.force / MAX_FORCE * 40;
-    if (showArrow && Math.abs(tip - x) > 4) {
+    if (Math.abs(tip - x) > 4) {
       ctx.strokeStyle = '#26746c';
       ctx.lineWidth = 2;
       const direction = Math.sign(tip - x);
@@ -288,14 +260,11 @@ function draw(time) {
   }
 
   const updates = preview?.updates ?? 0;
-  get('live').textContent = replay ? '고정 평가 · 1배속'
-    : (modelPolicy ? '모델 실행' : '실시간 관찰') + ' · PPO ' + numeric.format(updates);
+  get('live').textContent = (modelPolicy ? '모델 실행' : '실시간 관찰') + ' · PPO ' + numeric.format(updates);
   get('time').textContent = format(active?.time ?? 0) + '초';
-  get('force').textContent = format(active?.force ?? 0, 1) + ' N';
   get('hold').textContent = format(active?.streak ?? 0) + ' / ' + HOLD_SECONDS + '초';
   get('hold').style.color = active?.success ? '#19704a' : '';
-  if (!document.hidden && (modelPolicy || ['running', 'complete'].includes(phase)
-      || (replay && replay.time < (recording.length - 1) * DT))) requestDraw();
+  if (!document.hidden && (modelPolicy || ['running', 'complete'].includes(phase))) requestDraw();
 }
 function requestDraw() {
   if (!raf) raf = requestAnimationFrame(draw);
@@ -304,35 +273,40 @@ function requestDraw() {
 function plot() {
   const s = surface(chart);
   if (!s) return;
-  const {ctx, width, height} = s, history = metrics?.history ?? [];
+  const {ctx, width, height} = s, all = metrics?.history ?? [];
+  const history = all.slice(-chartRange);
   const rewards = history.map(row => row.reward);
   const roundTick = (range) => 10 ** Math.floor(Math.log10(range || 1));
-  const low = Math.min(0, ...rewards), high = Math.max(1, ...rewards);
+  const offset = all.length - history.length;
+  const average = history.map((_, i) => {
+    const end = offset + i + 1;
+    const window = all.slice(Math.max(0, end - 30), end);
+    return window.reduce((sum, row) => sum + row.reward, 0) / window.length;
+  });
+  const low = Math.min(0, ...rewards, ...average), high = Math.max(1, ...rewards, ...average);
   const tick = roundTick((high - low) / 4);
   const min = Math.floor(low / tick) * tick, max = Math.ceil(high / tick) * tick;
-  const px = i => 40 + i * (width - 47) / Math.max(1, rewards.length - 1);
-  const py = reward => 8 + (max - reward) / (max - min) * (height - 28);
-  ctx.font = '11px sans-serif';
-  ctx.fillStyle = '#475e76';
-  for (const value of [min, (min + max) / 2, max]) {
+  const labels = [max, (min + max) / 2, min].map(n => numeric.format(n));
+  ctx.font = '600 12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const axis = Math.ceil(Math.max(...labels.map(t => ctx.measureText(t).width))) + 11;
+  const px = i => axis + i * (width - axis - 7) / Math.max(1, rewards.length - 1);
+  const py = reward => 10 + (max - reward) / (max - min) * (height - 30);
+  ctx.fillStyle = '#263c52';
+  for (const [i, label] of labels.entries()) {
+    const y = py(max - i * (max - min) / 2);
     ctx.strokeStyle = '#e0e8ef';
-    line(ctx, 39, py(value), width - 4, py(value));
-    ctx.fillText(numeric.format(value), 1, py(value) + 3, 36);
+    line(ctx, axis - 4, y, width - 4, y);
+    ctx.fillText(label, 2, y);
   }
   ctx.strokeStyle = '#aebdcd';
-  line(ctx, 39, py(max), 39, py(min));
-  ctx.fillText('EP ' + (history[0]?.episode ?? 0), 40, height - 2);
-  if (!history.length) {
-    ctx.textAlign = 'center';
-    ctx.fillText('학습 대기', (width + 40) / 2, height / 2 + 10);
-    return;
-  }
+  line(ctx, axis, py(max), axis, py(min));
+  ctx.fillText(numeric.format(history[0]?.episode ?? 0), axis, height - 8);
+  if (!history.length) return;
   ctx.textAlign = 'right';
-  if (history.length > 1) ctx.fillText('EP ' + history.at(-1).episode, width - 4, height - 2);
-  const series = [rewards, rewards.map((_, i) => {
-    const window = rewards.slice(Math.max(0, i - 29), i + 1);
-    return window.reduce((sum, r) => sum + r, 0) / window.length;
-  })];
+  if (history.length > 1) ctx.fillText(numeric.format(history.at(-1).episode), width - 4, height - 8);
+  const series = [rewards, average];
   for (const [i, values] of series.entries()) {
     ctx.strokeStyle = i ? '#245683' : '#9fb7ce';
     ctx.lineWidth = i ? 2 : 1;
@@ -359,6 +333,7 @@ get('count').onchange = () => {
   count = episodeBudget(get('count').value);
   get('count').value = count;
   saveSettings();
+  showStats();
 };
 get('level').onchange = event => {
   const next = Number(event.target.value);
@@ -373,19 +348,8 @@ get('train').onclick = () => {
   }
 };
 get('model').onclick = () => {
-  modelPolicy = modelPolicy || replay ? null : latestPolicy;
-  replay = preview = lastDraw = null;
-  controls();
-  requestDraw();
-};
-get('evaluate').onclick = () => {
-  replay = modelPolicy = lastDraw = null;
-  worker?.postMessage({type: 'evaluate'});
-};
-get('replay').onclick = () => {
-  if (!recording?.length) return;
-  replay = {time: 0};
-  modelPolicy = lastDraw = null;
+  modelPolicy = modelPolicy ? null : latestPolicy;
+  preview = lastDraw = null;
   controls();
   requestDraw();
 };
@@ -399,13 +363,11 @@ get('restore').onclick = () => {
   const backup = read('backup' + level);
   if (backup && write('level' + level, backup)) openLevel(level);
 };
-get('axis').checked = showAxis;
-get('arrow').checked = showArrow;
-get('axis').onchange = get('arrow').onchange = () => {
-  showAxis = get('axis').checked;
-  showArrow = get('arrow').checked;
+get('range').value = chartRange;
+get('range').onchange = () => {
+  chartRange = Number(get('range').value);
   saveSettings();
-  requestDraw();
+  plot();
 };
 new ResizeObserver(() => { requestDraw(); plot(); }).observe(canvas);
 new ResizeObserver(plot).observe(chart);

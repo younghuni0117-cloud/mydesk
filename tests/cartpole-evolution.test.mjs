@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Worker} from 'node:worker_threads';
 import {readFileSync} from 'node:fs';
-import {CartPole, DT, GRAVITY, LENGTHS, MASSES, MAX_FORCE, inputSize} from '../cartpole-evolution-core.mjs';
+import {CartPole, DT, EVAL_SECONDS, GRAVITY, HOLD_SECONDS, LENGTHS, MASSES, MAX_FORCE, inputSize} from '../cartpole-evolution-core.mjs';
 import {Trainer, evaluate} from '../cartpole-evolution-training.mjs';
 import {PreviewEpisode, railProjection} from '../cartpole-evolution-preview.mjs';
 import {DEFAULT_MENUS, validateMenus, withCartPoleEvolution} from '../navigation-data.mjs';
@@ -27,6 +27,7 @@ test('1–5 passive links hang, with stable rail constraints, anchors and conver
         assert.ok(Math.abs(b.getMass() - MASSES[i]) < 1e-9);
         assert.ok(Math.abs(b.getInertia() - MASSES[i] * (LENGTHS[i] ** 2 + .022 ** 2) / 12) < 1e-9);
         assert.equal(env.joints[i].isMotorEnabled(), false);
+        assert.equal(LENGTHS[i], .65);
         prevY = b.getPosition().y;
       });
       const initial = energy(env);
@@ -60,14 +61,16 @@ test('force moves cart and reacts through passive pole; timeout bootstraps and b
   assert.deepEqual([env.step(0, 5).truncated, env.result().success], [true, false]);
 });
 
-test('terminal does not fire at upright success; all absolute angles must qualify for five seconds', () => {
+test('terminal does not fire at upright success; all absolute angles must qualify for 20 seconds', () => {
+  assert.equal(HOLD_SECONDS, 20);
+  assert.ok(EVAL_SECONDS > HOLD_SECONDS);
   const env = new CartPole(2, () => .5, {gravity: 0});
   env.links[0].setTransform({x: 0, y: LENGTHS[0] / 2}, 0);
   env.links[1].setTransform({x: 0, y: LENGTHS[0] + LENGTHS[1] / 2}, 0);
-  for (let i = 0; i < 249; i++) env.step(0, 20);
+  for (let i = 0; i < 999; i++) env.step(0, 30);
   assert.equal(env.result().success, false);
-  const next = env.step(0, 20);
-  assert.equal(env.result().hold, 250 * DT);
+  const next = env.step(0, 30);
+  assert.equal(env.result().hold, 20);
   assert.equal(env.result().success, true);
   assert.equal(next.terminated || next.truncated, false);
 });
@@ -134,7 +137,7 @@ test('worker evaluates, trains and applies setting changes at a rollout boundary
     assert.equal(baseline.checkpoint.policy.updates, 0);
     worker.postMessage({type: 'start', count: 1000});
     await wait(m => m.type === 'stats' && m.steps > 0);
-    worker.postMessage({type: 'config', config: {envs: 5, seconds: 10}});
+    worker.postMessage({type: 'config', config: {envs: 5, seconds: 25}});
     await wait(m => m.type === 'stats' && m.envs === 5);
     worker.postMessage({type: 'pause'});
     await wait(m => m.type === 'state' && m.state === 'paused');
@@ -148,6 +151,8 @@ test('worker evaluates, trains and applies setting changes at a rollout boundary
     const final = history.filter(m => m.type === 'checkpoint').at(-1).checkpoint;
     assert.equal(final.episodes, target);
     assert.ok(final.policy.updates > latest.policy.updates);
+    const evaluated = await wait(m => m.type === 'checkpoint' && m.checkpoint.evaluation?.updates === final.policy.updates);
+    assert.equal(evaluated.checkpoint.evaluation.attempts, 8);
   } finally {
     await worker.terminate();
   }

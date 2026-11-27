@@ -1,5 +1,5 @@
-import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=2';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=2';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=5';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=5';
 
 export function railProjection(width, height, level, cart) {
   const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);

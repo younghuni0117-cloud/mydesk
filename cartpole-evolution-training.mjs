@@ -1,12 +1,12 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=2';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=2';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=5';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=5';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;
 export function options(input = {}) {
   const envs = Number(input.envs), seconds = Number(input.seconds);
   return {envs: Number.isInteger(envs) && envs >= 1 && envs <= 5 ? envs : 1,
-    seconds: Number.isInteger(seconds) && seconds >= 5 && seconds <= 60 ? seconds : 20};
+    seconds: Number.isInteger(seconds) && seconds >= HOLD_SECONDS + 5 && seconds <= 60 ? seconds : 30};
 }
 
 export function episodeBudget(value) {

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f8fa">
   <title>Cart-Pole Evolution Lab | My Desk</title>
   <link rel="stylesheet" href="style.css?v=update69">
-  <link rel="stylesheet" href="cartpole-evolution.css?v=4">
+  <link rel="stylesheet" href="cartpole-evolution.css?v=5">
 </head>
 <body class="game-page cpe-page" data-page="cartpole-evolution">
   <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -38,42 +38,40 @@
           <div class="cpe-stats" aria-label="학습 및 시뮬레이션 지표">
             <div><span>에피소드</span><strong id="cpe-episode">0</strong></div>
             <div><span>평균 보상</span><strong id="cpe-reward">—</strong></div>
-            <div><span>훈련 성공률</span><strong id="cpe-success">—</strong></div>
             <div><span>고정 평가</span><strong id="cpe-test">—</strong></div>
             <div><span title="화면에 표시된 에피소드 경과 시간">학습시간</span><strong id="cpe-time">0.00초</strong></div>
-            <div><span>하중</span><strong id="cpe-force">0.0 N</strong></div>
-            <div><span>직립</span><strong id="cpe-hold">0.00 / 5초</strong></div>
+            <div><span>직립</span><strong id="cpe-hold">0.00 / 20초</strong></div>
+          </div>
+          <div class="cpe-progress">
+            <progress id="cpe-progress" value="0" max="1" aria-label="학습 진행률"></progress>
+            <output id="cpe-progress-text" for="cpe-count">0 / 0</output>
           </div>
         </div>
         <aside class="cpe-panel" aria-label="훈련 설정과 성과" tabindex="0">
         <section class="cpe-chart-box" aria-label="보상 그래프">
-          <h2>보상 추세</h2>
-          <p class="cpe-caption"><span class="cpe-key"></span>에피소드 <span class="cpe-key cpe-key-average"></span>30회 평균</p>
           <canvas id="cpe-chart" role="img" aria-label="세로축 누적 보상, 가로축 에피소드"></canvas>
         </section>
         <section class="cpe-control" aria-label="훈련 조작">
           <div class="cpe-actions cpe-primary-actions">
             <button id="cpe-train" type="button" disabled>학습 시작</button>
             <button id="cpe-model" type="button" disabled>모델 실행</button>
-            <button id="cpe-evaluate" type="button" disabled>평가</button>
           </div>
           <div class="cpe-inputs">
-            <label>레벨<select id="cpe-level"><option value="1">Level 1 · 링크 1개</option></select></label>
+            <label>레벨<select id="cpe-level"><option value="1">링크 1개</option></select></label>
             <label>학습 횟수<input id="cpe-count" type="number" min="1" max="100000" step="1" value="1000" inputmode="numeric"></label>
             <label>동시 환경<select id="cpe-env"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
-            <label>Episode (초)<input id="cpe-seconds" type="number" min="5" max="60" step="1" value="20" inputmode="numeric"></label>
+            <label>시도 시간 (초)<input id="cpe-seconds" type="number" min="25" max="60" step="1" value="30" inputmode="numeric"></label>
           </div>
-          <p id="cpe-plan" class="cpe-caption" hidden></p>
-          <p id="cpe-notice" role="status"></p>
         </section>
           <details class="cpe-options">
             <summary>상세 옵션</summary>
-            <div class="cpe-switches">
-              <label><input id="cpe-axis" type="checkbox" checked> 대차 중심축</label>
-              <label><input id="cpe-arrow" type="checkbox" checked> 하중 화살표</label>
-            </div>
-            <p class="cpe-caption">직립 ±10° · 5초 / 고정 평가 7/8회 · 다음 레벨</p>
-            <button id="cpe-replay" type="button" hidden>평가 1번 재생</button>
+            <label class="cpe-range">그래프 가로축
+              <select id="cpe-range">
+                <option value="50">최근 50회</option><option value="100">최근 100회</option>
+                <option value="240" selected>최근 240회</option><option value="500">최근 500회</option>
+                <option value="1200">최근 1,200회</option>
+              </select>
+            </label>
             <div class="cpe-actions"><button id="cpe-reset" type="button" disabled>현재 레벨 초기화</button><button id="cpe-restore" type="button" hidden>초기화 전 기록 복원</button></div>
           </details>
         </aside>
@@ -81,6 +79,6 @@
     </main>
   </div>
   <script src="shell.js?v=shortcuts2"></script>
-  <script type="module" src="cartpole-evolution.js?v=4"></script>
+  <script type="module" src="cartpole-evolution.js?v=5"></script>
 </body>
 </html>

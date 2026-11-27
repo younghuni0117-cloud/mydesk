@@ -2,9 +2,9 @@ import {World, Vec2, Box, PrismaticJoint, RevoluteJoint} from './vendor/planck.m
 
 export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 2.4;
 export const GRAVITY = 9.81, CART_MASS = 1, MAX_FORCE = 10;
-export const LENGTHS = [.65, .48, .35, .26, .19];
+export const LENGTHS = Array(5).fill(.65);
 export const MASSES = [.12, .09, .07, .05, .04];
-export const HOLD_SECONDS = 5, EVAL_SECONDS = 20, EVAL_TRIALS = 8, PASS_COUNT = 7;
+export const HOLD_SECONDS = 20, EVAL_SECONDS = 40, EVAL_TRIALS = 8, PASS_COUNT = 7;
 const ANGLE_LIMIT = Math.PI / 18, WIDTH = .022;
 export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 export const inputSize = level => 2 + 3 * level;
