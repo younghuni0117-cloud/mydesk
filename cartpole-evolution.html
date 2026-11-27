@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f8fa">
   <title>Cart-Pole Evolution Lab | My Desk</title>
   <link rel="stylesheet" href="style.css?v=update69">
-  <link rel="stylesheet" href="cartpole-evolution.css?v=5">
+  <link rel="stylesheet" href="cartpole-evolution.css?v=6">
 </head>
 <body class="game-page cpe-page" data-page="cartpole-evolution">
   <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -37,8 +37,6 @@
         </section>
           <div class="cpe-stats" aria-label="학습 및 시뮬레이션 지표">
             <div><span>에피소드</span><strong id="cpe-episode">0</strong></div>
-            <div><span>평균 보상</span><strong id="cpe-reward">—</strong></div>
-            <div><span>고정 평가</span><strong id="cpe-test">—</strong></div>
             <div><span title="화면에 표시된 에피소드 경과 시간">학습시간</span><strong id="cpe-time">0.00초</strong></div>
             <div><span>직립</span><strong id="cpe-hold">0.00 / 20초</strong></div>
           </div>
@@ -65,6 +63,7 @@
         </section>
           <details class="cpe-options">
             <summary>상세 옵션</summary>
+            <label class="cpe-guides"><input id="cpe-guides" type="checkbox" checked> 중심축과 화살표 표시</label>
             <label class="cpe-range">그래프 가로축
               <select id="cpe-range">
                 <option value="50">최근 50회</option><option value="100">최근 100회</option>
@@ -79,6 +78,6 @@
     </main>
   </div>
   <script src="shell.js?v=shortcuts2"></script>
-  <script type="module" src="cartpole-evolution.js?v=5"></script>
+  <script type="module" src="cartpole-evolution.js?v=6"></script>
 </body>
 </html>

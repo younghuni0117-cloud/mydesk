@@ -15,6 +15,7 @@ let savedSettings = read('settings') ?? {};
 let config = options(savedSettings);
 const ranges = [50, 100, 240, 500, 1200];
 let chartRange = ranges.includes(savedSettings.chartRange) ? savedSettings.chartRange : 240;
+let showGuides = savedSettings.showGuides !== false;
 let unlocked = read('unlocked');
 unlocked = Number.isInteger(unlocked) ? Math.min(5, Math.max(1, unlocked)) : 1;
 for (let i = 1; i < 5; i++) if (read('level' + i)?.milestone?.passed >= 7) unlocked = Math.max(unlocked, i + 1);
@@ -36,7 +37,7 @@ function write(key, value) {
 }
 
 function saveSettings() {
-  write('settings', {...config, level, count, chartRange});
+  write('settings', {...config, level, count, chartRange, showGuides});
 }
 
 function controls() {
@@ -66,10 +67,7 @@ function format(value, digits = 2) {
 }
 
 function showStats() {
-  const {recent, evaluation} = metrics ?? {};
   get('episode').textContent = numeric.format(metrics?.episodes ?? 0);
-  get('reward').textContent = format(recent?.mean, 1);
-  get('test').textContent = evaluation ? evaluation.passed + ' / ' + evaluation.attempts : '—';
   const total = metrics?.target ? metrics.target - metrics.planStart : 0;
   const completed = total ? Math.min(total, metrics.episodes - metrics.planStart) : 0;
   get('progress').max = total || 1;
@@ -210,11 +208,13 @@ function draw(time) {
   if (active) {
     const x = px(cart), y = py(0);
     const half = 24;
-    ctx.strokeStyle = '#aebdcd';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 5]);
-    line(ctx, x, y, x, py(reach));
-    ctx.setLineDash([]);
+    if (showGuides) {
+      ctx.strokeStyle = '#aebdcd';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 5]);
+      line(ctx, x, y, x, py(reach));
+      ctx.setLineDash([]);
+    }
     const cartPaint = ctx.createLinearGradient(0, y - 9, 0, y + 13);
     cartPaint.addColorStop(0, '#568cbb');
     cartPaint.addColorStop(.35, '#32678f');
@@ -249,7 +249,7 @@ function draw(time) {
       circle(ctx, modelX(u), py(v), 2.8, '#d0dce7');
     }
     const tip = x + active.force / MAX_FORCE * 40;
-    if (Math.abs(tip - x) > 4) {
+    if (showGuides && Math.abs(tip - x) > 4) {
       ctx.strokeStyle = '#26746c';
       ctx.lineWidth = 2;
       const direction = Math.sign(tip - x);
@@ -287,7 +287,7 @@ function plot() {
   const tick = roundTick((high - low) / 4);
   const min = Math.floor(low / tick) * tick, max = Math.ceil(high / tick) * tick;
   const labels = [max, (min + max) / 2, min].map(n => numeric.format(n));
-  ctx.font = '600 12px sans-serif';
+  ctx.font = '12px sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   const axis = Math.ceil(Math.max(...labels.map(t => ctx.measureText(t).width))) + 11;
@@ -364,6 +364,12 @@ get('restore').onclick = () => {
   if (backup && write('level' + level, backup)) openLevel(level);
 };
 get('range').value = chartRange;
+get('guides').checked = showGuides;
+get('guides').onchange = () => {
+  showGuides = get('guides').checked;
+  saveSettings();
+  requestDraw();
+};
 get('range').onchange = () => {
   chartRange = Number(get('range').value);
   saveSettings();
