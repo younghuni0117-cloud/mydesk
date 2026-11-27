@@ -1,6 +1,7 @@
 import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=5';
 import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=5';
 import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=5';
+import {CartSync} from './cartpole-evolution-sync.mjs?v=1';
 
 const get = name => document.getElementById('cpe-' + name);
 const prefix = 'mydesk.cartpole-evolution.v4.';
@@ -21,6 +22,7 @@ unlocked = Number.isInteger(unlocked) ? Math.min(5, Math.max(1, unlocked)) : 1;
 for (let i = 1; i < 5; i++) if (read('level' + i)?.milestone?.passed >= 7) unlocked = Math.max(unlocked, i + 1);
 let level = Math.min(unlocked, Math.max(1, Math.trunc(Number(savedSettings.level)) || 1));
 let count = episodeBudget(savedSettings.count);
+let sync = null, syncing = false;
 const canvas = get('canvas'), chart = get('chart');
 
 function read(key) {
@@ -115,6 +117,7 @@ function openLevel(next) {
       } else if (data.type === 'checkpoint') {
         lastCheckpoint = data.checkpoint;
         write('level' + level, lastCheckpoint);
+        sync?.queue(level, lastCheckpoint);
       } else if (data.type === 'milestone') {
         unlocked = Math.max(unlocked, Math.min(5, level + 1));
         write('unlocked', unlocked);
@@ -388,4 +391,74 @@ document.addEventListener('visibilitychange', () => {
   }
   if (!document.hidden) requestDraw();
 });
+async function connect() {
+  syncing = true;
+  const fragment = new URLSearchParams(location.hash.slice(1)).get('cartpole');
+  let key;
+  try { key = fragment || localStorage.getItem('mydesk.cartpole.connection') || localStorage.getItem('mydesk.mindmap.connection.v1'); } catch {}
+  if (!/^[A-Za-z0-9_-]{43}$/.test(key || '')) {
+    get('sync').textContent = '기기 연결 링크 필요';
+    syncing = false;
+    return;
+  }
+  const candidate = new CartSync({key});
+  try {
+    const rows = await candidate.load();
+    for (const row of rows) {
+      const pending = candidate.pending.get(row.id);
+      const local = read('level' + row.id);
+      if (pending) write('level' + row.id, pending.model);
+      else if (row.model) write('level' + row.id, row.model);
+      else if (local) candidate.queue(row.id, local);
+      if (row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
+    }
+    await candidate.flush();
+    localStorage.setItem('mydesk.cartpole.connection', key);
+    if (fragment) history.replaceState(null, '', location.pathname + location.search);
+    sync = candidate;
+    get('sync').textContent = '웹 연결됨';
+    openLevel(level);
+  } catch (error) { get('sync').textContent = error.message; }
+  finally { syncing = false; }
+}
+get('connect').onclick = async () => {
+  if (!sync) {
+    const link = prompt('다른 기기에서 공유한 연결 링크');
+    if (!link) return;
+    try {
+      const url = new URL(link);
+      if (url.origin !== location.origin) throw Error();
+      location.hash = url.hash;
+      await connect();
+    } catch { get('sync').textContent = '연결 링크 확인'; }
+    return;
+  }
+  const url = new URL(location.pathname, location.origin);
+  url.hash = 'cartpole=' + sync.key;
+  try { await navigator.clipboard.writeText(url.href); get('sync').textContent = '연결 링크 복사됨'; }
+  catch { prompt('다른 기기에서 이 링크를 열어주세요.', url.href); }
+};
+setInterval(async () => {
+  if (!sync || syncing || document.hidden) return;
+  syncing = true;
+  try {
+    if (sync.pending.size) {
+      await sync.flush();
+      get('sync').textContent = '웹에 저장됨';
+    } else if (!['running', 'loading', 'evaluating'].includes(phase)) {
+      const revision = sync.rows.get(level)?.revision;
+      const rows = await sync.load();
+      for (const row of rows) {
+        if (row.model) write('level' + row.id, row.model);
+        if (row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
+      }
+      if (sync.rows.get(level)?.revision !== revision) openLevel(level);
+      showLevels();
+    }
+  } catch (error) {
+    get('sync').textContent = error.message;
+    if (error.message.includes('새로고침')) worker?.postMessage({type: 'pause'});
+  } finally { syncing = false; }
+}, 3000);
 openLevel(level);
+connect();
