@@ -1,5 +1,5 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=stationary1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=stationary1';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=validated1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=validated1';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;
@@ -41,6 +41,7 @@ export class Trainer {
     this.first = null;
     this.history = [];
     this.evaluation = this.bestEvaluation = this.milestone = null;
+    this.evaluationHistory=[];
     if (checkpoint) {
       if (checkpoint.version !== 2 || checkpoint.level !== level) throw new Error('다른 레벨의 저장 데이터입니다.');
       this.policy.load(checkpoint.policy);
@@ -52,8 +53,10 @@ export class Trainer {
         throw new Error('Episode 기록 형식 오류');
       }
       for (const key of ['first', 'history', 'evaluation', 'bestEvaluation', 'milestone']) this[key] = checkpoint[key] ?? null;
+      this.evaluationHistory=(checkpoint.evaluationHistory??[]).filter(r=>Number.isFinite(r.episode)&&Number.isFinite(r.mean)&&r.protocol===REWARD_PROTOCOL).map(r=>({...r}));
       if (checkpoint.rewardProtocol !== REWARD_PROTOCOL) {
         this.evaluation = this.bestEvaluation = this.milestone = null;
+        this.evaluationHistory=[];
       }
       this.random.state = checkpoint.seed >>> 0;
     }
@@ -112,7 +115,7 @@ export class Trainer {
   checkpoint() {
     const {level, steps, episodes, bestHold, travel, first, history, evaluation, bestEvaluation, milestone} = this;
     return {version: 2, physicsVersion: PHYSICS_VERSION, rewardProtocol: REWARD_PROTOCOL, level, steps, episodes, bestHold, travel, first, history: history.slice(),
-      evaluation, bestEvaluation, milestone, seed: this.random.state, policy: this.policy.checkpoint()};
+      evaluation, bestEvaluation, milestone, evaluationHistory:this.evaluationHistory.map(r=>({...r})), seed: this.random.state, policy: this.policy.checkpoint()};
   }
 }
 

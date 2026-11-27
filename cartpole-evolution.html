@@ -46,7 +46,7 @@
         </div>
         <aside class="cpe-panel" aria-label="하단 훈련 설정과 성과" tabindex="0">
         <section class="cpe-chart-box" aria-label="보상 그래프">
-          <canvas id="cpe-chart" role="img" aria-label="세로축 누적 보상, 가로축 에피소드"></canvas>
+          <div style="display:flex;gap:18px;font-size:12px"><span>평균 보상 <strong id="cpe-chart-average">—</strong></span><span>정책 검증 보상 <strong id="cpe-chart-validated">—</strong></span></div><canvas id="cpe-chart" role="img" aria-label="최근 10회 평균 보상과 실제 고정 평가 보상, 가로축 에피소드"></canvas>
         </section>
         <section class="cpe-control" aria-label="훈련 조작">
           <div class="cpe-actions cpe-primary-actions">
@@ -90,6 +90,6 @@
     </main>
   </div>
   <script src="shell.js?v=shortcuts2"></script>
-  <script type="module" src="cartpole-evolution.js?v=stationary1"></script>
+  <script type="module" src="cartpole-evolution.js?v=validated1"></script>
 </body>
 </html>

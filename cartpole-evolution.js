@@ -1,6 +1,7 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=stationary1';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=stationary1';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=stationary1';
+import {chartData} from './cartpole-evolution-chart.mjs?v=validated1';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=validated1';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=validated1';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=validated1';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=quota1';
 import {cacheGet, cachePut} from './cartpole-evolution-cache.mjs?v=quota1';
 
@@ -106,7 +107,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=stationary1', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=validated1', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -339,15 +340,12 @@ function plot() {
   const s = surface(chart);
   if (!s) return;
   const {ctx, width, height} = s, all = metrics?.history ?? [];
-  const history = chartRange ? all.slice(-chartRange) : all;
-  const rewards = history.map(row => row.reward);
+  const data=chartData(all,metrics?.evaluationHistory??[],chartRange);
+  const history=data.average,rewards=history.map(r=>r.value),average=data.validated.map(r=>r.value);
+  get('chart-average').textContent=data.latestAverage===null?'—':format(data.latestAverage,1);
+  get('chart-validated').textContent=data.latestValidated===null?'—':format(data.latestValidated.value,1);
+  get('chart-validated').title=data.latestValidated?'에피소드 '+data.latestValidated.episode+'에서 실제 고정 평가한 보상':'검증 결과 없음';
   const roundTick = (range) => 10 ** Math.floor(Math.log10(range || 1));
-  const offset = all.length - history.length;
-  const average = history.map((_, i) => {
-    const end = offset + i + 1;
-    const window = all.slice(Math.max(0, end - 30), end);
-    return window.reduce((sum, row) => sum + row.reward, 0) / window.length;
-  });
   const low = Math.min(0, ...rewards, ...average), high = Math.max(1, ...rewards, ...average);
   const tick = roundTick((high - low) / 4);
   const min = Math.floor(low / tick) * tick, max = Math.ceil(high / tick) * tick;
@@ -356,7 +354,7 @@ function plot() {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   const axis = Math.ceil(Math.max(...labels.map(t => ctx.measureText(t).width))) + 11;
-  const px = i => axis + i * (width - axis - 7) / Math.max(1, rewards.length - 1);
+  const px = episode => axis + (episode-data.start) * (width-axis-7) / Math.max(1,data.end-data.start);
   const py = reward => 10 + (max - reward) / (max - min) * (height - 30);
   ctx.fillStyle = '#263c52';
   for (const [i, label] of labels.entries()) {
@@ -371,13 +369,13 @@ function plot() {
   if (!history.length) return;
   ctx.textAlign = 'right';
   if (history.length > 1) ctx.fillText(numeric.format(history.at(-1).episode), width - 4, height - 8);
-  const series = [rewards, average];
+  const series = [history, data.validated];
   for (const [i, values] of series.entries()) {
     ctx.strokeStyle = i ? '#245683' : '#9fb7ce';
     ctx.lineWidth = i ? 2 : 1;
     ctx.beginPath();
-    values.forEach((v, n) => n ? ctx.lineTo(px(n), py(v)) : ctx.moveTo(px(n), py(v)));
-    if (values.length === 1) ctx.lineTo(px(0) + 4, py(values[0]));
+    values.forEach((v, n) => n ? ctx.lineTo(px(v.episode), py(v.value)) : ctx.moveTo(px(v.episode), py(v.value)));
+    if (values.length === 1) ctx.lineTo(px(values[0].episode) + 4, py(values[0].value));
     ctx.stroke();
   }
 }

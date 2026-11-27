@@ -1,5 +1,5 @@
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=stationary1';
-import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=stationary1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=validated1';
+import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=validated1';
 
 let trainer, settled, pending, update, assessment, running = false;
 let timer, lastStats, lastSaved, sampleSteps = 0, planStart = 0, target = 0;
@@ -16,6 +16,7 @@ function stats(now = performance.now()) {
     recent: summarize(trainer.history.slice(-30)), history: trainer.history.map(({episode, reward}) => ({episode, reward})),
     first: trainer.first, bestHold: trainer.bestHold, travel: trainer.travel,
     evaluation: trainer.evaluation, bestEvaluation: trainer.bestEvaluation, pending: Boolean(pending),
+    evaluationHistory:trainer.evaluationHistory,
     rate: running ? Math.round((trainer.steps - sampleSteps) * 1000 / Math.max(1, now - lastStats)) : 0});
   lastStats = now;
   sampleSteps = trainer.steps;
@@ -33,23 +34,24 @@ function beginEvaluation(manual) {
   policy.load(settled.policy);
   const samples = [];
   assessment = {iterator: evaluate(trainer.level, obs => policy.predict(obs),
-    manual ? sample => samples.push(sample) : undefined, trainer.config), manual, updates: policy.updates, samples};
+    manual ? sample => samples.push(sample) : undefined, trainer.config), manual, updates: policy.updates, episode:settled.episodes, samples};
   if (manual) send('state', {state: 'evaluating'});
 }
 
 function advanceEvaluation() {
   const next = assessment.iterator.next();
   if (!next.done) return;
-  const result = {...next.value, updates: assessment.updates};
+  const result = {...next.value, updates: assessment.updates,episode:assessment.episode};
   const firstPass = result.success && !trainer.milestone;
   trainer.evaluation = result;
+  trainer.evaluationHistory.push({episode:result.episode,updates:result.updates,mean:result.mean,protocol:result.protocol});
   const best = trainer.bestEvaluation;
   if (!best || result.passed > best.passed || (result.passed === best.passed &&
       (result.hold > best.hold || (result.hold === best.hold && result.mean > best.mean)))) {
     trainer.bestEvaluation = result;
   }
   if (firstPass) trainer.milestone = {episode: settled.episodes, updates: result.updates, passed: result.passed};
-  settled = {...settled, evaluation: result, bestEvaluation: trainer.bestEvaluation, milestone: trainer.milestone};
+  settled = {...settled, evaluation: result, bestEvaluation: trainer.bestEvaluation, milestone: trainer.milestone,evaluationHistory:trainer.evaluationHistory.map(r=>({...r}))};
   if (assessment.manual) {
     send('recording', {frames: assessment.samples});
     send('state', {state: 'paused'});
