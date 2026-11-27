@@ -1,22 +1,24 @@
-import { DECISION_STEPS, initialState, loadLevels, observe, progress, step, STEP } from './physics.mjs';
+import { DECISION_STEPS, initialState, levelKey, loadLevels, observe, progress, step, STEP } from './physics.mjs?v=2';
 import { forward, greedy } from './dqn.mjs';
 import { compatible, makeReplay } from './training.mjs';
-import { chartMetrics, drawChart, render } from './render.mjs';
+import { chartMetrics, drawChart, render } from './render.mjs?v=2';
+import { enableAudio, playJump } from './sound.mjs';
 import { put, read, saveManual } from './storage.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('course');
 let worker;
-try { worker = new Worker(new URL('./worker.mjs', import.meta.url), { type: 'module' }); }
+try { worker = new Worker(new URL('./worker.mjs?v=2', import.meta.url), { type: 'module' }); }
 catch { /* Manual play can run without a Worker. */ }
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobile = matchMedia('(pointer: coarse)');
 const percent = value => value == null ? '—' : (100 * value).toFixed(1) + '%';
 const number = value => value == null ? '—' : value.toFixed(3);
-let levels, level, state, ai, user, policy, replay, lastReplay, watchingBest;
+let levels, level, state, previousState, ai, user, policy, previewPolicy, replay, lastReplay, watchingBest;
+let sound = true, previewAttempt = 0, chartReport, chartMetric;
 let mode = 'manual', activity = 'ready', resumeActivity, pendingActivity;
 let epoch = 0, pendingLevel, actions = [], replayIndex = 0, jump = false, q, selectedAction;
-let lastFrame, lastPaint = 0, elapsed = 0, crashAge = 0, cooldown = 0, clock = 0;
+let lastFrame, elapsed = 0, crashAge = 0, cooldown = 0, clock = 0;
 let budget = mobile.matches ? 5 : 10, nextBudgetAt = 0, slowFrames = 0, frameCount = 0;
 let eventKey = '', renderedState, renderedActivity;
 
@@ -49,17 +51,30 @@ function comparison() {
 }
 function diagnostics() {
   if (!ai) return;
-  const shownQ = activity === 'observe' ? q : ai.q;
+  const watching = ['training', 'observe'].includes(activity);
+  const shownQ = watching ? q : ai.q;
+  $('episode').textContent = ai.episode.toLocaleString();
+  $('best-progress').textContent = percent(ai.maximum);
+  $('average-progress').textContent = percent(ai.average);
+  const goal = ai.runTarget - ai.runStart;
+  const completed = Math.max(0, ai.episode - ai.runStart);
+  $('training-progress').value = goal ? Math.min(1, completed / goal) : 0;
+  $('training-count').textContent = (goal ? completed.toLocaleString() + ' / ' + goal.toLocaleString() : '—');
   setPairs($('metrics'), [
     ['에피소드', ai.episode], ['최근 20회 평균', percent(ai.average)], ['평가 최고 정책', percent(ai.best)],
     ['탐색률 ε', percent(ai.epsilon)], ['손실', number(ai.loss)],
     ['Q(대기)', number(shownQ?.[0])], ['Q(점프)', number(shownQ?.[1])],
-    ['선택 행동', activity === 'observe' && selectedAction !== undefined ? (selectedAction ? '점프' : '대기') : '—'],
+    ['선택 행동', watching && selectedAction !== undefined ? (selectedAction ? '점프' : '대기') : '—'],
     ['가중치 갱신', ai.updates], ['경험 버퍼', ai.replaySize + ' / ' + ai.capacity],
     ['에피소드/초', activity === 'training' ? ai.episodeRate.toFixed(1) : '—'],
     ['Worker 처리 시간', activity === 'training' ? ai.compute.toFixed(1) + ' ms' : '—']
   ]);
-  if ($('analysis').open) $('chart-label').textContent = drawChart($('chart'), ai.history, $('metric').value);
+  const metric = $('metric').value;
+  if (chartReport !== ai || chartMetric !== metric) {
+    chartReport = ai;
+    chartMetric = metric;
+    $('chart-label').textContent = drawChart($('chart'), ai.history, metric);
+  }
   $('evaluation').textContent = ai.evaluation
     ? '고정 조건 · ' + percent(ai.evaluation.fixed) + ' / 시작점 변화 · '
       + ai.evaluation.robustness.map(row => row.offset + ' px ' + percent(row.progress)).join(' · ')
@@ -91,7 +106,10 @@ function refresh() {
   $('manual').setAttribute('aria-pressed', mode === 'manual');
   $('ai').setAttribute('aria-pressed', mode === 'ai');
   $('ai').disabled = !worker;
-  $('ai-panel').hidden = mode !== 'ai';
+  for (const id of ['ai-panel', 'ai-chart', 'live-stats', 'run-meter']) $(id).hidden = mode !== 'ai';
+  $('count').disabled = activity === 'training' || (activity === 'paused' && resumeActivity === 'training');
+  $('playback-mode').textContent = activity === 'training' ? '정책 미리보기 · 1배속' : activity === 'observe' ? '정책 관찰 · 1배속' : '';
+  $('sound').setAttribute('aria-pressed', String(sound));
   $('controls-help').hidden = mode !== 'manual';
   $('level').disabled = !!pendingLevel;
   $('train').disabled = !ai || pendingActivity === 'training';
@@ -105,7 +123,10 @@ function refresh() {
   $('open-checkpoint').textContent = ai?.onConflictBranch ? '기본 체크포인트 열기' : '충돌 사본 열기';
   $('compare').disabled = !lastReplay || ai?.best == null;
   $('pause').disabled = !['manual', 'observe', 'training', 'replay', 'paused'].includes(activity);
-  $('pause').textContent = activity === 'paused' ? '계속' : '일시정지';
+  const pauseLabel = activity === 'paused' ? '계속' : '일시정지';
+  $('pause').textContent = activity === 'paused' ? '▶' : 'Ⅱ';
+  $('pause').setAttribute('aria-label', pauseLabel);
+  $('pause').title = pauseLabel;
   const show = ['ready', 'paused', 'cleared', 'replay-finished'].includes(activity);
   $('overlay').hidden = !show;
   $('overlay-title').textContent = ({ ready: level?.name ?? 'Neon Jump', paused: '일시정지',
@@ -120,6 +141,7 @@ function refresh() {
 function start(activityName, offset = 0) {
   activity = activityName;
   state = initialState(level, offset);
+  previousState = { ...state };
   jump = false;
   actions = [];
   replayIndex = 0;
@@ -142,14 +164,14 @@ async function loadManual(currentLevel) {
   } catch { notice('브라우저에서 수동 기록을 읽을 수 없습니다.'); }
 }
 function saveSettings() {
-  if (level) put('settings', { level: level.id, mode }).catch(() => notice('설정을 저장할 수 없습니다.'));
+  if (level) put('settings', { level: levelKey(level), mode, sound, count: $('count').value }).catch(() => notice('설정을 저장할 수 없습니다.'));
 }
 function loadLevel(target) {
   if (pendingLevel) return;
   pendingLevel = { target, epoch: epoch + 1 };
-  $('level').value = target.id;
+  $('level').value = levelKey(target);
   $('level').disabled = true;
-  if (worker) worker.postMessage({ type: 'load', level: target.id, epoch: pendingLevel.epoch });
+  if (worker) worker.postMessage({ type: 'load', level: levelKey(target), epoch: pendingLevel.epoch });
   else finishLoad(null);
 }
 function switchMode(target) {
@@ -160,18 +182,26 @@ function switchMode(target) {
   ready();
   saveSettings();
 }
-function train() {
+function train(resume = false) {
   if (!ai || pendingLevel) return;
   if (activity === 'training') { pause(); return; }
+  if (!$('count').reportValidity()) return;
+  if (sound) enableAudio();
+  if (!resume) {
+    policy = previewPolicy = null;
+    previewAttempt = 1;
+    start('training');
+  }
   pendingActivity = 'training';
   activity = 'training';
   status('고속 학습 중');
   send('budget', { ms: budget });
-  send('train', { continue: ai.trained });
+  send('train', { continue: ai.trained, resume, count: $('count').valueAsNumber });
   refresh();
 }
 function observePolicy(best = false) {
   if (!ai || pendingLevel) return;
+  if (sound) enableAudio();
   pendingActivity = 'observe';
   watchingBest = best;
   send('observe', { best });
@@ -179,7 +209,7 @@ function observePolicy(best = false) {
 }
 function pause() {
   if (activity === 'paused') {
-    if (resumeActivity === 'training') { train(); return; }
+    if (resumeActivity === 'training') { train(true); return; }
     activity = resumeActivity;
     elapsed = 0;
     status(activity === 'manual' ? '플레이 중' : '재생 중');
@@ -193,6 +223,7 @@ function pause() {
   refresh();
 }
 function replayRun(record) {
+  if (sound) enableAudio();
   if (!compatible(level, record)) { notice('이 스테이지 버전에서 재생할 수 없는 기록입니다.'); return; }
   send('pause');
   pendingActivity = null;
@@ -209,6 +240,7 @@ function mainAction() {
     if (ai?.trained) observePolicy(true);
     else train();
   } else {
+    if (sound) enableAudio();
     start('manual');
     status('플레이 중');
     canvas.focus({ preventScroll: true });
@@ -246,15 +278,21 @@ function simulate() {
     if (cooldown <= 0) {
       if (activity === 'manual') { start('manual'); status('플레이 중'); }
       if (activity === 'observe') start('observe');
+      if (activity === 'training') {
+        policy = previewPolicy ?? policy;
+        previewAttempt++;
+        start('training');
+      }
     }
     return;
   }
+  if (activity === 'training' && !policy) return;
   let press = false;
   if (activity === 'manual') {
     press = jump;
     jump = false;
     if (press) actions.push(state.tick);
-  } else if (activity === 'observe' && state.tick % DECISION_STEPS === 0) {
+  } else if (['training', 'observe'].includes(activity) && state.tick % DECISION_STEPS === 0) {
     q = forward(policy, observe(level, state)).at(-1);
     selectedAction = greedy(q);
     press = selectedAction === 1;
@@ -262,9 +300,14 @@ function simulate() {
     press = true;
     replayIndex++;
   }
+  previousState = { ...state };
+  const launched = press && state.grounded;
   step(level, state, press);
+  if (launched && sound) playJump();
   if (activity === 'manual' && state.status !== 'running') manualEnded();
-  else if (activity === 'observe' && state.status !== 'running') {
+  else if (activity === 'training' && state.status !== 'running') {
+    cooldown = state.status === 'cleared' ? 1.2 : 0.72;
+  } else if (activity === 'observe' && state.status !== 'running') {
     cooldown = state.status === 'cleared' ? 1.2 : 0.72;
     status(state.status === 'cleared' ? '관찰 정책이 스테이지를 클리어했습니다.' : '관찰 정책이 충돌했습니다.');
   } else if (activity === 'replay' && (state.tick >= replay.ticks || state.status !== 'running')) {
@@ -277,21 +320,26 @@ function frame(now) {
   const dt = lastFrame == null ? 0 : Math.min(0.2, (now - lastFrame) / 1000);
   lastFrame = now;
   if (level) {
-    if (['manual', 'observe', 'replay'].includes(activity) && !document.hidden) {
+    if (['manual', 'observe', 'replay', 'training'].includes(activity) && !document.hidden) {
       elapsed += dt;
-      while (elapsed >= STEP && ['manual', 'observe', 'replay'].includes(activity)) {
+      while (elapsed >= STEP && ['manual', 'observe', 'replay', 'training'].includes(activity)) {
         elapsed -= STEP;
         simulate();
       }
     }
-    const display = activity === 'training' ? ai?.state ?? state : state;
-    if (display && (renderedState !== display || renderedActivity !== activity
-      || (['manual', 'observe', 'replay'].includes(activity) && now - lastPaint >= 12))) {
-      renderedState = display;
+    const moving = ['manual', 'observe', 'replay', 'training'].includes(activity);
+    if (state && (renderedState !== state || renderedActivity !== activity || moving)) {
+      renderedState = state;
       renderedActivity = activity;
-      lastPaint = now;
-      render(canvas, level, display, !reducedMotion.matches && (!mobile.matches || budget > 5), crashAge);
-      const current = progress(level, display);
+      const fraction = Math.min(1, elapsed / STEP);
+      const tween = (before, after) => before + (after - before) * fraction;
+      const display = moving && !cooldown && previousState
+        ? { ...state, x: tween(previousState.x, state.x), y: tween(previousState.y, state.y),
+          angle: tween(previousState.angle, state.angle || (previousState.angle > 2 ? Math.PI : 0)) }
+        : state;
+      const attempt = activity === 'training' ? previewAttempt : activity === 'manual' ? (user?.attempts ?? 0) + 1 : 0;
+      render(canvas, level, display, !reducedMotion.matches, crashAge, attempt);
+      const current = progress(level, state);
       $('progress').value = current;
       $('progress-label').textContent = percent(current);
     }
@@ -319,7 +367,7 @@ function finishLoad(report) {
   user = lastReplay = null;
   for (const id of ['baseline', 'replay-comparison']) $(id).textContent = '';
   $('transfer-source').replaceChildren(new Option('선택', ''), ...levels.filter(entry => entry !== level)
-    .map(entry => new Option(entry.name, entry.id)));
+    .map(entry => new Option(entry.name + (entry.legacy ? ' · 기존' : ''), levelKey(entry))));
   send('budget', { ms: budget });
   ready();
   void loadManual(level);
@@ -329,7 +377,7 @@ function finishLoad(report) {
 if (worker) worker.onmessage = ({ data }) => {
   if (data.type === 'load-blocked' && data.requestedEpoch === pendingLevel?.epoch) {
     pendingLevel = null;
-    $('level').value = level.id;
+    $('level').value = levelKey(level);
     if (activity === 'training') { activity = 'ready'; status('스테이지 변경 전에 학습을 일시정지했습니다.'); }
     refresh();
     return;
@@ -345,12 +393,16 @@ if (worker) worker.onmessage = ({ data }) => {
     case 'notice': notice(data.message); break;
     case 'status':
       ai = data;
-      if (activity === 'training' && data.mode === 'training') pendingActivity = null;
-      if (activity === 'training' && data.mode === 'paused' && (!pendingActivity || data.trained)) {
+      if (activity === 'training' && data.mode === 'training') {
         pendingActivity = null;
-        state = data.state;
+        previewPolicy = data.preview;
+        policy ??= previewPolicy;
+      }
+      if (activity === 'training' && data.mode === 'paused' && (!pendingActivity || data.stopReason)) {
+        pendingActivity = null;
         activity = 'ready';
-        status(data.trained ? '고정 조건 평가 성공 · 학습 완료' : '학습 일시정지');
+        status(data.stopReason === 'solved' ? '고정 조건 평가 성공 · 학습 완료'
+          : data.stopReason === 'target' ? '설정한 학습 횟수를 완료했습니다.' : '학습 일시정지');
       }
       refresh();
       break;
@@ -379,12 +431,19 @@ if (worker) worker.onerror = () => {
   notice('학습 Worker를 실행할 수 없습니다. 직접 플레이는 가능합니다.');
 };
 
-$('level').onchange = event => { notice(); loadLevel(levels.find(entry => entry.id === event.target.value)); };
+$('level').onchange = event => { notice(); loadLevel(levels.find(entry => levelKey(entry) === event.target.value)); };
 $('manual').onclick = () => switchMode('manual');
 $('ai').onclick = () => switchMode('ai');
 $('overlay-action').onclick = mainAction;
 $('pause').onclick = pause;
-$('train').onclick = train;
+$('train').onclick = () => train();
+$('count').onchange = saveSettings;
+$('sound').onclick = () => {
+  sound = !sound;
+  if (sound) enableAudio();
+  $('sound').setAttribute('aria-pressed', String(sound));
+  saveSettings();
+};
 $('observe').onclick = () => observePolicy();
 $('best').onclick = () => observePolicy(true);
 $('manual-replay').onclick = () => replayRun(user?.replay);
@@ -422,6 +481,7 @@ $('analysis').ontoggle = diagnostics;
 canvas.addEventListener('pointerdown', event => {
   if (!event.isPrimary || event.button !== 0) return;
   event.preventDefault();
+  if (sound && mode === 'manual') enableAudio();
   acceptJump();
 });
 window.addEventListener('keydown', event => {
@@ -430,6 +490,7 @@ window.addEventListener('keydown', event => {
   if (event.code === 'Space' && mode === 'manual'
     && !event.target.closest?.('input,select,textarea,button,summary,[contenteditable],a')) {
     event.preventDefault();
+    if (sound) enableAudio();
     acceptJump();
   }
 });
@@ -440,15 +501,34 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 window.addEventListener('pagehide', () => send('pause'));
-new ResizeObserver(() => { renderedState = null; }).observe(canvas);
+new ResizeObserver(([entry]) => {
+  const pixelRatio = Math.min(2, devicePixelRatio);
+  const width = Math.max(1, Math.round(entry.contentRect.width * pixelRatio));
+  const height = Math.max(1, Math.round(entry.contentRect.height * pixelRatio));
+  if (canvas.width === width && canvas.height === height) return;
+  canvas.width = width;
+  canvas.height = height;
+  renderedState = null;
+  if (level && state) render(canvas, level, state, !reducedMotion.matches, crashAge);
+}).observe(canvas);
 try {
   levels = await loadLevels();
   let settings;
   try { settings = await read('settings'); } catch { notice('이 브라우저에서는 기록 저장이 제한됩니다.'); }
   mode = worker && settings?.mode === 'ai' ? 'ai' : 'manual';
-  $('level').replaceChildren(...levels.map((entry, index) =>
-    new Option('0' + (index + 1) + ' · ' + entry.name + ' (' + entry.difficulty + ')', entry.id)));
-  loadLevel(levels.find(entry => entry.id === settings?.level) ?? levels[0]);
+  sound = settings?.sound !== false;
+  if (settings?.count) $('count').value = settings.count;
+  const groups = ['새 코스', '기존 코스와 기록'].map((label, index) => {
+    const group = document.createElement('optgroup');
+    group.label = label;
+    for (const [n, entry] of levels.filter(stage => !!stage.legacy === !!index).entries()) {
+      group.append(new Option('0' + (n + 1) + ' · ' + entry.name, levelKey(entry)));
+    }
+    return group;
+  });
+  $('level').replaceChildren(...groups);
+  loadLevel(levels.find(entry => levelKey(entry) === settings?.level)
+    ?? levels.find(entry => !entry.legacy && entry.id === settings?.level) ?? levels[0]);
   requestAnimationFrame(frame);
 } catch (error) {
   status(error.message);

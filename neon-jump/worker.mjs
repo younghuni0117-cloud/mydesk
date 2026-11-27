@@ -1,4 +1,4 @@
-import { loadLevels, observe, progress } from './physics.mjs';
+import { levelKey, loadLevels, observe } from './physics.mjs?v=2';
 import { forward } from './dqn.mjs';
 import { runPolicy, Training } from './training.mjs';
 import { checkpoint, read } from './storage.mjs';
@@ -9,6 +9,7 @@ let session, level, key, primaryKey, epoch, revision, timer, mode = 'paused', sa
 let budget = 8, updateTime = 0, lastSave = 0, lastEpisode = 0, reportTime = 0, compute = 0;
 let commands = Promise.resolve();
 let hasConflict = false;
+let runStart = 0, runTarget = 0, stopReason = null;
 
 function send(type, info = {}) { postMessage({ type, epoch, ...info }); }
 function publish() {
@@ -18,7 +19,8 @@ function publish() {
   lastEpisode = session.episode;
   reportTime = now;
   const q = Array.from(forward(session.agent.weights, observe(level, session.state)).at(-1));
-  send('status', { ...session.summary(), q, mode, episodeRate, compute, budget, hasConflict, onConflictBranch: key !== primaryKey });
+  send('status', { ...session.summary(), q, mode, episodeRate, compute, budget, hasConflict, runStart, runTarget, stopReason,
+    preview: mode === 'training' ? session.agent.weights : undefined, onConflictBranch: key !== primaryKey });
 }
 
 async function save(reset = false) {
@@ -83,14 +85,18 @@ function loop() {
     do {
       session.tick();
       dirty = true;
-    } while (!session.trained && performance.now() - start < budget);
+    } while (!session.trained && session.episode < runTarget && performance.now() - start < budget);
+    const finished = session.trained || session.episode >= runTarget;
     compute = performance.now() - start;
-    if (start - updateTime >= 250 || session.trained) {
-      if (session.trained) pause();
+    if (start - updateTime >= 250 || finished) {
+      if (finished) {
+        stopReason = session.trained ? 'solved' : 'target';
+        pause();
+      }
       publish();
       updateTime = start;
     }
-    if ((start - lastSave > 10000 || session.trained) && !saving) void save();
+    if (finished || (start - lastSave > 10000 && !saving)) void save();
     if (mode === 'training') timer = setTimeout(loop, Math.max(0, Math.ceil(compute / (budget < 8 ? 2 : 5))));
   } catch (error) {
     void recover(error.message);
@@ -105,12 +111,14 @@ async function handle(message) {
       return;
     }
     epoch = message.epoch;
-    level = (await levels).find(entry => entry.id === message.level);
+    level = (await levels).find(entry => levelKey(entry) === message.level);
     if (!level) throw Error('스테이지를 찾을 수 없습니다.');
     primaryKey = key = 'ai:' + level.id + ':' + level.version;
     hasConflict = false;
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     reportTime = 0;
+    runStart = runTarget = 0;
+    stopReason = null;
     lastSave = performance.now();
     dirty = false;
     session = new Training(level, seed);
@@ -147,8 +155,16 @@ async function handle(message) {
       if (mode === 'training') break;
       if (message.continue) session.trained = false;
       if (session.trained) break;
+      if (!message.resume || runTarget <= session.episode) {
+        if (!Number.isInteger(message.count) || message.count < 1 || message.count > 100000) break;
+        runStart = session.episode;
+        runTarget = runStart + message.count;
+      }
+      stopReason = null;
       mode = 'training';
       reportTime = 0;
+      updateTime = performance.now();
+      publish();
       loop();
       break;
     case 'observe':
@@ -177,8 +193,8 @@ async function handle(message) {
     }
     case 'transfer': {
       if (session.agent.decisions || session.episode || session.best || mode === 'training') break;
-      const previous = (await levels).find(entry => entry.id === message.from);
-      if (!previous || previous.id === level.id) break;
+      const previous = (await levels).find(entry => levelKey(entry) === message.from);
+      if (!previous || previous === level) break;
       const policy = await read('ai:' + previous.id + ':' + previous.version + ':best');
       if (!policy) {
         send('notice', { message: '선택한 스테이지에 보존된 정책이 없습니다.' });
@@ -199,6 +215,8 @@ async function handle(message) {
       const record = await read(target);
       const next = new Training(level, crypto.getRandomValues(new Uint32Array(1))[0], record?.snapshot);
       key = target;
+      runStart = runTarget = 0;
+      stopReason = null;
       session = next;
       revision = record?.revision ?? 0;
       dirty = false;
@@ -210,6 +228,8 @@ async function handle(message) {
     case 'reset': {
       pause();
       if (await save(true)) {
+        runStart = runTarget = 0;
+        stopReason = null;
         session = new Training(level, crypto.getRandomValues(new Uint32Array(1))[0]);
         dirty = false;
       }

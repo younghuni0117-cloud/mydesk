@@ -12,7 +12,7 @@ export function validateLevels(levels) {
   const ids = new Set();
   for (const level of levels) {
     const { id, name, version, start, end, speed, length, obstacles } = level;
-    if (typeof id !== 'string' || ids.has(id) || !name || !Number.isInteger(version)
+    if (typeof id !== 'string' || ids.has(levelKey(level)) || !name || !Number.isInteger(version)
       || ![start, end, speed, length].every(Number.isFinite) || speed <= 0
       || end <= start || end - start !== length || !obstacles?.length) throw Error('스테이지 데이터 오류');
     let previous = start + SIZE;
@@ -21,13 +21,15 @@ export function validateLevels(levels) {
         || w <= 0 || h <= 0 || !['spike', 'block'].includes(type)) throw Error('장애물 데이터 오류');
       previous = x + w;
     }
-    ids.add(id);
+    ids.add(levelKey(level));
   }
   return levels;
 }
 
+export const levelKey = level => level.id + ':' + level.version;
+
 export async function loadLevels() {
-  const response = await fetch(new URL('./levels.json', import.meta.url));
+  const response = await fetch(new URL('./levels.json?v=2', import.meta.url));
   if (!response.ok) throw Error('스테이지를 불러올 수 없습니다.');
   return validateLevels(await response.json());
 }

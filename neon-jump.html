@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f8fa">
   <title>Neon Jump | My Desk</title>
   <link rel="stylesheet" href="style.css?v=update69">
-  <link rel="stylesheet" href="neon-jump/game.css?v=1">
+  <link rel="stylesheet" href="neon-jump/game.css?v=2">
 </head>
 <body data-page="neon-jump">
 <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -20,21 +20,17 @@
     </div>
   </header>
   <main id="main-content" tabindex="-1">
-    <section class="experiment neon">
-      <div class="section-top">
-        <div><h1>Neon Jump</h1><p>직접 장애물을 넘고, AI가 점프 타이밍을 배우는 과정을 관찰하세요.</p></div>
-      </div>
+    <section class="neon" aria-label="Neon Jump">
       <div class="neon-layout">
         <section class="neon-play" id="game">
-          <div class="neon-tools">
-            <label>스테이지 <select id="level"></select></label>
-            <div class="neon-mode" aria-label="플레이 모드">
-              <button id="manual" aria-pressed="true">직접 플레이</button><button id="ai" aria-pressed="false">AI 학습</button>
-            </div>
-            <button id="fullscreen" class="secondary">전체 화면</button>
-          </div>
           <div class="neon-stage">
             <canvas id="course" width="960" height="400" tabindex="0" aria-label="Neon Jump 게임 화면"></canvas>
+            <div class="neon-game-tools">
+              <span id="playback-mode"></span>
+              <button id="sound" type="button" aria-label="점프 소리" aria-pressed="true" title="점프 소리">♪</button>
+              <button id="fullscreen" type="button" aria-label="전체 화면" title="전체 화면">⛶</button>
+              <button id="pause" type="button" aria-label="일시정지" title="일시정지" disabled>Ⅱ</button>
+            </div>
             <div id="overlay" class="neon-overlay">
               <strong id="overlay-title">Neon Jump</strong>
               <button id="overlay-action" class="primary" disabled>시작</button>
@@ -43,29 +39,48 @@
           <div class="neon-hud">
             <label for="progress">진행률 <b id="progress-label">0%</b></label>
             <progress id="progress" max="1" value="0"></progress>
-            <button id="pause" class="secondary" disabled>일시정지</button>
+
+          </div>
+          <div id="live-stats" class="neon-live-stats" hidden>
+            <div><span>에피소드</span><strong id="episode">0</strong></div>
+            <div><span>최고 진행률</span><strong id="best-progress">—</strong></div>
+            <div><span>최근 20회 평균</span><strong id="average-progress">—</strong></div>
+          </div>
+          <div id="run-meter" class="neon-hud" hidden>
+            <label for="training-progress">학습 진행</label>
+            <progress id="training-progress" max="1" value="0"></progress>
+            <output id="training-count" for="count">0 / 0</output>
           </div>
           <p id="controls-help">Space, 클릭 또는 터치로 점프 · Esc로 일시정지</p>
           <p id="status" role="status">스테이지를 불러오는 중입니다.</p>
           <p id="notice" role="status" hidden></p>
         </section>
         <aside class="neon-data" aria-label="플레이 기록">
-          <h2>스테이지 기록</h2>
-          <dl id="comparison" class="neon-stats"></dl>
-          <button id="manual-replay" class="secondary" disabled>수동 최고 기록 재생</button>
+          <div id="ai-chart" hidden>
+            <div class="neon-chart-head">
+              <span>학습 추이</span>
+              <label class="neon-visually-hidden" for="metric">그래프 지표</label>
+              <select id="metric"></select>
+            </div>
+            <canvas id="chart" width="576" height="220" role="img" aria-label="학습 지표 그래프"></canvas>
+            <p id="chart-label"></p>
+          </div>
+          <div class="neon-tools">
+            <label>스테이지 <select id="level"></select></label>
+            <div class="neon-mode" aria-label="플레이 모드">
+              <button id="manual" aria-pressed="true">직접 플레이</button><button id="ai" aria-pressed="false">AI 학습</button>
+            </div>
+          </div>
           <div id="ai-panel" hidden>
-            <h2>AI 학습</h2>
             <div class="neon-actions">
               <button id="train" class="primary" disabled>고속 학습</button>
               <button id="observe" class="secondary" disabled>실시간 관찰</button>
               <button id="best" class="secondary" disabled>최고 정책 재생</button>
             </div>
-            <dl id="metrics" class="neon-stats"></dl>
+            <label class="neon-count">학습 횟수 <input id="count" type="number" required min="1" max="100000" step="1" value="1000" inputmode="numeric"></label>
             <details id="analysis">
               <summary>학습 분석</summary>
-              <label>그래프 <select id="metric"></select></label>
-              <canvas id="chart" width="560" height="230" role="img" aria-label="학습 지표 그래프"></canvas>
-              <p id="chart-label"></p>
+              <dl id="metrics" class="neon-stats"></dl>
               <p id="evaluation"></p>
               <button id="benchmark" class="secondary">무작위 정책과 비교</button>
               <p id="baseline" role="status"></p>
@@ -84,13 +99,17 @@
               <button id="reset" class="reset" disabled>이 스테이지의 AI 기록 초기화</button>
             </details>
           </div>
+          <details class="neon-records">
+            <summary>스테이지 기록</summary>
+            <dl id="comparison" class="neon-stats"></dl>
+            <button id="manual-replay" class="secondary" disabled>수동 최고 기록 재생</button>
+          </details>
         </aside>
       </div>
     </section>
   </main>
-  <footer><span>My Desk</span><span>강화학습 체험</span></footer>
 </div>
 <script src="shell.js?v=neon1"></script>
-<script type="module" src="neon-jump/game.mjs?v=1"></script>
+<script type="module" src="neon-jump/game.mjs?v=2"></script>
 </body>
 </html>

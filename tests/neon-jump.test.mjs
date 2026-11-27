@@ -7,7 +7,7 @@ import { advance, DECISION_STEPS, initialState, observe, progress, step, validat
 import { compatible, runPolicy, Training } from '../neon-jump/training.mjs';
 
 const levels = validateLevels(JSON.parse(readFileSync(new URL('../neon-jump/levels.json', import.meta.url))));
-const [level] = levels;
+const level = levels.find(entry => entry.id === 'first-jump' && entry.version === 1);
 
 test('navigation adds Neon Jump under experiments without replacing custom entries', () => {
   const old = DEFAULT_MENUS.filter(menu => menu.id !== 'neon-jump');
@@ -18,7 +18,7 @@ test('navigation adds Neon Jump under experiments without replacing custom entri
   assert.equal(withNeonJumpMenu([]).length, 0);
 });
 
-test('all three stages can be cleared with physical inputs on the DQN decision grid', () => {
+test('updated and original stages can be cleared with physical inputs on the DQN decision grid', () => {
   for (const stage of levels) {
     const pending = [{ state: initialState(stage), actions: [] }];
     const visited = new Set();
