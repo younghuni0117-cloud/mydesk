@@ -52,3 +52,11 @@ of the newest completed policy at the beginning of each displayed episode.
 Explicit model execution holds the selected snapshot and disables exploration.
 The full rail stays fixed on screen. The model uses a fixed local drawing scale
 in portrait and landscape.
+
+### 관절 저항 상세 옵션
+
+상세 옵션의 관절 마찰 토크(0–0.2 N·m, 기본 0.002)와 회전 댐핑(0–0.1 N·m·s/rad, 기본 0.005)은 모든 회전 관절에 공통 적용한다. 마찰은 Planck의 목표 상대속도 0인 토크 제한 브레이크이며 링크를 구동하는 정책 모터가 아니다. 댐핑은 상대각속도에 비례하는 반대 방향 토크를 양쪽 강체에 적용한다. 0이면 각 저항을 끈다. 기존 damping 생성자 옵션도 호환한다. 직접 물리 모델 생성 시 마찰은 기존처럼 0이며 앱 기본 설정은 약한 마찰 0.002다.
+
+브라우저 설정 저장, 학습 환경·재생 환경·고정 평가에 연결했다. 학습 중 변경은 rollout 경계에서 적용하고 모델 미리보기는 즉시 적용한다. 정책 가중치는 초기화하지 않는다. 평가 결과는 설정한 저항 조건의 결과로 해석해야 한다.
+
+검증: `node --test --test-isolation=none tests/cartpole-resistance.test.mjs tests/cartpole-evolution.test.mjs` — 19개 통과. 저항의 에너지 소산, 모든 관절의 브레이크 방향·한도, 범위 제한 및 0값, 정책 가중치 유지, 미리보기 설정 적용, 기존 물리/PPO/Worker 회귀 검증.

@@ -65,6 +65,11 @@
             <summary>상세 옵션</summary>
             <span id="cpe-sync" role="status"></span>
             <label class="cpe-guides"><input id="cpe-guides" type="checkbox" checked> 중심축과 화살표 표시</label>
+            <div class="cpe-inputs">
+              <label>관절 마찰 토크 (N·m)<input id="cpe-joint-friction" type="number" min="0" max="0.2" step="0.001" value="0.002"></label>
+              <label>회전 댐핑 (N·m·s/rad)<input id="cpe-joint-damping" type="number" min="0" max="0.1" step="0.001" value="0.005"></label>
+            </div>
+            <small>모든 관절 공통 · 0이면 해당 저항 없음 · 학습은 수집 구간 종료 후 적용</small>
             <label class="cpe-guides"><input id="cpe-impact-enabled" type="checkbox"> 학습 중 외부 충격</label>
             <div class="cpe-inputs">
               <label>충격 간격 (초)<input id="cpe-impact-interval" type="number" min="0.2" max="60" step="0.1" value="3"></label>
@@ -85,6 +90,6 @@
     </main>
   </div>
   <script src="shell.js?v=shortcuts2"></script>
-  <script type="module" src="cartpole-evolution.js?v=thick2"></script>
+  <script type="module" src="cartpole-evolution.js?v=resistance1"></script>
 </body>
 </html>

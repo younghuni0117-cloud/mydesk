@@ -44,7 +44,7 @@ export function postureReward({angle, speed, stability, mean, all, action, acqui
 }
 
 export class CartPole {
-  constructor(level, random, {gravity = GRAVITY, damping = .005, cartDamping = .025, substeps = DT / PHYSICS_DT, mixedStarts = false} = {}) {
+  constructor(level, random, {gravity = GRAVITY, damping = .005, jointDamping = damping, jointFriction = 0, cartDamping = .025, substeps = DT / PHYSICS_DT, mixedStarts = false} = {}) {
     this.level = level;
     this.random = random;
     this.mixedStarts = mixedStarts;
@@ -71,9 +71,16 @@ export class CartPole {
       this.links.push(rod);
       parent = rod;
     }
-    this.damping = damping;
+    this.setJointResistance({jointDamping,jointFriction});
     this.world.setWarmStarting(false);
     this.reset();
+  }
+
+  setJointResistance({jointDamping=.005,jointFriction=.002}={}) {
+    this.damping=clamp(Number.isFinite(Number(jointDamping))?Number(jointDamping):.005,0,.1);
+    this.jointFriction=clamp(Number.isFinite(Number(jointFriction))?Number(jointFriction):.002,0,.2);
+    // Zero-speed friction brake: opposes relative motion, never drives the links.
+    for(const joint of this.joints){joint.setMotorSpeed(0);joint.setMaxMotorTorque(this.jointFriction);joint.enableMotor(this.jointFriction>0);}
   }
 
   reset() {

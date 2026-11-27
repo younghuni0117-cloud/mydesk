@@ -1,5 +1,5 @@
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=rail10';
-import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=rail10';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=resistance1';
+import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=resistance1';
 
 let trainer, settled, pending, update, assessment, running = false;
 let timer, lastStats, lastSaved, sampleSteps = 0, planStart = 0, target = 0;
@@ -33,7 +33,7 @@ function beginEvaluation(manual) {
   policy.load(settled.policy);
   const samples = [];
   assessment = {iterator: evaluate(trainer.level, obs => policy.predict(obs),
-    manual ? sample => samples.push(sample) : undefined), manual, updates: policy.updates, samples};
+    manual ? sample => samples.push(sample) : undefined, trainer.config), manual, updates: policy.updates, samples};
   if (manual) send('state', {state: 'evaluating'});
 }
 

@@ -1,6 +1,6 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=rail10';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=rail10';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=rail10';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=resistance1';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=resistance1';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=resistance1';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=quota1';
 import {cacheGet, cachePut} from './cartpole-evolution-cache.mjs?v=quota1';
 
@@ -106,7 +106,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=rail10', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=resistance1', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -170,7 +170,7 @@ function displayFrame(elapsed) {
   if (!policy) return null;
   const playing = Boolean(modelPolicy) || ['running', 'complete'].includes(phase);
   if (!preview || (playing && preview.done)) {
-    preview = new PreviewEpisode(level, config.seconds, policy, !modelPolicy);
+    preview = new PreviewEpisode(level, config.seconds, policy, !modelPolicy, undefined, config);
     preview.env.nextImpact = null;
     elapsed = 0;
   }
@@ -386,9 +386,13 @@ function configure() {
   config = options({envs: get('env').value, seconds: get('seconds').value,
     impactEnabled: get('impact-enabled').checked,
     impactInterval: get('impact-interval').value,
-    impactMin: get('impact-min').value, impactMax: get('impact-max').value});
+    impactMin: get('impact-min').value, impactMax: get('impact-max').value,
+    jointFriction: get('joint-friction').value,jointDamping: get('joint-damping').value});
   get('env').value = config.envs;
   get('seconds').value = config.seconds;
+  get('joint-friction').value=config.jointFriction;
+  get('joint-damping').value=config.jointDamping;
+  preview?.env.setJointResistance(config);
   saveSettings();
   worker?.postMessage({type: 'config', config});
 }
@@ -401,6 +405,9 @@ get('impact-enabled').checked = config.impactEnabled;
 get('impact-interval').value = config.impactInterval;
 get('impact-min').value = config.impactMin;
 get('impact-max').value = config.impactMax;
+get('joint-friction').value=config.jointFriction;
+get('joint-damping').value=config.jointDamping;
+get('joint-friction').onchange=get('joint-damping').onchange=configure;
 for (const name of ['impact-enabled', 'impact-interval', 'impact-min', 'impact-max']) {
   get(name).onchange = () => {
     configure();

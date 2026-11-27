@@ -1,5 +1,5 @@
-import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=rail10';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=rail10';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=resistance1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=resistance1';
 
 export function railProjection(width, height, level, cart) {
   const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);
@@ -26,14 +26,14 @@ export function interpolateFrame(from, to, fraction) {
 // The viewer runs a separate physics world. It freezes a copy of the actor for
 // one displayed episode, regardless of how many PPO updates finish meanwhile.
 export class PreviewEpisode {
-  constructor(level, seconds, snapshot, stochastic, seed = (Math.random() * 2 ** 32) >>> 0) {
+  constructor(level, seconds, snapshot, stochastic, seed = (Math.random() * 2 ** 32) >>> 0, resistance = {}) {
     this.seconds = seconds;
     this.policy = new CartPPO(level, seed);
     this.policy.actor.w = snapshot.actor.slice();
     this.policy.logStd = snapshot.logStd.slice();
     this.updates = snapshot.updates;
     this.stochastic = stochastic;
-    this.env = new CartPole(level, () => this.policy.random.uniform(), {mixedStarts: stochastic});
+    this.env = new CartPole(level, () => this.policy.random.uniform(), {...resistance,mixedStarts: stochastic});
     this.current = this.env.frame();
     this.debt = 0;
     this.done = false;
