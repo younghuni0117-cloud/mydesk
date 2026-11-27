@@ -203,7 +203,7 @@ function draw(time) {
   ctx.strokeStyle = '#8499ad';
   ctx.lineWidth = 3;
   line(ctx, px(-X_LIMIT), railY, px(X_LIMIT), railY);
-  ctx.font = '11px sans-serif';
+  ctx.font = '10px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#536a80';
   const ticks = [-X_LIMIT, 0, X_LIMIT];
@@ -302,7 +302,7 @@ function plot() {
   const tick = roundTick((high - low) / 4);
   const min = Math.floor(low / tick) * tick, max = Math.ceil(high / tick) * tick;
   const labels = [max, (min + max) / 2, min].map(n => numeric.format(n));
-  ctx.font = '12px sans-serif';
+  ctx.font = '11px sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   const axis = Math.ceil(Math.max(...labels.map(t => ctx.measureText(t).width))) + 11;
