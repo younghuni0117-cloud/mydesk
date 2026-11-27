@@ -17,3 +17,5 @@ body[data-page=mindmap] .map-viewport{height:calc(100dvh - 99px)}
 @media(max-width:500px){.map-view-tools{left:7px;right:7px;bottom:7px;gap:4px;padding:5px}.map-view-tools .map-switcher{gap:4px}.map-view-tools .map-switcher button{padding:5px 7px;font-size:11px}}
 body[data-page=mindmap] .topbar .menu-toggle{width:26px;height:32px;padding:3px;border:0;background:transparent;color:#687e9a;cursor:pointer}
 body[data-page=mindmap] .topbar .menu-toggle svg{width:20px;height:20px}
+
+.map-footer{flex-wrap:wrap;gap:6px}.map-sync-actions{display:flex;gap:5px;margin-left:auto}.map-sync-actions button{min-height:26px;padding:3px 7px;font-size:11px}.map-app dialog .map-connect-description{color:#536881;line-height:1.6}.map-viewport[inert]{opacity:.45}#map-sync-input{font-size:12px}
