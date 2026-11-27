@@ -1,16 +1,15 @@
-import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=rail20';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=rail20';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=scale1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=scale1';
 
 export function railProjection(width, height, level, cart) {
   const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);
-  const scale = 105 / LENGTHS[0];
-  const inset = Math.min(117, width * .39);
-  const halfRail = width / 2 - inset;
-  const railX = x => width / 2 + x * halfRail / X_LIMIT;
-  // Fixed-size model coordinates are relative to the moving pivot.
+  const scale = Math.min(Math.max(1, width - 40) / (2 * X_LIMIT + .8),
+    Math.max(1, height - 60) / (2 * reach + .25));
+  const halfRail = X_LIMIT * scale;
+  const railX = x => width / 2 + x * scale;
   return {
-    reach, halfRail, railX,
-    modelX: x => railX(cart) + (x - cart) * scale,
+    reach, halfRail, scale, railX,
+    modelX: railX,
     modelY: y => height / 2 - y * scale
   };
 }

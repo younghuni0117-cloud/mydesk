@@ -229,7 +229,7 @@ test('preview holds a frozen policy, matches real time at 120 Hz and completes a
   assert.equal(preview.done, true);
 });
 
-test('portrait and landscape use the same model scale and a fixed rail', () => {
+test('rail, cart and links share one physical metre scale in portrait and landscape', () => {
   for (const level of [1, 5]) {
     for (const [width, height] of [[320, 300], [730, 252]]) {
       const left = railProjection(width, height, level, -2.4);
@@ -237,8 +237,11 @@ test('portrait and landscape use the same model scale and a fixed rail', () => {
       assert.equal(left.railX(-2.4), right.railX(-2.4));
       assert.ok(left.railX(-2.4) > 0 && right.railX(2.4) < width);
       assert.equal(right.modelX(2.4), right.railX(2.4));
-      assert.ok(Math.abs(left.modelX(-2.4 + left.reach) - left.modelX(-2.4) - 105 * level) < 1e-9);
-      assert.ok(Math.abs(right.modelY(0) - right.modelY(right.reach) - 105 * level) < 1e-9);
+      const metre = left.railX(1) - left.railX(0);
+      assert.ok(Math.abs(left.modelX(1) - left.modelX(0) - metre) < 1e-9);
+      assert.ok(Math.abs(left.modelY(0) - left.modelY(1) - metre) < 1e-9);
+      assert.ok(Math.abs(left.railX(10) - left.railX(-10) - metre * 20) < 1e-9);
+      assert.ok(Math.abs(left.modelX(.65) - left.modelX(0) - metre * .65) < 1e-9);
     }
   }
 });

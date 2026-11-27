@@ -1,6 +1,6 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=rail20';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=rail20';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=rail20';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=scale1';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=scale1';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=scale1';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=quota1';
 import {cacheGet, cachePut} from './cartpole-evolution-cache.mjs?v=quota1';
 
@@ -106,7 +106,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=rail20', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=scale1', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -185,7 +185,7 @@ function circle(ctx, x, y, radius, color) {
   ctx.fill();
 }
 
-function drawHammer(ctx, active, modelX, modelY) {
+function drawHammer(ctx, active, modelX, modelY, scale) {
   const hit = active.hammer;
   const age = active.time - hit.start;
   if (age < 0 || age > hit.duration + .22) return;
@@ -193,10 +193,11 @@ function drawHammer(ctx, active, modelX, modelY) {
   const progress = Math.min(1, age / hit.duration);
   const retreat = Math.max(0, (age - hit.duration) / .22);
   const gap = age < hit.duration ? 55 * (1 - progress * progress) : 35 * retreat;
-  const tipX = modelX(x) - hit.direction * (24 + gap);
+  const size = scale * .18 / 24;
+  const tipX = modelX(x) - hit.direction * (24 + gap) * size;
   ctx.save();
   ctx.translate(tipX, modelY(y));
-  ctx.scale(hit.direction, 1);
+  ctx.scale(hit.direction * size, size);
   ctx.globalAlpha = Math.max(0, 1 - retreat);
   // The striking face remains vertical and flush with the cart side at contact.
   const tilt = age < hit.duration ? -.55 * (1 - progress) : -.25 * retreat;
@@ -240,8 +241,8 @@ function draw(time) {
   if (!surfaceState) return;
   const {ctx, width, height} = surfaceState;
   const cart = active?.points[0][0] ?? 0;
-  const {reach, halfRail, railX: px, modelX, modelY: py} = railProjection(width, height, level, cart);
-  const railY = py(0) + 16;
+  const {reach, scale, railX: px, modelX, modelY: py} = railProjection(width, height, level, cart);
+  const railY = py(0) + .12 * scale;
   const background = ctx.createLinearGradient(0, 0, 0, height);
   background.addColorStop(0, '#ffffff');
   background.addColorStop(1, '#f0f5fa');
@@ -254,10 +255,10 @@ function draw(time) {
 
   ctx.lineCap = 'round';
   ctx.strokeStyle = '#d5e0ec';
-  ctx.lineWidth = 27;
-  line(ctx, px(-X_LIMIT), railY + 12, px(X_LIMIT), railY + 12);
+  ctx.lineWidth = .20 * scale;
+  line(ctx, px(-X_LIMIT), railY + .09 * scale, px(X_LIMIT), railY + .09 * scale);
   ctx.strokeStyle = '#8499ad';
-  ctx.lineWidth = 3;
+  ctx.lineWidth = .022 * scale;
   line(ctx, px(-X_LIMIT), railY, px(X_LIMIT), railY);
   ctx.font = '10px sans-serif';
   ctx.textAlign = 'center';
@@ -269,7 +270,7 @@ function draw(time) {
   }
   if (active) {
     const x = px(cart), y = py(0);
-    const half = 24;
+    const half = .18 * scale;
     if (showGuides) {
       ctx.strokeStyle = '#aebdcd';
       ctx.lineWidth = 1;
@@ -277,38 +278,38 @@ function draw(time) {
       line(ctx, x, y, x, py(reach));
       ctx.setLineDash([]);
     }
-    const cartPaint = ctx.createLinearGradient(0, y - 9, 0, y + 13);
+    const cartPaint = ctx.createLinearGradient(0, y - .075 * scale, 0, y + .075 * scale);
     cartPaint.addColorStop(0, '#568cbb');
     cartPaint.addColorStop(.35, '#32678f');
     cartPaint.addColorStop(1, '#173c5b');
     for (const offset of [-.67, .67]) {
-      circle(ctx, x + half * offset, railY - 2, 5, '#1b3045');
-      circle(ctx, x + half * offset, railY - 2, 2, '#8ca5bd');
+      circle(ctx, x + half * offset, railY - .025 * scale, .025 * scale, '#1b3045');
+      circle(ctx, x + half * offset, railY - .025 * scale, .01 * scale, '#8ca5bd');
     }
     ctx.beginPath();
-    ctx.roundRect(x - half, y - 8, half * 2, 20, 5);
+    ctx.roundRect(x - half, y - .075 * scale, half * 2, .15 * scale, .025 * scale);
     ctx.fillStyle = cartPaint;
     ctx.fill();
     ctx.strokeStyle = '#8ab1d2';
-    ctx.lineWidth = 1;
-    line(ctx, x - half + 6, y - 5, x + half - 6, y - 5);
+    ctx.lineWidth = .005 * scale;
+    line(ctx, x - half + .03 * scale, y - .05 * scale, x + half - .03 * scale, y - .05 * scale);
     for (let i = 1; i < active.points.length; i++) {
       const [a, b] = active.points[i - 1], [u, v] = active.points[i];
       const ax = modelX(a), ay = py(b), bx = modelX(u), by = py(v);
-      const thickness = Math.max(7, 13 - i);
+      const thickness = .022 * scale;
       ctx.strokeStyle = '#8f4718';
       ctx.lineWidth = thickness;
       line(ctx, ax, ay, bx, by);
       ctx.strokeStyle = '#e59447';
-      ctx.lineWidth = thickness - 2;
+      ctx.lineWidth = thickness * .8;
       line(ctx, ax, ay, bx, by);
       ctx.strokeStyle = '#ffd9a5';
-      ctx.lineWidth = 2;
-      line(ctx, ax - 1.1, ay - 1.1, bx - 1.1, by - 1.1);
+      ctx.lineWidth = thickness * .2;
+      line(ctx, ax - thickness * .1, ay - thickness * .1, bx - thickness * .1, by - thickness * .1);
     }
     for (const [u, v] of active.points) {
-      circle(ctx, modelX(u), py(v), 4.8, '#27394b');
-      circle(ctx, modelX(u), py(v), 2.8, '#d0dce7');
+      circle(ctx, modelX(u), py(v), .025 * scale, '#27394b');
+      circle(ctx, modelX(u), py(v), .014 * scale, '#d0dce7');
     }
     const tip = x + active.force / MAX_FORCE * 40;
     if (showGuides && Math.abs(tip - x) > 4) {
@@ -321,7 +322,7 @@ function draw(time) {
     }
   }
 
-  if (active?.hammer) drawHammer(ctx, active, modelX, py);
+  if (active?.hammer) drawHammer(ctx, active, modelX, py, scale);
   ctx.restore();
   const updates = preview?.updates ?? 0;
   get('live').textContent = (modelPolicy ? '모델 실행' : '실시간 관찰') + ' · PPO ' + numeric.format(updates);
