@@ -31,14 +31,19 @@ export class ServoDrive {
     return this.force;
   }
 }
-export const REWARD_PROTOCOL = 'recovery-free-travel-20m';
-export function postureReward({angle, speed, stability, mean, all, action, acquired, impacted, progress, recovered}) {
+export const REWARD_PROTOCOL = 'upright-stationary-v1';
+export const REST_CART_SPEED = .15, REST_ANGULAR_SPEED = .5;
+export const stationary = (cartSpeed,angularSpeed)=>Math.abs(cartSpeed)<=REST_CART_SPEED&&angularSpeed<=REST_ANGULAR_SPEED;
+export function postureReward({angle, speed, cartSpeed=0, impactAge=Infinity, stability, mean, all, action, acquired, impacted, progress, recovered}) {
   const nearUpright = Math.exp(-((angle / .65) ** 2));
+  const recoveryFreedom=impacted&&impactAge<.8?.2:1;
   const rotation = (acquired ? .04 : .01) * (1 - nearUpright) * Math.min(2, (speed / 8) ** 2)
-    + .1 * nearUpright * Math.min(2, (speed / 3) ** 2);
+    + .25 * recoveryFreedom * nearUpright * Math.min(4, (speed / 1) ** 2);
   return {
     posture: .25 * mean + .15 * all ** 3 + 1.6 * stability,
     recovery: impacted ? .55 * stability + 4 * progress + recovered : 0,
+    rest: .8 * nearUpright / (1+(cartSpeed/.2)**2) / (1+(speed/.5)**2),
+    drift: -.45 * recoveryFreedom * nearUpright * Math.min(4,(cartSpeed/.5)**2),
     rotation: -rotation, control: -.001 * action ** 2
   };
 }
@@ -188,7 +193,9 @@ export class CartPole {
     this.stableSteps = safe && worstSpeed < 1 ? this.stableSteps + 1 : 0;
     if (this.stableSteps >= 10) this.acquired = true;
     if (safe && this.firstUpright === null) this.firstUpright = this.steps * DT;
-    this.hold = safe ? this.hold + 1 : 0;
+    const cartSpeed=this.cart.getLinearVelocity().x;
+    const resting=safe&&stationary(cartSpeed,worstSpeed);
+    this.hold = resting ? this.hold + 1 : 0;
     this.bestHold = Math.max(this.bestHold, this.hold);
     this.maxTravel = Math.max(this.maxTravel, Number.isFinite(x) ? Math.abs(x) : 0);
     const stability = Math.min(...this.links.map(b => {
@@ -204,13 +211,14 @@ export class CartPole {
       trial.maxAngle = Math.max(trial.maxAngle, worstAngle);
       trial.rotations = Math.max(trial.rotations, ...this.links.map((b, i) =>
         Math.floor(Math.abs(b.getAngle() - trial.startAngles[i]) / (2 * Math.PI))));
-      trial.stable = safe && worstSpeed < 1 ? trial.stable + DT : 0;
+      trial.stable = resting ? trial.stable + DT : 0;
       if (trial.recoveryTime === null && trial.stable >= .5) {
         trial.recoveryTime = this.steps * DT - trial.time;
         recovered = .8 / (1 + trial.recoveryTime);
       }
     }
-    const parts = postureReward({angle: worstAngle, speed: worstSpeed, stability, mean, all, x, action,
+    const parts = postureReward({angle: worstAngle, speed: worstSpeed, cartSpeed,
+      impactAge:this.lastImpact?this.steps*DT-this.lastImpact.time:Infinity,stability, mean, all, x, action,
       acquired: this.acquired, impacted: Boolean(impactActive),
       progress: stability - this.previousStability, recovered});
     const reward = terminated ? -8 : Object.values(parts).reduce((sum, value) => sum + value, 0);
