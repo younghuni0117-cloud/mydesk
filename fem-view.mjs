@@ -21,7 +21,7 @@ export function createView(host,onSelect){
   const box=new T.Box3(new T.Vector3(0,-.06,-.06),new T.Vector3(1,.06,.06));group.add(new T.Box3Helper(box,0x94a3b8));
   const fixed=result.model.nodes.filter(p=>p[0]===0),gp=new T.BufferGeometry().setFromPoints(fixed.map(p=>new T.Vector3(...p)));group.add(new T.Points(gp,new T.PointsMaterial({color:0x326da9,size:.012})));
   const arrow=new T.ArrowHelper(new T.Vector3(0,0,-1),new T.Vector3(1,0,.16),.12,0xd85a41,.025,.015);group.add(arrow);
-  const point=result.elements[selected].points[pointIndex].position;const marker=new T.Mesh(new T.SphereGeometry(.008,8,6),new T.MeshBasicMaterial({color:0x111827}));marker.position.set(...point);group.add(marker);render();return {min,max};
+  const el=result.elements[selected],gpSelected=el.points[pointIndex],point=gpSelected.position.map((v,j)=>v+scale*gpSelected.N.reduce((s,N,i)=>s+N*frame.U[3*el.ids[i]+j],0));const marker=new T.Mesh(new T.SphereGeometry(.008,8,6),new T.MeshBasicMaterial({color:0x111827}));marker.position.set(...point);group.add(marker);render();return {min,max};
  }
  render();return {update};
 }

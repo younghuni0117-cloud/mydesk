@@ -1,4 +1,4 @@
-# FEM Live Lab 3D — 단계 1·2
+# FEM Live Lab 3D — 단계 1·2·3
 
 ## 현재 구현
 
@@ -8,11 +8,15 @@
 
 실제 N/J/B/D/Ke/전역 K 조립, Dirichlet 분할, 부분 피벗 LU, Gauss 점 변형률/응력, von Mises, 주응력, 반력, 자유 자유도 잔차를 계산한다. 탄성 문제이므로 가짜 Newton 반복은 표시하지 않는다. Worker 계산과 UI 재생을 분리했다. 재생은 계산된 변위 상태를 순차 표시하며 재계산하지 않는다. 행렬 히트맵은 64보다 큰 전역행렬만 블록 최대 절댓값으로 요약 표시한다. 컨투어는 적분점에서 요소 평균으로 표시하고, 텐서는 선택한 적분점의 실제 값이다.
 
+3단계: 계산 루프에서 요소별 N/B/D/Ke/조립, 증분별 경계조건/선형 풀이/변형률/응력/반력을 기록한다. 기본 96요소·25상태는 605개 이벤트다. 재생 중에는 조립 누적치만 전역행렬로 표시하고, 아직 구하지 않은 응력·반력은 계산 전으로 표시한다. 분해 및 전진/후진 대입의 스칼라 연산 하나하나를 기록하는 것은 아니다. 계산 이벤트는 Worker 완료 후 전달되며 재생과 계산 시간은 독립적이다.
+
+요소·적분점 선택, 계산 요소 자동 따라가기, 단계/증분 바로가기, 이전/다음/타임라인/속도/일시정지, N/J/B/D/Ke/K/Kff 선택 및 행·열 수치 탐색을 제공한다. 선택 적분점은 실제 보간 변위 위치에 표시한다. 그래프도 해당 이벤트까지 계산된 이력만 표시한다. 별도 응력 큐브는 선택 적분점에서 σn을 계산하여 6면의 수직·전단 성분을 그린다. 화살표 길이는 현재 응력 성분 최댓값에 정규화되므로 절대 크기는 응력 수치를 함께 확인해야 한다.
+
 J2 radial return 재료 함수는 단위 검증만 완료했으며 UI 해석과 연결하지 않았다. 탄소성 기능이 구현되었다고 간주하면 안 된다.
 
 ## 검증 및 한계
 
-`node --test --test-isolation=none tests/fem.test.mjs tests/navigation.test.mjs`
+`node --test --test-isolation=none tests/fem.test.mjs tests/fem-playback.test.mjs tests/navigation.test.mjs`
 
 - Hex8 shape partition, volume, affine displacement patch.
 - 요소 강성 대칭, 강체 병진 모드, 피벗 해법.
@@ -20,12 +24,13 @@ J2 radial return 재료 함수는 단위 검증만 완료했으며 UI 해석과 
 - 독립 Euler–Bernoulli 보 이론과 메시 수렴 비교: 4/12/24분할의 반력 오차 약 174.1%/23.4%/8.9%. 완전 적분 저차 요소의 전단 잠김과 3D 경계조건 효과가 있다. 24분할 해를 정확해로 주장하지 않는다.
 - J2 소성 비압축성, 경화 항복면 복귀, 이전 상태 불변, 주응력.
 - 메뉴 추가 멱등성 및 기존 중첩 메뉴 보존.
+- 이벤트 순서/개수, 누적 행렬과 실제 조립의 일치, 계산 전 결과 차단, 선택 적분점 ε=B u 및 σ=D ε 일치, 재생 상태의 원본 불변, 응력 큐브 σn 및 마주 보는 면의 평형.
 
 외부 FEM 솔버와 교차 검증, 실제 모바일/WebGL 상호작용 검증은 미완료다. 실기기에서 60 FPS를 보장하지 않는다. 대변형/접촉/좌굴/동역학은 다루지 않는다.
 
 ## 다음 단계
 
-3. 요소 조립·경계조건·선형 풀이 내부 이벤트까지 재생 확장. 현재는 증분 상태 재생이다. 행렬 수치 직접 탐색, 응력 큐브/힘 벡터, 분할 패널 확장.
+3. 이번 범위 구현: 요소 조립·경계조건·선형 풀이 이벤트 재생, 행렬 수치 직접 탐색, 응력 큐브. 원래 전체 명세의 사용자 패널 분할 크기 조절 등은 후속 UI 고도화 항목이다.
 4. J2 재료 함수를 전역 Newton과 연결. 수치적 일관 접선(중앙차분)을 명시하고 검증. trial/commit 분리, 잔차와 증분 수렴, line search/cutback, 실패 증분 표시, 소성 상태 보존, 변위 복귀 시 잔류 응력/반력 검증. 탄성/소성 분리 표시.
 5. 독립 해석기 대조, 시간/메모리/모바일 최적화 및 UI·기존 페이지 회귀 검증. 전체 명세 완료 판정은 이후에 한다.
 
@@ -33,3 +38,5 @@ J2 radial return 재료 함수는 단위 검증만 완료했으며 UI 해석과 
 
 새 파일: fem-core.mjs, fem-material.mjs, fem-solver.mjs, fem-worker.mjs, fem-view.mjs, fem-live.js, fem-live.css, fem-live.html, tests/fem.test.mjs, 본 문서.
 통합 변경: navigation-data.mjs, site-navigation.mjs, shell.js, tests/navigation.test.mjs.
+
+3단계 추가: fem-playback.mjs, fem-stress-view.mjs, tests/fem-playback.test.mjs. 변경: fem-solver.mjs, fem-worker.mjs, fem-view.mjs, fem-live.html/js/css, 본 문서. 기존 강화학습·달력·마인드맵 코드 및 저장 데이터는 변경하지 않았다.
