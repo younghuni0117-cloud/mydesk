@@ -34,7 +34,7 @@
 .cpe-stage-top { top: 6px; }
 .cpe-panel {
   min-width: 0; align-self: start;
-  display: grid; grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr); gap: 5px 10px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px;
   border: 1px solid #dce5ee; border-radius: 12px; background: white;
   padding: 5px;
 }
