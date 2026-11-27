@@ -1,0 +1,34 @@
+.neon { max-width: 1320px; margin-inline: auto; }
+.neon h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 0 0 0.35rem; }
+.neon-layout { display: grid; grid-template-columns: minmax(0, 2.6fr) minmax(235px, 1fr); gap: 18px; align-items: start; }
+.neon-play, .neon-data { min-width: 0; background: #fff; border: 1px solid #dce2ec; border-radius: 16px; padding: clamp(10px, 2vw, 18px); }
+.neon-tools, .neon-actions, .neon-mode, .neon-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.neon-tools { margin-bottom: 12px; }
+.neon-tools #fullscreen { margin-left: auto; }
+.neon button, .neon select { min-height: 42px; font-family: inherit; }
+.neon select, .neon-mode button { padding: 7px 10px; border: 1px solid #ccd4e6; border-radius: 8px; background: #fff; color: #242843; }
+.neon-mode button[aria-pressed=true] { background: #ece7ff; color: #432090; border-color: #9983dc; font-weight: 700; }
+.neon :focus-visible { outline: 3px solid #5d42c5; outline-offset: 2px; }
+.neon button:disabled { opacity: 0.55; cursor: default; }
+.neon-stage { position: relative; background: #100d23; border-radius: 12px; overflow: hidden; }
+.neon #course { width: 100%; height: auto; display: block; touch-action: none; user-select: none; cursor: pointer; }
+.neon-overlay { background: #120a28b5; color: white; position: absolute; inset: 0; display: grid; gap: 8px; place-content: center; text-align: center; }
+.neon-overlay[hidden], .neon [hidden] { display: none; }
+.neon-overlay strong { font-size: clamp(1.2rem, 5vw, 2.1rem); }
+.neon-hud { margin-top: 10px; }
+.neon-hud progress { accent-color: #7041de; flex: 1; min-width: 55px; }
+.neon-data h2 { font-size: 1.05rem; margin: 0 0 10px; }
+.neon #ai-panel { margin-top: 20px; }
+.neon-stats { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; margin: 10px 0; font-size: 0.88rem; }
+.neon-stats dd { margin: 0; text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+.neon-data details { border-top: 1px solid #dce2ec; padding: 12px 0 4px; }
+.neon-data summary { cursor: pointer; font-weight: 650; padding-bottom: 8px; }
+.neon-data canvas { width: 100%; height: auto; display: block; margin-block: 8px; }
+.neon-data p, .neon #status, .neon #controls-help, .neon #notice { font-size: 0.85rem; margin: 8px 0 0; }
+.neon #notice { color: #873917; }
+.neon-events { padding-left: 20px; max-height: 235px; overflow-y: auto; }
+.neon-events button { text-align: left; }
+.neon-play:fullscreen { display: flex; flex-direction: column; justify-content: center; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); border: 0; border-radius: 0; }
+.neon-play:fullscreen .neon-stage { max-width: min(100%, calc((100dvh - 150px) * 2.4)); width: 100%; align-self: center; }
+@media (max-width: 960px) { .neon-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 430px) { .neon-tools #fullscreen { margin-left: 0; } .neon-tools label { width: 100%; } }

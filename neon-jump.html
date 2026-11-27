@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fa">
+  <title>Neon Jump | My Desk</title>
+  <link rel="stylesheet" href="style.css?v=update69">
+  <link rel="stylesheet" href="neon-jump/game.css?v=1">
+</head>
+<body data-page="neon-jump">
+<a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+<aside class="sidebar" id="sidebar" aria-label="사이드 메뉴"><a class="brand" href="index.html"><span class="brand-mark">M<span>·</span></span><span>My Desk<small>나의 정보와 기록</small></span></a><nav aria-label="주 메뉴"><a class="nav-item" data-menu-id="home" href="index.html">홈</a><a class="nav-item" data-menu-id="calendar" href="calendar.html">가족 달력</a><a class="nav-item" data-menu-id="mindmap" href="mindmap.html">마인드맵</a><a class="nav-item" data-menu-id="restaurants" href="restaurants.html">맛집 기록</a><details class="nav-group" data-menu-id="career"><summary><a class="nav-folder-link" href="blog.html?menu=career">커리어</a></summary><div class="nav-submenu"><a class="nav-item" data-menu-id="experienced-jobs" href="blog.html?menu=experienced-jobs">경력직 공고</a></div></details><details class="nav-group" data-menu-id="learning" open><summary><a class="nav-folder-link" href="blog.html?menu=learning">학습정보</a></summary><div class="nav-submenu"><details class="nav-group" data-menu-id="ai"><summary><a class="nav-folder-link" href="blog.html?menu=ai">AI</a></summary><div class="nav-submenu"><a class="nav-item" data-menu-id="reinforcement-learning" href="blog.html?menu=reinforcement-learning">강화학습</a></div></details><details class="nav-group" data-menu-id="simulation"><summary><a class="nav-folder-link" href="blog.html?menu=simulation">Simulation</a></summary><div class="nav-submenu"><a class="nav-item" data-menu-id="physicsnemo" href="blog.html?menu=physicsnemo">PhysicsNeMo</a></div></details></div></details><details class="nav-group" data-menu-id="experiments" open><summary><a class="nav-folder-link" href="blog.html?menu=experiments">강화학습 체험</a></summary><div class="nav-submenu"><a class="nav-item" data-menu-id="maze" href="maze.html">미로 탐험</a><a class="nav-item" data-menu-id="cartpole" href="cartpole-evolution.html">카트폴</a><a class="nav-item" data-menu-id="robot" href="robot.html">로봇 강화학습</a><a class="nav-item" data-menu-id="swing" href="swing.html">그네타기 강화학습</a><a class="nav-item" data-menu-id="neon-jump" href="neon-jump.html">Neon Jump</a></div></details></nav><a class="nav-manage" href="menus.html">메뉴 관리</a><div class="sidebar-bottom"><span class="owner-dot"></span><div>Personal workspace<small>관심사를 모으고, 배움을 남기는 곳.</small></div></div></aside>
+<button class="sidebar-backdrop" id="sidebar-backdrop" hidden aria-label="메뉴 닫기" tabindex="-1"></button>
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-location">
+      <button class="menu-toggle" id="menu-toggle" aria-label="메뉴 열기" aria-controls="sidebar" aria-expanded="false">☰</button>
+      <a href="index.html">내 공간</a><span>/</span><a href="blog.html?menu=experiments">강화학습 체험</a>
+    </div>
+  </header>
+  <main id="main-content" tabindex="-1">
+    <section class="experiment neon">
+      <div class="section-top">
+        <div><h1>Neon Jump</h1><p>직접 장애물을 넘고, AI가 점프 타이밍을 배우는 과정을 관찰하세요.</p></div>
+      </div>
+      <div class="neon-layout">
+        <section class="neon-play" id="game">
+          <div class="neon-tools">
+            <label>스테이지 <select id="level"></select></label>
+            <div class="neon-mode" aria-label="플레이 모드">
+              <button id="manual" aria-pressed="true">직접 플레이</button><button id="ai" aria-pressed="false">AI 학습</button>
+            </div>
+            <button id="fullscreen" class="secondary">전체 화면</button>
+          </div>
+          <div class="neon-stage">
+            <canvas id="course" width="960" height="400" tabindex="0" aria-label="Neon Jump 게임 화면"></canvas>
+            <div id="overlay" class="neon-overlay">
+              <strong id="overlay-title">Neon Jump</strong>
+              <button id="overlay-action" class="primary" disabled>시작</button>
+            </div>
+          </div>
+          <div class="neon-hud">
+            <label for="progress">진행률 <b id="progress-label">0%</b></label>
+            <progress id="progress" max="1" value="0"></progress>
+            <button id="pause" class="secondary" disabled>일시정지</button>
+          </div>
+          <p id="controls-help">Space, 클릭 또는 터치로 점프 · Esc로 일시정지</p>
+          <p id="status" role="status">스테이지를 불러오는 중입니다.</p>
+          <p id="notice" role="status" hidden></p>
+        </section>
+        <aside class="neon-data" aria-label="플레이 기록">
+          <h2>스테이지 기록</h2>
+          <dl id="comparison" class="neon-stats"></dl>
+          <button id="manual-replay" class="secondary" disabled>수동 최고 기록 재생</button>
+          <div id="ai-panel" hidden>
+            <h2>AI 학습</h2>
+            <div class="neon-actions">
+              <button id="train" class="primary" disabled>고속 학습</button>
+              <button id="observe" class="secondary" disabled>실시간 관찰</button>
+              <button id="best" class="secondary" disabled>최고 정책 재생</button>
+            </div>
+            <dl id="metrics" class="neon-stats"></dl>
+            <details id="analysis">
+              <summary>학습 분석</summary>
+              <label>그래프 <select id="metric"></select></label>
+              <canvas id="chart" width="560" height="230" role="img" aria-label="학습 지표 그래프"></canvas>
+              <p id="chart-label"></p>
+              <p id="evaluation"></p>
+              <button id="benchmark" class="secondary">무작위 정책과 비교</button>
+              <p id="baseline" role="status"></p>
+            </details>
+            <details>
+              <summary>성장 기록과 재현</summary>
+              <ol id="events" class="neon-events"></ol>
+              <button id="compare" class="secondary" disabled>선택한 플레이와 최고 정책 비교</button>
+              <p id="replay-comparison"></p>
+            </details>
+            <details>
+              <summary>학습 관리</summary>
+              <label>이전 스테이지의 정책 <select id="transfer-source"></select></label>
+              <button id="transfer" class="secondary" disabled>정책으로 시작</button>
+              <button id="open-checkpoint" class="secondary" hidden>충돌 사본 열기</button>
+              <button id="reset" class="reset" disabled>이 스테이지의 AI 기록 초기화</button>
+            </details>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <footer><span>My Desk</span><span>강화학습 체험</span></footer>
+</div>
+<script src="shell.js?v=neon1"></script>
+<script type="module" src="neon-jump/game.mjs?v=1"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import {BlogManagement} from './blog-auth.mjs?v=update69';
-import {loadNavigation,navigationState,selectNavigationMenu} from './site-navigation.mjs?v=update69';
+import {loadNavigation,navigationState,selectNavigationMenu} from './site-navigation.mjs?v=neon1';
 import {folderOptions,visibleMenus,descendantIds,legacyMenuId,postMenuId,locationFields} from './navigation-data.mjs?v=update69';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 import {sanitizeHTML,textHTML as esc,displayDate,safeURL} from './blog-content.mjs?v=crash1';

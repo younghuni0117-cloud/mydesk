@@ -20,7 +20,8 @@ export const DEFAULT_MENUS=[
  {id:'robot',parent_id:'experiments',label:'로봇 강화학습',kind:'link',href:'robot.html'},
  {id:'robot-evolution',parent_id:'experiments',label:'로봇 강화학습2',kind:'link',href:'robot-evolution.html'},
  {id:'robotdog',parent_id:'experiments',label:'로봇독 강화학습',kind:'link',href:'robotdog.html'},
- {id:'swing',parent_id:'experiments',label:'그네타기 강화학습',kind:'link',href:'swing.html'}
+ {id:'swing',parent_id:'experiments',label:'그네타기 강화학습',kind:'link',href:'swing.html'},
+ {id:'neon-jump',parent_id:'experiments',label:'Neon Jump',kind:'link',href:'neon-jump.html'}
 ];
 export function withFEMMenu(menus){
  const next=menus.map(m=>({...m}));
@@ -87,4 +88,11 @@ export function withCartPoleEvolution(menus){
  const next=menus.slice();
  next.splice(next.indexOf(cart)+1,0,{...DEFAULT_MENUS.find(m=>m.id==='cartpole-evolution'),parent_id:cart.parent_id});
  return next;
+}
+
+export function withNeonJumpMenu(menus){
+ const entry=DEFAULT_MENUS.find(m=>m.id==='neon-jump');
+ if(menus.length>=100||menus.some(m=>m.id===entry.id||m.href===entry.href))return menus;
+ if(!menus.some(m=>m.id===entry.parent_id&&m.kind==='folder'))return menus;
+ return [...menus,{...entry}];
 }
