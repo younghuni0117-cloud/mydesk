@@ -1,7 +1,7 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=balance1';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=balance1';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=balance1';
-import {CartSync} from './cartpole-evolution-sync.mjs?v=1';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=reset1';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=reset1';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=reset1';
+import {CartSync} from './cartpole-evolution-sync.mjs?v=reset1';
 
 const get = name => document.getElementById('cpe-' + name);
 const prefix = 'mydesk.cartpole-evolution.v4.';
@@ -12,6 +12,7 @@ const numeric = new Intl.NumberFormat('ko-KR');
 let worker, metrics = null, phase = 'loading', raf = 0, autoResume = false;
 let lastCheckpoint = null;
 let latestPolicy, modelPolicy, preview, lastDraw;
+const memory = new Map();
 let savedSettings = read('settings') ?? {};
 let config = options(savedSettings);
 const ranges = [500, 1000, 2000, 5000, 10000, 0];
@@ -26,13 +27,16 @@ for (let i = 1; i < 5; i++) if (read('level' + i)?.milestone?.passed >= 7) unloc
 let level = Math.min(unlocked, Math.max(1, Math.trunc(Number(savedSettings.level)) || 1));
 let count = episodeBudget(savedSettings.count);
 let sync = null, syncing = false;
+let resetting = false;
 const canvas = get('canvas'), chart = get('chart');
 
 function read(key) {
+  if (memory.has(key)) return memory.get(key);
   try { return JSON.parse(localStorage.getItem(key === 'settings' ? settingsKey : prefix + key)); } catch { return null; }
 }
 
 function write(key, value) {
+  memory.set(key, value);
   try {
     localStorage.setItem(key === 'settings' ? settingsKey : prefix + key, JSON.stringify(value));
     return true;
@@ -54,7 +58,7 @@ function controls() {
   get('model').textContent = modelPolicy ? '실시간 관찰' : '모델 실행';
   get('model').disabled = !latestPolicy?.updates || ['loading', 'evaluating', 'error'].includes(phase);
   get('impact').disabled = !modelPolicy;
-  get('reset').disabled = phase === 'loading';
+  get('reset').disabled = phase === 'loading' || resetting || syncing;
 }
 
 function showLevels() {
@@ -96,7 +100,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=balance1', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=reset1', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -428,13 +432,23 @@ get('model').onclick = () => {
   controls();
   requestDraw();
 };
-get('reset').onclick = () => {
-  if (!confirm('이 레벨의 학습과 기록을 초기화할까요? 완료된 정책은 복원용으로 한 번 보관합니다.')) return;
-  if (lastCheckpoint && !write('backup' + level, lastCheckpoint)) return;
-  if (write('level' + level, null)) {
-    sync?.queue(level, null);
+get('reset').onclick = async () => {
+  if (resetting || !confirm('현재 레벨의 학습과 기록을 초기화할까요?')) return;
+  resetting = true;
+  worker?.terminate();
+  worker = null;
+  phase = 'loading';
+  controls();
+  try {
+    if (sync) await sync.reset(level);
+    write('level' + level, null);
+    try { localStorage.removeItem(prefix + 'backup' + level); } catch {}
     openLevel(level);
-  }
+    get('sync').textContent = sync ? '초기화 · 웹 저장됨' : '초기화 완료';
+  } catch (e) {
+    get('sync').textContent = '초기화 저장 실패 · 재시도';
+    openLevel(level);
+  } finally { resetting = false; controls(); }
 };
 get('range').value = chartRange;
 get('guides').checked = showGuides;
@@ -541,7 +555,8 @@ async function connect() {
       const local = read('level' + row.id);
       if (pending) write('level' + row.id, pending.model);
       else if (row.model) write('level' + row.id, row.model);
-      else if (local) candidate.queue(row.id, local);
+      else if (local && Number(row.revision) === 1) candidate.queue(row.id, local);
+      else write('level' + row.id, null);
       if (row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
     }
     await candidate.flush();
@@ -554,7 +569,7 @@ async function connect() {
   finally { syncing = false; }
 }
 setInterval(async () => {
-  if (!sync || syncing || document.hidden) return;
+  if (!sync || syncing || resetting || document.hidden) return;
   syncing = true;
   try {
     if (sync.pending.size) {
@@ -575,5 +590,14 @@ setInterval(async () => {
     if (error.message.includes('새로고침')) worker?.postMessage({type: 'pause'});
   } finally { syncing = false; }
 }, 3000);
+// Retire only the former cart-pole browser data, not Evolution Lab checkpoints.
+try {
+  const retired = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (/^mydesk\.cartpole\.(?:v[123](?:\.|$)|difficulty$)/.test(key)) retired.push(key);
+  }
+  retired.forEach(key => localStorage.removeItem(key));
+} catch {}
 openLevel(level);
 connect();

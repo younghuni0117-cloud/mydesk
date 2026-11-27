@@ -1,5 +1,5 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=balance1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=balance1';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=reset1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=reset1';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;

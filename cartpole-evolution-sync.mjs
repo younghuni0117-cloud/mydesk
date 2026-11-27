@@ -52,6 +52,21 @@ export class CartSync {
     this.persist();
   }
 
+  async reset(id) {
+    while (this.busy) await new Promise(resolve => setTimeout(resolve, 25));
+    this.busy = true;
+    try {
+      const [row] = await this.request('?id=eq.' + id + '&select=id,model,revision');
+      if (!row) throw Error('연결 확인 필요');
+      const [saved] = await this.request('?id=eq.' + id + '&revision=eq.' + row.revision + '&select=id,model,revision', {model: null});
+      if (!saved) throw Error('다른 기기 갱신 · 재시도');
+      this.rows.set(id, saved);
+      this.pending.delete(id);
+      this.blocked = false;
+      try { this.persist(); } catch {}
+    } finally { this.busy = false; }
+  }
+
   async flush() {
     if (this.blocked) throw Error('다른 기기의 최신 결과 적용 필요 · 새로고침');
     if (this.busy) return;
