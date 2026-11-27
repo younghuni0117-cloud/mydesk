@@ -1,13 +1,71 @@
-// Small real PPO actor-critic for browser CPU (tanh policy, GAE, clipped objective).
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-export class RNG{constructor(s=8123){this.s=s>>>0;} u(){this.s=(Math.imul(1664525,this.s)+1013904223)>>>0;return(this.s+.5)/4294967296;} n(){return Math.sqrt(-2*Math.log(this.u()))*Math.cos(2*Math.PI*this.u());}}
-class Adam{constructor(n){this.m=Array(n).fill(0);this.v=Array(n).fill(0);this.t=0;} step(w,g,lr){this.t++;const norm=Math.hypot(...g),k=Math.min(1,1/Math.max(1e-9,norm));for(let i=0;i<w.length;i++){const x=g[i]*k;this.m[i]=.9*this.m[i]+.1*x;this.v[i]=.999*this.v[i]+.001*x*x;w[i]-=lr*(this.m[i]/(1-.9**this.t))/(Math.sqrt(this.v[i]/(1-.999**this.t))+1e-8);}}}
-export class PPO{
- constructor(input,seed=8123){this.input=input;this.h=24;this.rng=new RNG(seed);this.aw=Array.from({length:(input+1)*this.h+this.h+1},()=> (this.rng.u()-.5)*.08);this.cw=Array.from({length:(input+1)*this.h+this.h+1},()=> (this.rng.u()-.5)*.08);this.logStd=-.55;this.aa=new Adam(this.aw.length);this.ca=new Adam(this.cw.length);this.sa=new Adam(1);this.updates=0;this.last={};}
- f(w,x){const h=[];for(let i=0;i<this.h;i++){let z=w[i*(this.input+1)+this.input];for(let j=0;j<this.input;j++)z+=x[j]*w[i*(this.input+1)+j];h.push(Math.tanh(z));}let y=w[(this.input+1)*this.h+this.h];for(let i=0;i<this.h;i++)y+=h[i]*w[(this.input+1)*this.h+i];return {h,y,x};}
- action(x,stochastic=true){const a=this.f(this.aw,x),c=this.f(this.cw,x),z=a.y+(stochastic?Math.exp(this.logStd)*this.rng.n():0);return {a:Math.tanh(z),z,mean:a.y,logp:-.5*((z-a.y)/Math.exp(this.logStd))**2-this.logStd-.5*Math.log(2*Math.PI),value:c.y};}
- grad(w,cache,dy,g){const off=(this.input+1)*this.h;for(let i=0;i<this.h;i++){g[off+i]+=dy*cache.h[i];const dh=dy*w[off+i]*(1-cache.h[i]**2);for(let j=0;j<this.input;j++)g[i*(this.input+1)+j]+=dh*cache.x[j];g[i*(this.input+1)+this.input]+=dh;}g[g.length-1]+=dy;}
- *update(rows){let next=0,adv=[],ret=[];for(let i=rows.length-1;i>=0;i--){const r=rows[i],d=r.r+.99*(r.done?0:r.nv)-r.v;next=d+.99*.95*(r.done?0:1)*next;adv[i]=next;ret[i]=next+r.v;}const m=adv.reduce((a,b)=>a+b,0)/adv.length,sd=Math.sqrt(adv.reduce((a,b)=>a+(b-m)**2,0)/adv.length+1e-8);adv=adv.map(v=>(v-m)/sd);let st={policyLoss:0,valueLoss:0,entropy:0,kl:0,clipFraction:0};for(let e=0;e<4;e++){const ag=Array(this.aw.length).fill(0),cg=Array(this.cw.length).fill(0),sg=[0];for(let i=0;i<rows.length;i++){const r=rows[i],a=this.f(this.aw,r.o),c=this.f(this.cw,r.o),lp=-.5*((r.z-a.y)/Math.exp(this.logStd))**2-this.logStd-.5*Math.log(2*Math.PI),ratio=Math.exp(clamp(lp-r.lp,-10,10)),cl=clamp(ratio,.8,1.2),active=adv[i]>=0?ratio<=1.2:ratio>=.8,pg=active?-adv[i]*ratio:0,diff=r.z-a.y;this.grad(this.aw,a,pg*diff/Math.exp(2*this.logStd),ag);this.grad(this.cw,c,(c.y-ret[i]),cg);sg[0]+=pg*(diff*diff/Math.exp(2*this.logStd)-1);st.policyLoss+=-Math.min(ratio*adv[i],cl*adv[i]);st.valueLoss+=(c.y-ret[i])**2;st.entropy+=this.logStd+.5*Math.log(2*Math.PI*Math.E);st.kl+=ratio-1-(lp-r.lp);if(Math.abs(ratio-1)>.2)st.clipFraction++;}this.aa.step(this.aw,ag,.0007);this.ca.step(this.cw,cg,.001);this.sa.step([this.logStd],sg,.0007);this.logStd=clamp(this.logStd,-2,.2);yield null;}this.updates++;for(const k of Object.keys(st))st[k]/=rows.length;this.last={...st,updates:this.updates,learningRate:.0007};return this.last;}
- snapshot(){return {version:1,input:this.input,h:this.h,aw:[...this.aw],cw:[...this.cw],logStd:this.logStd,updates:this.updates,random:this.rng.s,aa:this.aa,ca:this.ca,sa:this.sa};}
- restore(s){if(!s||s.version!==1||s.input!==this.input)throw Error('정책 체크포인트가 올바르지 않습니다.');Object.assign(this,{aw:[...s.aw],cw:[...s.cw],logStd:s.logStd,updates:s.updates});this.rng.s=s.random>>>0;for(const k of ['aa','ca','sa'])Object.assign(this[k],s[k]);}
+import {PPO, Adam, Random} from './evolution-ppo.mjs?v=biped7';
+import {inputSize} from './cartpole-evolution-core.mjs?v=2';
+
+class DenseNetwork {
+  constructor(input, random, outputScale) {
+    this.input = input;
+    this.size = 32;
+    this.stride = input + 1;
+    this.output = this.size * this.stride;
+    const scale = Math.sqrt(6 / (input + this.size));
+    this.w = Array.from({length: this.output + this.size + 1}, (_, i) => {
+      if (i === this.output + this.size || (i < this.output && i % this.stride === input)) return 0;
+      return (random.uniform() * 2 - 1) * (i < this.output ? scale : outputScale);
+    });
+  }
+
+  forward(x) {
+    const h = Array(this.size);
+    let value = this.w.at(-1);
+    for (let i = 0; i < this.size; i++) {
+      const start = i * this.stride;
+      let z = this.w[start + this.input];
+      for (let j = 0; j < this.input; j++) z += this.w[start + j] * x[j];
+      h[i] = Math.tanh(z);
+      value += h[i] * this.w[this.output + i];
+    }
+    return {x, h, value};
+  }
+
+  gradient({x, h}, dy, g) {
+    for (let i = 0; i < this.size; i++) {
+      g[this.output + i] += dy * h[i];
+      const dh = dy * this.w[this.output + i] * (1 - h[i] ** 2), start = i * this.stride;
+      for (let j = 0; j < this.input; j++) g[start + j] += dh * x[j];
+      g[start + this.input] += dh;
+    }
+    g[g.length - 1] += dy;
+  }
+}
+
+export class CartPPO extends PPO {
+  constructor(level, seed) {
+    super(seed);
+    this.random = new Random(seed);
+    this.actor = new DenseNetwork(inputSize(level), this.random, .01);
+    this.critic = new DenseNetwork(inputSize(level), this.random, .15);
+    this.actorAdam = new Adam(this.actor.w.length);
+    this.criticAdam = new Adam(this.critic.w.length);
+    this.logStd = [-.15];
+    this.settings = {...this.settings, lr: .00065, valueLR: .0015, gamma: .995, epochs: 6, minibatch: 128};
+  }
+
+  checkpoint() {
+    const {normalization, ...snapshot} = super.snapshot();
+    return snapshot;
+  }
+
+  load(snapshot) {
+    if (!Number.isSafeInteger(snapshot?.updates) || snapshot.updates < 0
+        || snapshot.logStd?.length !== 1 || snapshot.logStd[0] < -2.5 || snapshot.logStd[0] > .5) {
+      throw new Error('PPO 체크포인트 형식 오류');
+    }
+    const settings = this.settings;
+    super.restore(snapshot);
+    this.settings = settings;
+  }
+
+  predict(obs) {
+    return Math.tanh(this.actor.forward(obs).value);
+  }
 }

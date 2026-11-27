@@ -72,3 +72,12 @@ export function withSwingMenu(menus){
  const next=menus.slice();next.splice(next.indexOf(robot)+1,0,{id:'swing',parent_id:robot.parent_id,label:'그네타기 강화학습',kind:'link',href:'swing.html'});
  return next;
 }
+
+export function withCartPoleEvolution(menus){
+ if(menus.length>=100||menus.some(m=>m.id==='cartpole-evolution'||m.href==='cartpole-evolution.html'))return menus;
+ const cart=menus.find(m=>m.id==='cartpole'&&m.kind==='link');
+ if(!cart)return menus;
+ const next=menus.slice();
+ next.splice(next.indexOf(cart)+1,0,{...DEFAULT_MENUS.find(m=>m.id==='cartpole-evolution'),parent_id:cart.parent_id});
+ return next;
+}

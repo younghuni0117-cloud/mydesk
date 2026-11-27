@@ -1,1 +1,84 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Cart-Pole Evolution Lab | My Desk</title><link rel="stylesheet" href="style.css?v=update69"><link rel="stylesheet" href="cartpole-evolution.css?v=1"></head><body class="game-page"><aside class="sidebar"><a class="brand" href="index.html"><span class="brand-mark">M<span>·</span></span><span>My Desk<small>나의 정보와 기록</small></span></a><nav><a class="nav-item" href="index.html">홈</a><a class="nav-item" href="calendar.html">가족 달력</a><a class="nav-item" href="mindmap.html">마인드맵</a><a class="nav-item" href="restaurants.html">맛집 기록</a><a class="nav-item" href="robot.html">로봇 강화학습</a><a class="nav-item" href="robot-evolution.html">로봇 강화학습2</a><a class="nav-item" href="cartpole-evolution.html" aria-current="page">Cart-Pole Evolution Lab</a></nav></aside><div class="workspace"><header class="topbar"><div class="topbar-location"><a href="index.html">내 공간</a><span>/</span><span>Cart-Pole Evolution Lab</span></div></header><main><section class="cpe-shell"><div class="cpe-head"><div><span class="eyebrow">실제 PPO · 물리 시뮬레이션</span><h1>Cart-Pole Evolution Lab</h1><p>카트의 구동력만으로 링크를 세우고 균형을 배웁니다.</p></div><div class="cpe-actions"><button id="cpe-start" class="primary">학습 시작</button><button id="cpe-pause">일시정지</button><button id="cpe-reset">선택 레벨 초기화</button></div></div><div class="cpe-grid"><section class="cpe-sim"><canvas id="cpe-canvas" width="900" height="500" aria-label="카트폴 물리 시뮬레이션"></canvas><div class="cpe-overlay"><strong id="cpe-state">대기 중</strong><span id="cpe-level-label">Level 1 · 1 링크</span></div></section><aside class="cpe-panel"><label>레벨<select id="cpe-level"><option value="1">Level 1 · 1 링크</option><option value="2">Level 2 · 2 링크</option><option value="3">Level 3 · 3 링크</option><option value="4">Level 4 · 4 링크</option><option value="5">Level 5 · 5 링크</option></select></label><label>동시 환경 <select id="cpe-env"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label><label>Episode 시간(초)<input id="cpe-seconds" type="number" min="5" max="60" value="20" step="1"></label><div class="cpe-stats"><div><span>Episode</span><b id="cpe-episode">0</b></div><div><span>환경 Steps</span><b id="cpe-steps">0</b></div><div><span>평균 보상</span><b id="cpe-reward">0.00</b></div><div><span>직립 성공률</span><b id="cpe-success">0%</b></div><div><span>PPO Updates</span><b id="cpe-updates">0</b></div><div><span>정책 손실</span><b id="cpe-loss">—</b></div></div><div class="cpe-progress"><div id="cpe-bar"></div></div><p class="cpe-note" id="cpe-note">초기 정책은 무작위에 가깝습니다. 성공해도 학습은 계속됩니다.</p><details><summary>PPO 분석</summary><pre id="cpe-analysis">아직 업데이트가 없습니다.</pre></details></aside></div></section></main></div><script src="shell.js?v=shortcuts2"></script><script type="module" src="cartpole-evolution.js?v=1"></script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fa">
+  <title>Cart-Pole Evolution Lab | My Desk</title>
+  <link rel="stylesheet" href="style.css?v=update69">
+  <link rel="stylesheet" href="cartpole-evolution.css?v=2">
+</head>
+<body class="game-page cpe-page" data-page="cartpole-evolution">
+  <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+  <aside class="sidebar" id="sidebar" aria-label="사이드 메뉴">
+    <a class="brand" href="index.html"><span class="brand-mark">M<span>·</span></span><span>My Desk<small>나의 정보와 기록</small></span></a>
+    <nav aria-label="주 메뉴">
+      <a class="nav-item" href="index.html">홈</a>
+      <a class="nav-item" href="cartpole.html">카트폴</a>
+      <a class="nav-item" href="cartpole-evolution.html" aria-current="page">Cart-Pole Evolution Lab</a>
+    </nav>
+    <a class="nav-manage" href="menus.html">메뉴 관리</a>
+  </aside>
+  <button class="sidebar-backdrop" id="sidebar-backdrop" aria-label="메뉴 닫기" tabindex="-1" hidden></button>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="topbar-location">
+        <button class="menu-toggle" id="menu-toggle" aria-label="메뉴 열기" aria-controls="sidebar" aria-expanded="false">☰</button>
+        <a href="index.html">내 공간</a>
+      </div>
+      <a class="cpe-old" href="cartpole.html">기존 카트폴</a>
+    </header>
+    <main id="main-content" class="cpe-lab" tabindex="-1">
+      <div class="cpe-heading">
+        <h1>Cart-Pole Evolution Lab</h1>
+        <span>Planck.js · PPO</span>
+      </div>
+      <div class="cpe-levels" id="cpe-levels" role="group" aria-label="레벨 선택"></div>
+      <div class="cpe-grid">
+        <section class="cpe-stage" aria-label="실시간 물리">
+          <canvas id="cpe-canvas" aria-label="수평 카트와 수동 링크의 현재 물리 상태"></canvas>
+          <div class="cpe-overlay cpe-stage-top"><strong id="cpe-state" role="status">불러오는 중</strong><span id="cpe-live">환경 1</span></div>
+          <div class="cpe-overlay cpe-stage-bottom"><span id="cpe-time">0.00초</span><span id="cpe-force">0.0 N</span><span id="cpe-hold">직립 0.00 / 5초</span></div>
+        </section>
+        <section class="cpe-control" aria-label="훈련 조작">
+          <div class="cpe-inputs">
+            <label>동시 환경<select id="cpe-env"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+            <label>Episode (초)<input id="cpe-seconds" type="number" min="5" max="60" step="1" value="20" inputmode="numeric"></label>
+            <label>대표 환경<select id="cpe-representative"><option value="0">환경 1</option></select></label>
+          </div>
+          <div class="cpe-actions">
+            <button id="cpe-train" type="button" disabled>학습 시작</button>
+            <button id="cpe-evaluate" type="button" disabled>고정 평가</button>
+            <label><span class="cpe-sr">진행 속도</span><select id="cpe-speed"><option value="1">실시간</option><option value="4">4배속</option><option value="0">최대 학습</option></select></label>
+          </div>
+          <p id="cpe-notice" role="status"></p>
+        </section>
+        <section class="cpe-data" aria-label="학습 성과">
+          <div class="cpe-stats">
+            <div><span>Episode</span><strong id="cpe-episode">0</strong></div>
+            <div><span>평균 보상</span><strong id="cpe-reward">—</strong></div>
+            <div><span>훈련 성공률</span><strong id="cpe-success">—</strong></div>
+            <div><span>고정 평가</span><strong id="cpe-test">—</strong></div>
+          </div>
+          <p id="cpe-goal" class="cpe-goal">전 링크 ±10°로 5초 유지 · 고정 평가 7/8회 통과 시 해금</p>
+          <details id="cpe-results">
+            <summary>보상 추세 및 상세 기록</summary>
+            <p class="cpe-caption">최근 240회 · 회당 누적 보상과 최근 30회 이동평균</p>
+            <canvas id="cpe-chart" aria-label="Episode별 누적 보상과 이동평균"></canvas>
+            <button id="cpe-replay" type="button" hidden>고정 평가 1번 재생</button>
+            <dl id="cpe-details"></dl>
+          </details>
+          <details>
+            <summary>물리와 저장 설정</summary>
+            <p class="cpe-caption">카트 1 kg · 최대 ±10 N · 중력 9.81 m/s² · 물리 간격 5 ms. 레일은 ±2.4 m이며 직립해도 Episode는 계속됩니다. 고정 평가는 20초씩 8회, 탐색 없이 실행합니다.</p>
+            <p class="cpe-caption">최대 학습은 기기 처리량에 맞춰 빠르게 시도합니다. 실제 시간 흐름으로 보려면 실시간을 선택하세요. 학습과 설정은 이 브라우저에 저장되며 마지막으로 완료된 PPO 업데이트부터 이어집니다.</p>
+            <div class="cpe-actions"><button id="cpe-reset" type="button" disabled>현재 레벨 초기화</button><button id="cpe-restore" type="button" hidden>초기화 전 기록 복원</button></div>
+          </details>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="shell.js?v=shortcuts2"></script>
+  <script type="module" src="cartpole-evolution.js?v=2"></script>
+</body>
+</html>
