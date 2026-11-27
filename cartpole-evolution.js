@@ -359,12 +359,18 @@ get('model').onclick = () => {
 get('reset').onclick = () => {
   if (!confirm('이 레벨의 학습과 기록을 초기화할까요? 완료된 정책은 복원용으로 한 번 보관합니다.')) return;
   if (lastCheckpoint && !write('backup' + level, lastCheckpoint)) return;
-  if (write('level' + level, null)) openLevel(level);
+  if (write('level' + level, null)) {
+    sync?.queue(level, null);
+    openLevel(level);
+  }
 };
 get('restore').onclick = () => {
   if (!confirm('초기화 직전 기록을 현재 레벨로 복원할까요?')) return;
   const backup = read('backup' + level);
-  if (backup && write('level' + level, backup)) openLevel(level);
+  if (backup && write('level' + level, backup)) {
+    sync?.queue(level, backup);
+    openLevel(level);
+  }
 };
 get('range').value = chartRange;
 get('guides').checked = showGuides;
@@ -449,7 +455,7 @@ setInterval(async () => {
       const revision = sync.rows.get(level)?.revision;
       const rows = await sync.load();
       for (const row of rows) {
-        if (row.model) write('level' + row.id, row.model);
+        write('level' + row.id, row.model);
         if (row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
       }
       if (sync.rows.get(level)?.revision !== revision) openLevel(level);
