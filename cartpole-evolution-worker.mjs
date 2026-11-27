@@ -1,5 +1,5 @@
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=experiment1';
-import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=experiment1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=explore1';
+import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=explore1';
 
 let trainer, settled, pending, update, assessment, running = false;
 let timer, lastStats, lastSaved, sampleSteps = 0, planStart = 0, target = 0;

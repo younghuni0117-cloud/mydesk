@@ -64,10 +64,12 @@ test('force moves cart and reacts through passive pole; timeout bootstraps and b
   assert.deepEqual([env.step(0, 5).truncated, env.result().success], [true, false]);
 });
 
-test('motor response reaches 95 percent at 0.15 seconds and old physical checkpoints cannot reuse mismatched weights', () => {
+test('25 N motor reaches 95 percent at 0.09 seconds and old physical checkpoints cannot reuse mismatched weights', () => {
   const env = new CartPole(1, () => .5);
-  for (let i = 0; i < 8; i++) env.step(1, 30);
-  assert.ok(env.force > 9.5 && env.force < 10);
+  for (let i = 0; i < 5; i++) env.step(1, 30);
+  assert.equal(MAX_FORCE, 25);
+  assert.equal(MOTOR_TIME, .03);
+  assert.ok(env.force > .95 * MAX_FORCE && env.force < MAX_FORCE);
   const previous = new Trainer(1, {}, null, 19).checkpoint();
   delete previous.physicsVersion;
   previous.episodes = 900;
@@ -95,6 +97,8 @@ test('terminal does not fire at upright success; all absolute angles must qualif
 
 test('PPO consumes distinct environment streams and restores optimizer and deterministic predictions', () => {
   const trainer = new Trainer(1, {envs: 5, seconds: 20}, undefined, 1729);
+  assert.ok(Math.abs(Math.exp(trainer.policy.logStd[0]) - 1.1) < 1e-9);
+  assert.equal(trainer.policy.settings.entropy, .008);
   assert.notDeepEqual(trainer.envs[0].observe(), trainer.envs[1].observe());
   const initial = trainer.policy.checkpoint();
   for (let i = 0; i < 64; i++) trainer.collect();
@@ -103,6 +107,7 @@ test('PPO consumes distinct environment streams and restores optimizer and deter
   const saved = structuredClone(trainer.checkpoint());
   assert.equal(saved.steps, 320);
   assert.equal(saved.policy.updates, 1);
+  assert.ok(Math.exp(saved.policy.logStd[0]) >= .399);
   assert.notDeepEqual(saved.policy.actor, initial.actor);
   assert.notDeepEqual(saved.policy.critic, initial.critic);
   assert.ok(saved.policy.actorAdam.t > 0);
@@ -308,7 +313,7 @@ test('recovery rewards favor stabilization, allow vigorous cart control and disc
   const improving = postureReward(state);
   const worsening = postureReward({...state, progress: -.1});
   assert.ok(improving.recovery > worsening.recovery);
-  assert.equal(improving.control, -.004);
+  assert.equal(improving.control, -.001);
   assert.ok(Math.abs(improving.control) < improving.posture / 100);
   assert.ok(postureReward({...state, x: 4.8}).position < postureReward({...state, x: 2}).position - .5);
   assert.ok(postureReward({...state, angle: 2, speed: 5}).rotation > -.1);

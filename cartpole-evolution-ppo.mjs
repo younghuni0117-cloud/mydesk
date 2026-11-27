@@ -1,5 +1,5 @@
 import {PPO, Adam, Random} from './evolution-ppo.mjs?v=biped7';
-import {inputSize} from './cartpole-evolution-core.mjs?v=experiment1';
+import {inputSize} from './cartpole-evolution-core.mjs?v=explore1';
 
 class DenseNetwork {
   constructor(input, random, outputScale) {
@@ -46,8 +46,18 @@ export class CartPPO extends PPO {
     this.critic = new DenseNetwork(inputSize(level), this.random, .15);
     this.actorAdam = new Adam(this.actor.w.length);
     this.criticAdam = new Adam(this.critic.w.length);
-    this.logStd = [-.15];
-    this.settings = {...this.settings, lr: .00065, valueLR: .0015, gamma: .995, epochs: 6, minibatch: 128};
+    this.logStd = [Math.log(1.1)];
+    this.settings = {...this.settings, lr: .00065, valueLR: .0015, gamma: .995,
+      entropy: .008, epochs: 6, minibatch: 128};
+  }
+
+  *update(rows) {
+    const result = yield* super.update(rows);
+    // Preserve broad exploration early, then gradually allow precise control.
+    const progress = Math.min(1, this.updates / 300);
+    const minimumStd = .4 * (1 - progress) + .12 * progress;
+    this.logStd[0] = Math.max(this.logStd[0], Math.log(minimumStd));
+    return result;
   }
 
   checkpoint() {

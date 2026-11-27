@@ -1,8 +1,8 @@
 import {World, Vec2, Box, PrismaticJoint, RevoluteJoint} from './vendor/planck.mjs';
 
 export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 5;
-export const GRAVITY = 9.81, CART_MASS = 2, MAX_FORCE = 10, MOTOR_TIME = .05;
-export const PHYSICS_VERSION = 'experiment-2kg-300g';
+export const GRAVITY = 9.81, CART_MASS = 2, MAX_FORCE = 25, MOTOR_TIME = .03;
+export const PHYSICS_VERSION = 'experiment-2kg-300g-25N';
 export const LENGTHS = Array(5).fill(.65);
 export const MASSES = Array(5).fill(.30);
 export const HOLD_SECONDS = 20, EVAL_SECONDS = 40, EVAL_TRIALS = 8, PASS_COUNT = 7;
@@ -19,7 +19,7 @@ export function postureReward({angle, speed, stability, mean, all, x, action, ac
   return {
     posture: .25 * mean + .15 * all ** 3 + 1.6 * stability,
     recovery: impacted ? .55 * stability + 4 * progress + recovered : 0,
-    rotation: -rotation, position: -center - edge, control: -.004 * action ** 2
+    rotation: -rotation, position: -center - edge, control: -.001 * action ** 2
   };
 }
 
