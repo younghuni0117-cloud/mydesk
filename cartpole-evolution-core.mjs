@@ -62,32 +62,30 @@ export class CartPole {
     this.nextImpact = null;
   }
 
-  prepareImpact(load, randomPosition = true) {
-    const bodyIndex = randomPosition ? Math.floor(this.random() * (this.level + 1)) : 0;
-    const body = bodyIndex ? this.links[bodyIndex - 1] : this.cart;
-    const localY = bodyIndex ? (this.random() - .5) * LENGTHS[bodyIndex - 1] : 0;
-    const point = body.getWorldPoint(Vec2(0, localY));
+  prepareImpact(load) {
     const direction = this.random() < .5 ? -1 : 1;
-    return {body: bodyIndex, localY, load: clamp(load, 0, 100), direction, point: [point.x, point.y]};
+    const localX = -direction * .18;
+    const point = this.cart.getWorldPoint(Vec2(localX, 0));
+    return {body: 0, localX, localY: 0, load: clamp(load, 0, 100), direction, point: [point.x, point.y]};
   }
 
   applyImpact(hit) {
-    const body = hit.body ? this.links[hit.body - 1] : this.cart;
-    const point = body.getWorldPoint(Vec2(0, hit.localY));
+    const body = this.cart;
+    const point = body.getWorldPoint(Vec2(-hit.direction * .18, 0));
     body.applyLinearImpulse(Vec2(hit.direction * hit.load * .1, 0), point, true);
     this.lastImpact = {...hit, point: [point.x, point.y], time: this.steps * DT};
     return this.lastImpact;
   }
 
-  impact(load, randomPosition = true) {
-    return this.applyImpact(this.prepareImpact(load, randomPosition));
+  impact(load) {
+    return this.applyImpact(this.prepareImpact(load));
   }
 
   randomImpact(config) {
     const minimum = config.impactMin ?? config.impactLoad ?? 2;
     const maximum = config.impactMax ?? config.impactLoad ?? 2;
     const load = minimum + this.random() * (maximum - minimum);
-    return {...this.impact(load, true), load};
+    return {...this.impact(load), load};
   }
 
   disturb(config) {

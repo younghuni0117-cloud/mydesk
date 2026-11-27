@@ -1,5 +1,5 @@
-import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=finger1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=finger1';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=hammer1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=hammer1';
 
 export function railProjection(width, height, level, cart) {
   const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);
@@ -82,6 +82,6 @@ export class PreviewEpisode {
       else this.advance();
     }
     const result = this.done ? this.current : interpolateFrame(this.current, this.next, this.debt / DT);
-    return {...result, finger: this.pendingHit};
+    return {...result, hammer: this.pendingHit};
   }
 }

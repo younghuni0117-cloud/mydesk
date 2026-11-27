@@ -1,6 +1,6 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=finger1';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=finger1';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=finger1';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=hammer1';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=hammer1';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=hammer1';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=1';
 
 const get = name => document.getElementById('cpe-' + name);
@@ -96,7 +96,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=finger1', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=hammer1', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -175,47 +175,43 @@ function circle(ctx, x, y, radius, color) {
   ctx.fill();
 }
 
-function drawFinger(ctx, active, modelX, modelY) {
-  const hit = active.finger;
+function drawHammer(ctx, active, modelX, modelY) {
+  const hit = active.hammer;
   const age = active.time - hit.start;
   if (age < 0 || age > hit.duration + .22) return;
-  const start = active.points[Math.max(0, hit.body - 1)];
-  const end = active.points[hit.body];
-  const fraction = hit.body ? (hit.localY / .65 + .5) : 0;
-  const x = start[0] + (end[0] - start[0]) * fraction;
-  const y = start[1] + (end[1] - start[1]) * fraction;
+  const [x, y] = active.points[0];
   const progress = Math.min(1, age / hit.duration);
   const retreat = Math.max(0, (age - hit.duration) / .22);
   const gap = age < hit.duration ? 55 * (1 - progress * progress) : 35 * retreat;
-  const tipX = modelX(x) - hit.direction * ((hit.body ? 6 : 24) + gap);
+  const tipX = modelX(x) - hit.direction * (24 + gap);
   ctx.save();
   ctx.translate(tipX, modelY(y));
   ctx.scale(hit.direction, 1);
   ctx.globalAlpha = Math.max(0, 1 - retreat);
-  const skin = ctx.createLinearGradient(0, -8, 0, 31);
-  skin.addColorStop(0, '#ffe0bd');
-  skin.addColorStop(1, '#d79e74');
-  ctx.fillStyle = skin;
-  ctx.strokeStyle = '#af7958';
+  // The striking face remains vertical and flush with the cart side at contact.
+  const tilt = age < hit.duration ? -.55 * (1 - progress) : -.25 * retreat;
+  ctx.rotate(tilt);
+  const wood = ctx.createLinearGradient(-20, 0, -12, 0);
+  wood.addColorStop(0, '#96613e');
+  wood.addColorStop(.5, '#d6aa75');
+  wood.addColorStop(1, '#875636');
+  ctx.fillStyle = wood;
+  ctx.beginPath();
+  ctx.roundRect(-20, 4, 8, 43, 3);
+  ctx.fill();
+  const steel = ctx.createLinearGradient(0, -12, 0, 12);
+  steel.addColorStop(0, '#e0e7ed');
+  steel.addColorStop(.35, '#9baab8');
+  steel.addColorStop(1, '#596c7d');
+  ctx.fillStyle = steel;
+  ctx.strokeStyle = '#516476';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(-58, 2);
-  ctx.lineTo(-41, -5);
-  ctx.lineTo(-7, -5);
-  ctx.bezierCurveTo(2, -5, 2, 5, -7, 5);
-  ctx.lineTo(-27, 5);
-  ctx.bezierCurveTo(-15, 8, -21, 14, -27, 14);
-  ctx.bezierCurveTo(-18, 17, -25, 22, -31, 22);
-  ctx.bezierCurveTo(-24, 25, -34, 29, -41, 27);
-  ctx.lineTo(-58, 21);
-  ctx.closePath();
+  ctx.roundRect(-31, -12, 31, 24, 3);
   ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = '#bc8864';
-  line(ctx, -20, -4, -20, 4);
-  line(ctx, -37, 8, -28, 11);
-  ctx.fillStyle = '#f5f9ff';
-  ctx.fillRect(-65, 0, 9, 24);
+  ctx.fillStyle = '#d4dee7';
+  ctx.fillRect(-5, -11, 4, 22);
   if (age >= hit.duration && retreat < .45) {
     ctx.strokeStyle = '#edaa58';
     line(ctx, 3, -9, 7, -13);
@@ -315,7 +311,7 @@ function draw(time) {
     }
   }
 
-  if (active?.finger) drawFinger(ctx, active, modelX, py);
+  if (active?.hammer) drawHammer(ctx, active, modelX, py);
   ctx.restore();
   const updates = preview?.updates ?? 0;
   get('live').textContent = (modelPolicy ? '모델 실행' : '실시간 관찰') + ' · PPO ' + numeric.format(updates);

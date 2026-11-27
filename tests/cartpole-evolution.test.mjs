@@ -204,7 +204,7 @@ test('external pulses change physical velocity without adding elapsed time or up
   const before = env.observe();
   const hit = env.impact(5, true);
   assert.equal(env.steps, 0);
-  assert.equal(hit.body, 2);
+  assert.equal(hit.body, 0);
   assert.notDeepEqual(env.observe(), before);
   const trainer = new Trainer(1, {envs: 1, impactEnabled: true, impactInterval: .2, impactLoad: 2}, null, 77);
   for (let i = 0; i < 12; i++) trainer.collect();
@@ -214,22 +214,24 @@ test('external pulses change physical velocity without adding elapsed time or up
   assert.equal(trainer.envs[0].steps, 12);
 });
 
-test('random impact load stays in bounds and can hit the cart and every link', () => {
+test('random impacts stay in load bounds and strike only the left or right cart side', () => {
   const trainer = new Trainer(5, {}, null, 547);
-  const env = trainer.envs[0], bodies = new Set();
+  const env = trainer.envs[0], sides = new Set();
   const config = options({impactMin: 3, impactMax: 7});
   for (let i = 0; i < 100; i++) {
     const hit = env.randomImpact(config);
     assert.ok(hit.load >= 3 && hit.load <= 7);
-    bodies.add(hit.body);
+    assert.equal(hit.body, 0);
+    assert.equal(hit.localX, -hit.direction * .18);
+    sides.add(hit.direction);
     env.reset();
   }
-  assert.deepEqual([...bodies].sort(), [0, 1, 2, 3, 4, 5]);
+  assert.deepEqual([...sides].sort(), [-1, 1]);
   assert.equal(options({impactMin: 9, impactMax: 1}).impactMin, 1);
   assert.equal(options({impactMin: 9, impactMax: 1}).impactMax, 9);
 });
 
-test('finger approach speed follows the selected load range and the impulse waits for contact', () => {
+test('hammer speed follows the selected load range and the impulse waits for contact', () => {
   const snapshot = new Trainer(1, {}, null, 19).policy.checkpoint();
   snapshot.actor.fill(0);
   function viewer(strength) {
