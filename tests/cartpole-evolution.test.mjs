@@ -193,9 +193,23 @@ test('portrait and landscape use the same model scale and a fixed rail', () => {
       assert.equal(left.railX(-2.4), right.railX(-2.4));
       assert.ok(left.railX(-2.4) > 0 && right.railX(2.4) < width);
       assert.equal(right.modelX(2.4), right.railX(2.4));
-      assert.ok(Math.abs(left.modelX(-2.4 + left.reach) - left.modelX(-2.4) - 105) < 1e-9);
-      assert.ok(Math.abs(right.modelY(0) - right.modelY(right.reach) - 105) < 1e-9);
-      assert.ok(left.modelX(-2.4 - left.reach) > 0 && right.modelX(2.4 + right.reach) < width);
+      assert.ok(Math.abs(left.modelX(-2.4 + left.reach) - left.modelX(-2.4) - 105 * level) < 1e-9);
+      assert.ok(Math.abs(right.modelY(0) - right.modelY(right.reach) - 105 * level) < 1e-9);
     }
   }
+});
+
+test('external pulses change physical velocity without adding elapsed time or updating policy', () => {
+  const env = new CartPole(2, () => .75);
+  const before = env.observe();
+  const hit = env.impact(5, true);
+  assert.equal(env.steps, 0);
+  assert.equal(hit.body, 2);
+  assert.notDeepEqual(env.observe(), before);
+  const trainer = new Trainer(1, {envs: 1, impactEnabled: true, impactInterval: .2, impactLoad: 2}, null, 77);
+  for (let i = 0; i < 12; i++) trainer.collect();
+  assert.ok(trainer.envs[0].lastImpact);
+  assert.equal(trainer.streams[0].length, 12);
+  assert.equal(trainer.policy.updates, 0);
+  assert.equal(trainer.envs[0].steps, 12);
 });

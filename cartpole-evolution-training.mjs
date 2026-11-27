@@ -1,12 +1,16 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=5';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=5';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=impact1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=impact1';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;
 export function options(input = {}) {
   const envs = Number(input.envs), seconds = Number(input.seconds);
   return {envs: Number.isInteger(envs) && envs >= 1 && envs <= 5 ? envs : 1,
-    seconds: Number.isInteger(seconds) && seconds >= HOLD_SECONDS + 5 && seconds <= 60 ? seconds : 30};
+    seconds: Number.isInteger(seconds) && seconds >= HOLD_SECONDS + 5 && seconds <= 60 ? seconds : 30,
+    impactEnabled: input.impactEnabled === true,
+    impactInterval: Math.max(.2, Math.min(60, Number(input.impactInterval) || 3)),
+    impactLoad: Math.max(0, Math.min(100, Number.isFinite(Number(input.impactLoad)) ? Number(input.impactLoad) : 2)),
+    impactRandom: input.impactRandom !== false};
 }
 
 export function episodeBudget(value) {
@@ -65,6 +69,7 @@ export class Trainer {
       if (this.episodes >= stopAt) break;
       const obs = env.observe();
       const {action, z, logp, value} = this.policy.action(obs);
+      env.disturb(this.config);
       const next = env.step(action, this.config.seconds);
       this.streams[i].push({obs, z, logp, value, reward: next.reward,
         terminated: next.terminated, truncated: next.truncated,
@@ -81,7 +86,6 @@ export class Trainer {
         this.travel = Math.max(this.travel, result.travel);
         if (this.first === null && result.first !== null) this.first = result.first;
         this.history.push(result);
-        if (this.history.length > 1200) this.history.shift();
         env.reset();
       }
     }

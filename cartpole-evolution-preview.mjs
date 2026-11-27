@@ -1,11 +1,10 @@
-import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=5';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=5';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=impact1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=impact1';
 
 export function railProjection(width, height, level, cart) {
   const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);
-  const radius = 105;
-  const scale = radius / reach;
-  const inset = Math.min(radius + 12, width * .39);
+  const scale = 105 / LENGTHS[0];
+  const inset = Math.min(117, width * .39);
   const halfRail = width / 2 - inset;
   const railX = x => width / 2 + x * halfRail / X_LIMIT;
   // Fixed-size model coordinates are relative to the moving pivot.
@@ -48,6 +47,11 @@ export class PreviewEpisode {
     const {invalid, terminated, truncated} = this.env.step(action, this.seconds);
     this.next = invalid ? this.current : this.env.frame();
     this.terminal = terminated || truncated;
+  }
+
+  impact(load, randomPosition) {
+    this.env.impact(load, randomPosition);
+    this.next = this.env.frame();
   }
 
   frame(elapsed) {

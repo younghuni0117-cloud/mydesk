@@ -1,6 +1,6 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=5';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=5';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=5';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=impact1';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=impact1';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=impact1';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=1';
 
 const get = name => document.getElementById('cpe-' + name);
@@ -14,8 +14,11 @@ let lastCheckpoint = null;
 let latestPolicy, modelPolicy, preview, lastDraw;
 let savedSettings = read('settings') ?? {};
 let config = options(savedSettings);
-const ranges = [50, 100, 240, 500, 1200];
-let chartRange = ranges.includes(savedSettings.chartRange) ? savedSettings.chartRange : 240;
+const ranges = [500, 1000, 2000, 5000, 10000, 0];
+let chartRange = ranges.includes(savedSettings.chartRange) ? savedSettings.chartRange : 500;
+let zoom = 1, panX = 0, panY = 0;
+const pointers = new Map();
+let gesture = null;
 let showGuides = savedSettings.showGuides !== false;
 let unlocked = read('unlocked');
 unlocked = Number.isInteger(unlocked) ? Math.min(5, Math.max(1, unlocked)) : 1;
@@ -50,6 +53,7 @@ function controls() {
   get('count').disabled = phase === 'running' || resumable;
   get('model').textContent = modelPolicy ? '실시간 관찰' : '모델 실행';
   get('model').disabled = !latestPolicy?.updates || ['loading', 'evaluating', 'error'].includes(phase);
+  get('impact').disabled = !modelPolicy;
   get('reset').disabled = phase === 'loading';
   get('restore').hidden = !read('backup' + level);
 }
@@ -93,7 +97,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=5', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=impact1', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -158,8 +162,10 @@ function displayFrame(elapsed) {
   const playing = Boolean(modelPolicy) || ['running', 'complete'].includes(phase);
   if (!preview || (playing && preview.done)) {
     preview = new PreviewEpisode(level, config.seconds, policy, !modelPolicy);
+    preview.env.nextImpact = null;
     elapsed = 0;
   }
+  if (!modelPolicy && playing) preview.env.disturb(config);
   return preview.frame(playing ? elapsed : 0);
 }
 
@@ -186,11 +192,10 @@ function draw(time) {
   background.addColorStop(1, '#f0f5fa');
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
-
-  ctx.strokeStyle = '#e5edf6';
-  ctx.lineWidth = 1;
-  for (let x = -3; x <= 3; x += .25) line(ctx, px(x), 34, px(x), height - 34);
-  for (let y = -reach; y <= reach; y += .25) line(ctx, 0, py(y), width, py(y));
+  ctx.save();
+  ctx.translate(width / 2 + panX, height / 2 + panY);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-width / 2, -height / 2);
 
   ctx.lineCap = 'round';
   ctx.strokeStyle = '#d5e0ec';
@@ -202,12 +207,19 @@ function draw(time) {
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#536a80';
-  const ticks = halfRail < 79 ? [-X_LIMIT, 0, X_LIMIT] : [-X_LIMIT, -1, 0, 1, X_LIMIT];
+  const ticks = [-3, -2, -1, 0, 1, 2, 3];
   for (const x of ticks) {
     line(ctx, px(x), railY + 7, px(x), railY + 11);
-    ctx.fillText(x === 0 ? '0 m' : String(x), px(x), railY + 25);
+    ctx.fillText((x > 0 ? '+' : '') + x + 'm', px(x), railY + 25);
   }
-
+  if (active?.impact && active.time - active.impact.time < .3) {
+    const [x, y] = active.impact.point;
+    ctx.strokeStyle = '#e56e45';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(modelX(x), py(y), 10, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   if (active) {
     const x = px(cart), y = py(0);
     const half = 24;
@@ -262,6 +274,7 @@ function draw(time) {
     }
   }
 
+  ctx.restore();
   const updates = preview?.updates ?? 0;
   get('live').textContent = (modelPolicy ? '모델 실행' : '실시간 관찰') + ' · PPO ' + numeric.format(updates);
   get('time').textContent = format(active?.time ?? 0) + '초';
@@ -277,7 +290,7 @@ function plot() {
   const s = surface(chart);
   if (!s) return;
   const {ctx, width, height} = s, all = metrics?.history ?? [];
-  const history = all.slice(-chartRange);
+  const history = chartRange ? all.slice(-chartRange) : all;
   const rewards = history.map(row => row.reward);
   const roundTick = (range) => 10 ** Math.floor(Math.log10(range || 1));
   const offset = all.length - history.length;
@@ -321,7 +334,9 @@ function plot() {
 }
 
 function configure() {
-  config = options({envs: get('env').value, seconds: get('seconds').value});
+  config = options({envs: get('env').value, seconds: get('seconds').value,
+    impactEnabled: get('impact-enabled').checked, impactRandom: get('impact-random').checked,
+    impactInterval: get('impact-interval').value, impactLoad: get('impact-load').value});
   get('env').value = config.envs;
   get('seconds').value = config.seconds;
   saveSettings();
@@ -332,6 +347,23 @@ get('env').value = config.envs;
 get('seconds').value = config.seconds;
 get('count').value = count;
 get('env').onchange = get('seconds').onchange = configure;
+get('impact-enabled').checked = config.impactEnabled;
+get('impact-random').checked = config.impactRandom;
+get('impact-interval').value = config.impactInterval;
+get('impact-load').value = config.impactLoad;
+for (const name of ['impact-enabled', 'impact-random', 'impact-interval', 'impact-load']) {
+  get(name).onchange = () => {
+    configure();
+    get('impact-interval').value = config.impactInterval;
+    get('impact-load').value = config.impactLoad;
+  };
+}
+get('impact').onclick = () => {
+  if (!modelPolicy) return;
+  if (!preview || preview.done) displayFrame(0);
+  preview.impact(config.impactLoad, config.impactRandom);
+  requestDraw();
+};
 get('count').onchange = () => {
   count = episodeBudget(get('count').value);
   get('count').value = count;
@@ -386,6 +418,38 @@ get('range').onchange = () => {
 };
 new ResizeObserver(() => { requestDraw(); plot(); }).observe(canvas);
 new ResizeObserver(plot).observe(chart);
+function touchGesture() {
+  const points = [...pointers.values()];
+  const center = {x: points.reduce((s,p)=>s+p.x,0)/points.length,
+    y: points.reduce((s,p)=>s+p.y,0)/points.length};
+  const distance = points.length > 1 ? Math.hypot(points[0].x-points[1].x, points[0].y-points[1].y) : 0;
+  return {...center, distance};
+}
+canvas.addEventListener('pointerdown', event => {
+  canvas.setPointerCapture(event.pointerId);
+  pointers.set(event.pointerId, {x:event.clientX, y:event.clientY});
+  gesture = touchGesture();
+});
+canvas.addEventListener('pointermove', event => {
+  if (!pointers.has(event.pointerId)) return;
+  pointers.set(event.pointerId, {x:event.clientX,y:event.clientY});
+  const next = touchGesture();
+  panX += next.x-gesture.x;
+  panY += next.y-gesture.y;
+  if (next.distance && gesture.distance) zoom = Math.max(.15, Math.min(5, zoom*next.distance/gesture.distance));
+  gesture = next;
+  requestDraw();
+});
+for (const name of ['pointerup','pointercancel','lostpointercapture']) canvas.addEventListener(name,event=>{
+  pointers.delete(event.pointerId);
+  gesture = pointers.size ? touchGesture() : null;
+});
+canvas.addEventListener('wheel',event=>{
+  event.preventDefault();
+  zoom = Math.max(.15,Math.min(5,zoom*Math.exp(-event.deltaY*.001)));
+  requestDraw();
+},{passive:false});
+canvas.addEventListener('dblclick',()=>{zoom=1;panX=panY=0;requestDraw();});
 document.addEventListener('visibilitychange', () => {
   lastDraw = null;
   if (document.hidden) {

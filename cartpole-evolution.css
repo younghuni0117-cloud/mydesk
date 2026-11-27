@@ -24,7 +24,7 @@
   position: relative; overflow: hidden;
   height: var(--stage-height); border-radius: 12px; background: white; border: 1px solid #dce5ee;
 }
-.cpe-stage canvas { display: block; width: 100%; height: 100%; }
+.cpe-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .cpe-overlay {
   position: absolute; left: 8px; right: 8px; justify-content: space-between;
   color: #304c64; font-size: .8rem; font-variant-numeric: tabular-nums; pointer-events: none;
@@ -40,7 +40,7 @@
 .cpe-inputs, .cpe-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 .cpe-inputs label { display: grid; gap: 1px; font-size: .83rem; color: #435a71; }
 .cpe-actions { margin-top: 4px; }
-.cpe-primary-actions { margin: 4px 0; }
+.cpe-primary-actions { margin: 4px 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .cpe-inputs :is(select, input) { width: 100%; min-width: 0; }
 .cpe-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin-top: 4px; }
 .cpe-stats div { padding: 3px 4px; background: #edf3f8; border-radius: 5px; text-align: center; }
@@ -65,7 +65,7 @@
   .cpe-page .topbar { height: 48px; padding-block: 4px; }
 }
 @media (max-width: 640px) {
-  .cpe-grid { grid-template-columns: minmax(0, 1fr); --stage-height: clamp(252px, 39dvh, 360px); }
+  .cpe-grid { grid-template-columns: minmax(0, 1fr); --stage-height: max(320px, calc(100dvh - 255px)); }
   .cpe-panel { max-height: max(205px, calc(100dvh - var(--stage-height) - 158px)); }
   .cpe-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cpe-stats div { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; padding-inline: 6px; }

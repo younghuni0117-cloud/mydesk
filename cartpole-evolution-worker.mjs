@@ -1,5 +1,5 @@
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=5';
-import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=5';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=impact1';
+import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=impact1';
 
 let trainer, settled, pending, update, assessment, running = false;
 let timer, lastStats, lastSaved, sampleSteps = 0, planStart = 0, target = 0;
@@ -149,7 +149,7 @@ onmessage = ({data}) => {
       send('state', {state: 'paused'});
     } else if (data.type === 'config') {
       const config = options(data.config);
-      pending = config.envs === trainer.config.envs && config.seconds === trainer.config.seconds ? null : config;
+      pending = JSON.stringify(config) === JSON.stringify(trainer.config) ? null : config;
       applyConfig();
       stats();
     } else if (data.type === 'evaluate') {
