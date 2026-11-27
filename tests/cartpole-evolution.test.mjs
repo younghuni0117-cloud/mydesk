@@ -4,6 +4,7 @@ import {Worker} from 'node:worker_threads';
 import {readFileSync} from 'node:fs';
 import {CartPole, DT, GRAVITY, LENGTHS, MASSES, MAX_FORCE, inputSize} from '../cartpole-evolution-core.mjs';
 import {Trainer, evaluate} from '../cartpole-evolution-training.mjs';
+import {PreviewEpisode} from '../cartpole-evolution-preview.mjs';
 import {DEFAULT_MENUS, validateMenus, withCartPoleEvolution} from '../navigation-data.mjs';
 
 function energy(env) {
@@ -131,16 +132,22 @@ test('worker evaluates, trains and applies setting changes at a rollout boundary
     worker.postMessage({type: 'evaluate'});
     const baseline = await wait(m => m.type === 'checkpoint' && m.checkpoint.evaluation);
     assert.equal(baseline.checkpoint.policy.updates, 0);
-    worker.postMessage({type: 'speed', speed: 0});
-    worker.postMessage({type: 'start'});
+    worker.postMessage({type: 'start', count: 1000});
     await wait(m => m.type === 'stats' && m.steps > 0);
     worker.postMessage({type: 'config', config: {envs: 5, seconds: 10}});
-    await wait(m => m.type === 'frame' && m.frames.length === 5);
+    await wait(m => m.type === 'stats' && m.envs === 5);
     worker.postMessage({type: 'pause'});
     await wait(m => m.type === 'state' && m.state === 'paused');
     const latest = history.filter(m => m.type === 'checkpoint').at(-1).checkpoint;
     assert.ok(latest.policy.updates >= 1);
     assert.notDeepEqual(latest.policy.actor, baseline.checkpoint.policy.actor);
+    const plan = wait(m => m.type === 'stats' && m.target - m.planStart === 3);
+    worker.postMessage({type: 'start', count: 3});
+    const {target} = await plan;
+    await wait(m => m.type === 'state' && m.state === 'complete');
+    const final = history.filter(m => m.type === 'checkpoint').at(-1).checkpoint;
+    assert.equal(final.episodes, target);
+    assert.ok(final.policy.updates > latest.policy.updates);
   } finally {
     await worker.terminate();
   }
@@ -152,7 +159,23 @@ test('old shared navigation gains one valid menu and leaves custom labels and se
   assert.deepEqual(updated.filter(m => m.id !== 'cartpole-evolution'), old);
   assert.equal(withCartPoleEvolution(updated), updated);
   const html = readFileSync(new URL('../cartpole-evolution.html', import.meta.url), 'utf8');
-  for (const id of ['sidebar', 'menu-toggle', 'sidebar-backdrop', 'cpe-canvas', 'cpe-train', 'cpe-representative']) {
+  for (const id of ['sidebar', 'menu-toggle', 'sidebar-backdrop', 'cpe-canvas', 'cpe-train', 'cpe-model', 'cpe-level', 'cpe-count']) {
     assert.ok(html.includes('id="' + id + '"'));
   }
+});
+
+test('preview holds a frozen policy, matches real time at 120 Hz and completes at the episode boundary', () => {
+  const snapshot = new Trainer(1, {}, null, 871).policy.checkpoint();
+  snapshot.actor.fill(0);
+  const preview = new PreviewEpisode(1, 5, snapshot, false, 871);
+  snapshot.actor.fill(1);
+  let frame;
+  for (let i = 0; i < 120; i++) frame = preview.frame(1 / 120);
+  assert.ok(Math.abs(frame.time - 1) < 1e-9);
+  assert.ok(preview.policy.actor.w.every(v => v === 0));
+  assert.equal(frame.force, 0);
+  assert.equal(preview.done, false);
+  for (let i = 0; i < 481; i++) frame = preview.frame(1 / 120);
+  assert.equal(frame.time, 5);
+  assert.equal(preview.done, true);
 });

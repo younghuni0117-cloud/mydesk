@@ -44,3 +44,12 @@ lengths through Level 5 have validated numerical dynamics. Swing-up convergence
 at higher levels remains unverified.
 
 This GitHub Pages build uses browser-local storage and CPU execution.
+
+Training runs independently of the view and stops after the requested number of
+additional completed episodes. The last partial rollout is updated before saving.
+The canvas runs a separate Planck world at normal speed, interpolating each
+display frame between 20 ms policy steps. Training observation uses a frozen copy
+of the newest completed policy at the beginning of each displayed episode.
+Explicit model execution holds the selected snapshot and disables exploration.
+The camera follows the cart to make the real links larger on screen, without
+changing their physical parameters or the checkpoint format.

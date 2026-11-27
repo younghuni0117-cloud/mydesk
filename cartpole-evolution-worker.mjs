@@ -1,17 +1,17 @@
-import {DT} from './cartpole-evolution-core.mjs?v=2';
 import {CartPPO} from './cartpole-evolution-ppo.mjs?v=2';
-import {Trainer, ROLLOUT, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=2';
+import {Trainer, ROLLOUT, episodeBudget, evaluate, options, summarize} from './cartpole-evolution-training.mjs?v=3';
 
-let trainer, settled, pending, update, assessment, replay, recording, speed = 1, running = false;
-let timer, lastTick, lastFrame, lastStats, lastSaved, debt = 0, sampleSteps = 0;
+let trainer, settled, pending, update, assessment, running = false;
+let timer, lastStats, lastSaved, sampleSteps = 0, planStart = 0, target = 0;
 const send = (type, data = {}) => postMessage({type, ...data});
 
-function frame() {
-  send('frame', {frames: trainer.envs.map(env => env.frame())});
+function publishPolicy() {
+  send('policy', {policy: settled.policy});
 }
 
 function stats(now = performance.now()) {
-  send('stats', {steps: trainer.steps, episodes: trainer.episodes,
+  send('stats', {steps: trainer.steps, episodes: trainer.episodes, planStart, target, envs: trainer.config.envs,
+    incomplete: target > 0 && (trainer.episodes < target || trainer.count > 0),
     updates: trainer.policy.updates, diagnostics: trainer.policy.last,
     recent: summarize(trainer.history.slice(-30)), history: trainer.history.slice(-240),
     first: trainer.first, bestHold: trainer.bestHold, travel: trainer.travel,
@@ -51,8 +51,7 @@ function advanceEvaluation() {
   if (firstPass) trainer.milestone = {episode: settled.episodes, updates: result.updates, passed: result.passed};
   settled = {...settled, evaluation: result, bestEvaluation: trainer.bestEvaluation, milestone: trainer.milestone};
   if (assessment.manual) {
-    recording = assessment.samples;
-    send('recording');
+    send('recording', {frames: assessment.samples});
     send('state', {state: 'paused'});
   }
   assessment = null;
@@ -65,35 +64,18 @@ function applyConfig() {
   if (pending && !trainer.count && !update) {
     trainer.configure(pending);
     pending = null;
-    frame();
     stats();
   }
 }
 
 function schedule() {
-  if (!timer && (running || assessment?.manual || replay)) timer = setTimeout(tick, 8);
+  if (!timer && (running || assessment)) timer = setTimeout(tick, 4);
 }
 
 function tick() {
   timer = null;
   try {
     const now = performance.now();
-    if (replay) {
-      const index = Math.min(recording.length - 1, Math.floor((now - replay.start) / (DT * 1000)));
-      if (replay.index !== index) {
-        replay.index = index;
-        send('frame', {frames: [recording[index]], replay: true});
-      }
-      if (index === recording.length - 1) {
-        replay = null;
-        send('state', {state: 'replayDone'});
-      }
-      schedule();
-      return;
-    }
-    const elapsed = Math.min(60, now - lastTick);
-    lastTick = now;
-    debt = Math.min(.12, debt + elapsed * speed / 1000);
     const deadline = now + 7;
     do {
       if (assessment) {
@@ -103,18 +85,22 @@ function tick() {
           update = null;
           settled = trainer.checkpoint();
           save();
+          publishPolicy();
           applyConfig();
           if (trainer.policy.updates % 5 === 0) beginEvaluation(false);
           stats();
         }
-      } else if (running && trainer.count >= ROLLOUT) {
+      } else if (running && trainer.count && (trainer.count >= ROLLOUT || trainer.episodes >= target)) {
         update = trainer.update();
-      } else if (running && (speed === 0 || debt >= DT)) {
-        trainer.collect();
-        if (speed !== 0) debt -= DT;
+      } else if (running && trainer.episodes >= target) {
+        running = false;
+        save(true);
+        stats();
+        send('state', {state: 'complete'});
+      } else if (running) {
+        trainer.collect(target);
       } else break;
-    } while ((running || assessment?.manual) && performance.now() < deadline);
-    if (now - lastFrame >= 25 && running) { frame(); lastFrame = now; }
+    } while ((running || assessment) && performance.now() < deadline);
     if (now - lastStats >= 500 && running) stats();
     schedule();
   } catch (error) {
@@ -137,27 +123,27 @@ onmessage = ({data}) => {
         warning = '저장된 정책을 읽을 수 없어 새 정책으로 시작합니다.';
       }
       settled = trainer.checkpoint();
-      lastTick = lastFrame = lastStats = lastSaved = performance.now();
+      lastStats = lastSaved = performance.now();
       sampleSteps = trainer.steps;
       send('ready', {warning});
-      frame();
+      publishPolicy();
       stats();
       return;
     }
     if (!trainer) return;
     if (data.type === 'start') {
       if (assessment?.manual) assessment = null;
-      replay = null;
+      if (data.count !== undefined || !target || trainer.episodes >= target && !trainer.count && !update) {
+        planStart = trainer.episodes;
+        target = planStart + episodeBudget(data.count);
+      }
       running = true;
-      lastTick = performance.now();
       send('state', {state: 'running'});
+      stats();
     } else if (data.type === 'pause') {
       running = false;
-      replay = null;
-      debt = 0;
-      if (assessment?.manual) assessment = null;
+      assessment = null;
       save(true);
-      frame();
       stats();
       send('state', {state: 'paused'});
     } else if (data.type === 'config') {
@@ -165,17 +151,9 @@ onmessage = ({data}) => {
       pending = config.envs === trainer.config.envs && config.seconds === trainer.config.seconds ? null : config;
       applyConfig();
       stats();
-    } else if (data.type === 'speed') {
-      speed = [0, 1, 4].includes(data.speed) ? data.speed : 1;
-      debt = 0;
     } else if (data.type === 'evaluate') {
       running = false;
-      replay = null;
       beginEvaluation(true);
-    } else if (data.type === 'replay' && recording?.length) {
-      running = false;
-      replay = {start: performance.now(), index: -1};
-      send('state', {state: 'replaying'});
     }
     schedule();
   } catch (error) {

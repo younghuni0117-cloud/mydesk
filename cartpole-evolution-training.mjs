@@ -9,6 +9,11 @@ export function options(input = {}) {
     seconds: Number.isInteger(seconds) && seconds >= 5 && seconds <= 60 ? seconds : 20};
 }
 
+export function episodeBudget(value) {
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 1 ? Math.min(100000, Math.floor(count)) : 1000;
+}
+
 export function summarize(results) {
   if (!results.length) return null;
   const firsts = results.map(r => r.first).filter(v => v !== null);
@@ -55,8 +60,9 @@ export class Trainer {
     this.count = 0;
   }
 
-  collect() {
+  collect(stopAt = Infinity) {
     for (const [i, env] of this.envs.entries()) {
+      if (this.episodes >= stopAt) break;
       const obs = env.observe();
       const {action, z, logp, value} = this.policy.action(obs);
       const next = env.step(action, this.config.seconds);

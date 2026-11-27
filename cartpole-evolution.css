@@ -12,34 +12,40 @@
 .cpe-heading { justify-content: space-between; margin-bottom: .45rem; flex-wrap: wrap; }
 .cpe-heading h1 { margin: 0; font-size: clamp(1.15rem, 2.5vw, 1.95rem); letter-spacing: -.035em; }
 .cpe-heading span { color: #546b83; font-size: .8rem; }
-.cpe-levels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-bottom: 8px; }
 .cpe-lab button, .cpe-lab select, .cpe-lab input {
   color: inherit; font: inherit; font-size: .875rem; min-height: 42px;
   background: white; border: 1px solid #cbd7e3; border-radius: 8px; padding: 4px 7px;
 }
 .cpe-lab button { cursor: pointer; font-weight: 650; }
 .cpe-lab button:disabled { color: #526479; background: #edf1f5; cursor: default; }
-.cpe-levels button[aria-pressed="true"], #cpe-train:not(:disabled) { background: #245683; color: white; border-color: #245683; }
-.cpe-grid { display: grid; grid-template: "stage data" auto "controls data" auto / minmax(0, 1fr) minmax(230px, .48fr); align-items: start; gap: 8px; }
+#cpe-train:not(:disabled) { background: #245683; color: white; border-color: #245683; }
+.cpe-grid {
+  --stage-height: clamp(270px, calc(100dvh - 145px), 950px);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, .44fr); gap: 10px;
+}
 .cpe-stage {
-  grid-area: stage; position: relative; overflow: hidden;
-  height: clamp(240px, 61dvh, 660px); border-radius: 12px; background: #11283c;
+  position: relative; overflow: hidden;
+  height: var(--stage-height); border-radius: 12px; background: white; border: 1px solid #dce5ee;
 }
 .cpe-stage canvas { display: block; width: 100%; height: 100%; }
 .cpe-overlay {
   position: absolute; left: 8px; right: 8px; justify-content: space-between;
-  color: #dceaf7; font-size: .8rem; font-variant-numeric: tabular-nums; pointer-events: none;
+  color: #304c64; font-size: .8rem; font-variant-numeric: tabular-nums; pointer-events: none;
 }
-.cpe-overlay > * { background: #102438e8; padding: 3px 5px; border-radius: 5px; }
+.cpe-overlay > * { background: #fffffff2; border: 1px solid #d9e5f0; padding: 3px 6px; border-radius: 6px; }
 .cpe-stage-top { top: 6px; }
 .cpe-stage-bottom { bottom: 6px; }
-.cpe-control, .cpe-data { border: 1px solid #dce5ee; border-radius: 12px; background: white; padding: 9px; min-width: 0; }
-.cpe-control { grid-area: controls; }
-.cpe-data { grid-area: data; }
-.cpe-inputs, .cpe-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.cpe-panel {
+  height: var(--stage-height); min-width: 0; overflow-y: auto; overscroll-behavior-y: contain;
+  scrollbar-gutter: stable; border: 1px solid #dce5ee; border-radius: 12px; background: white;
+  padding: 12px;
+}
+.cpe-control { padding-bottom: 8px; }
+.cpe-inputs, .cpe-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .cpe-inputs label { display: grid; gap: 3px; font-size: .83rem; color: #435a71; }
 .cpe-actions { margin-top: 6px; }
-.cpe-inputs :is(select, input), .cpe-actions select { width: 100%; }
+.cpe-inputs :is(select, input) { width: 100%; min-width: 0; }
+.cpe-inputs label:first-child { grid-column: 1 / -1; }
 .cpe-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
 .cpe-stats div { padding: 6px; background: #f1f6fa; border-radius: 6px; }
 .cpe-stats span { display: block; font-size: .78rem; color: #435a71; }
@@ -51,7 +57,6 @@
 #cpe-chart { width: 100%; height: 120px; display: block; }
 #cpe-details { display: grid; grid-template-columns: 1fr auto; font-size: .8rem; margin: 5px 0; gap: 4px 8px; }
 #cpe-details dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-.cpe-sr { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
 @media (max-width: 1100px), (pointer: coarse) {
   .cpe-page .sidebar { top: 48px; transform: translateX(-100%); width: min(290px, 88vw); }
   .cpe-page.menu-open .sidebar { transform: translateX(0); }
@@ -62,11 +67,11 @@
   .cpe-page .topbar { height: 48px; padding-block: 4px; }
 }
 @media (max-width: 640px) {
-  .cpe-grid { grid-template: "stage" auto "controls" auto "data" auto / minmax(0, 1fr); }
-  .cpe-stage { height: clamp(195px, calc(100dvh - 380px), 54dvh); }
+  .cpe-grid { grid-template-columns: minmax(0, 1fr); --stage-height: clamp(200px, 44dvh, 380px); }
+  .cpe-panel { height: auto; max-height: max(235px, calc(100dvh - var(--stage-height) - 118px)); }
   .cpe-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .cpe-lab button, .cpe-lab select, .cpe-lab input { min-height: 40px; }
 }
 @media (max-height: 560px) and (min-width: 641px) {
-  .cpe-stage { height: max(150px, calc(100dvh - 225px)); }
+  .cpe-grid { --stage-height: max(175px, calc(100dvh - 115px)); }
 }

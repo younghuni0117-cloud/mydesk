@@ -1,22 +1,22 @@
-import {LENGTHS, X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=2';
-import {options} from './cartpole-evolution-training.mjs?v=2';
+import {DT, LENGTHS, X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=2';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=3';
+import {PreviewEpisode, interpolateFrame} from './cartpole-evolution-preview.mjs?v=3';
 
 const get = name => document.getElementById('cpe-' + name);
 const prefix = 'mydesk.cartpole-evolution.v2.';
-const colors = ['#6ee7ff', '#ffad7f', '#a7ee93', '#d1b2ff', '#ffe397'];
 const labels = {loading: '불러오는 중', ready: '학습 대기', running: 'PPO 학습 중',
-  paused: '일시정지', evaluating: '고정 평가 중', replaying: '고정 평가 재생 중', replayDone: '고정 평가 재생 완료', error: '실행 오류'};
+  paused: '일시정지', complete: '목표 횟수 완료', evaluating: '고정 평가 중', error: '실행 오류'};
 const numeric = new Intl.NumberFormat('ko-KR');
-let worker, frames = [], metrics = null, phase = 'loading', raf = 0, autoResume = false;
-let lastCheckpoint = null, storageWarning = '', notice = '', replayAvailable = false, replayFrame = false;
+let worker, metrics = null, phase = 'loading', raf = 0, autoResume = false;
+let lastCheckpoint = null, storageWarning = '', notice = '';
+let latestPolicy, modelPolicy, preview, replay, recording, lastDraw;
 let savedSettings = read('settings') ?? {};
 let config = options(savedSettings);
 let unlocked = read('unlocked');
 unlocked = Number.isInteger(unlocked) ? Math.min(5, Math.max(1, unlocked)) : 1;
 for (let i = 1; i < 5; i++) if (read('level' + i)?.milestone?.passed >= 7) unlocked = Math.max(unlocked, i + 1);
 let level = Math.min(unlocked, Math.max(1, Math.trunc(Number(savedSettings.level)) || 1));
-let representative = 0;
-let speed = [0, 1, 4].includes(savedSettings.speed) ? savedSettings.speed : 0;
+let count = episodeBudget(savedSettings.count);
 const canvas = get('canvas'), chart = get('chart');
 
 function read(key) {
@@ -35,7 +35,7 @@ function write(key, value) {
 }
 
 function saveSettings() {
-  write('settings', {...config, level, speed});
+  write('settings', {...config, level, count});
 }
 
 function renderNotice() {
@@ -44,36 +44,27 @@ function renderNotice() {
 
 function controls() {
   get('state').textContent = labels[phase];
-  get('train').textContent = phase === 'running' ? '일시정지' : phase === 'paused' ? '학습 재개' : '학습 시작';
+  const resumable = phase === 'paused' && metrics?.incomplete;
+  get('train').textContent = phase === 'running' ? '일시정지' : resumable ? '학습 재개' : '학습 시작';
   get('train').disabled = ['loading', 'evaluating', 'error'].includes(phase);
+  get('count').disabled = phase === 'running' || resumable;
+  get('model').textContent = modelPolicy || replay ? '실시간 관찰' : '모델 실행';
+  get('model').disabled = (!latestPolicy?.updates && !replay) || ['loading', 'evaluating', 'error'].includes(phase);
   get('evaluate').disabled = ['loading', 'evaluating', 'error'].includes(phase);
   get('reset').disabled = phase === 'loading';
   get('restore').hidden = !read('backup' + level);
-  get('replay').hidden = !replayAvailable;
-  get('replay').disabled = ['evaluating', 'replaying', 'running', 'error'].includes(phase);
+  get('replay').hidden = !recording;
+  get('replay').disabled = phase === 'evaluating' || Boolean(replay);
 }
 
 function showLevels() {
-  const buttons = Array.from({length: 5}, (_, i) => {
-    const n = i + 1, button = document.createElement('button');
-    button.type = 'button';
-    button.disabled = n > unlocked;
-    button.textContent = n > unlocked ? '🔒 ' + n : 'Lv. ' + n;
-    button.setAttribute('aria-label', '레벨 ' + n + (n > unlocked ? ' 잠김' : ''));
-    button.setAttribute('aria-pressed', String(n === level));
-    button.addEventListener('click', () => { if (n !== level) openLevel(n); });
-    return button;
+  const choices = Array.from({length: 5}, (_, i) => {
+    const n = i + 1, option = new Option(`Level ${n} · 링크 ${n}개${n > unlocked ? ' (잠김)' : ''}`, n);
+    option.disabled = n > unlocked;
+    return option;
   });
-  get('levels').replaceChildren(...buttons);
-}
-
-function showEnvironments(count) {
-  representative = Math.min(representative, Math.max(0, count - 1));
-  const select = get('representative');
-  if (select.options.length !== count) {
-    select.replaceChildren(...Array.from({length: count}, (_, i) => new Option('환경 ' + (i + 1), i)));
-  }
-  select.value = representative;
+  get('level').replaceChildren(...choices);
+  get('level').value = level;
 }
 
 function format(value, digits = 2) {
@@ -86,6 +77,11 @@ function showStats() {
   get('reward').textContent = format(recent?.mean, 1);
   get('success').textContent = recent ? Math.round(recent.passed / recent.attempts * 100) + '%' : '—';
   get('test').textContent = evaluation ? evaluation.passed + ' / ' + evaluation.attempts : '—';
+  const plan = get('plan');
+  plan.hidden = !metrics?.target;
+  if (!plan.hidden) {
+    plan.textContent = `이번 학습 ${numeric.format(metrics.episodes - metrics.planStart)} / ${numeric.format(metrics.target - metrics.planStart)}회`;
+  }
   const rows = {
     '환경 Steps': numeric.format(metrics?.steps ?? 0),
     '학습 처리량': numeric.format(metrics?.rate ?? 0) + ' steps/s',
@@ -121,19 +117,17 @@ function openLevel(next) {
   phase = 'loading';
   autoResume = false;
   metrics = null;
-  frames = [];
-  replayAvailable = replayFrame = false;
+  latestPolicy = modelPolicy = preview = replay = recording = lastDraw = null;
   notice = '';
   lastCheckpoint = read('level' + level);
   renderNotice();
   saveSettings();
   showLevels();
-  showEnvironments(config.envs);
   controls();
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=2', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=3', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -144,20 +138,22 @@ function openLevel(next) {
         controls();
       } else if (data.type === 'state') {
         phase = data.state;
+        lastDraw = null;
         controls();
-      } else if (data.type === 'frame') {
-        frames = data.frames;
-        replayFrame = Boolean(data.replay);
-        if (!replayFrame) showEnvironments(frames.length);
+        requestDraw();
+      } else if (data.type === 'policy') {
+        latestPolicy = data.policy;
+        controls();
         requestDraw();
       } else if (data.type === 'recording') {
-        replayAvailable = true;
+        recording = data.frames;
         controls();
       } else if (data.type === 'stats') {
         metrics = data;
         if (data.pending) { notice = '진행 중인 PPO 수집·업데이트가 끝나면 새 설정을 적용합니다.'; }
         else if (notice.startsWith('진행 중인 PPO')) notice = '';
         renderNotice();
+        controls();
         showStats();
       } else if (data.type === 'checkpoint') {
         lastCheckpoint = data.checkpoint;
@@ -171,7 +167,6 @@ function openLevel(next) {
       } else if (data.type === 'error') error(data.message);
     };
     instance.postMessage({type: 'init', level, config, checkpoint: lastCheckpoint});
-    instance.postMessage({type: 'speed', speed});
   } catch (e) { error(e.message); }
 }
 
@@ -201,92 +196,141 @@ function line(ctx, x, y, u, v) {
 }
 
 let paintCount = 0, fpsTime = performance.now(), renderFps = 0;
+
+function displayFrame(elapsed) {
+  if (replay) {
+    replay.time += elapsed;
+    const position = Math.min(recording.length - 1, replay.time / DT);
+    const i = Math.floor(position);
+    return interpolateFrame(recording[i], recording[i + 1], position - i);
+  }
+  const policy = modelPolicy ?? latestPolicy;
+  if (!policy) return null;
+  const playing = Boolean(modelPolicy) || ['running', 'complete'].includes(phase);
+  if (!preview || (playing && preview.done)) {
+    preview = new PreviewEpisode(level, config.seconds, policy, !modelPolicy);
+    elapsed = 0;
+  }
+  return preview.frame(playing ? elapsed : 0);
+}
+
+function circle(ctx, x, y, radius, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function draw(time) {
   raf = 0;
-  const s = surface(canvas);
-  if (!s) return;
-  const {ctx, width, height} = s;
+  const elapsed = lastDraw === null ? 0 : Math.min(.1, (time - lastDraw) / 1000);
+  lastDraw = time;
+  const active = displayFrame(elapsed);
+  const surfaceState = surface(canvas);
+  if (!surfaceState) return;
+  const {ctx, width, height} = surfaceState;
   const reach = LENGTHS.slice(0, level).reduce((a, b) => a + b, 0);
-  const scale = Math.max(12, Math.min((width - 28) / (2 * (X_LIMIT + reach)), (height - 58) / (reach * 2 + .16)));
-  const px = x => width / 2 + x * scale, py = y => height / 2 - y * scale;
+  const scale = Math.max(12, Math.min((width - 25) / (2 * (reach + .58)), (height - 80) / (reach * 2 + .23)));
+  const cart = active?.points[0][0] ?? 0, center = .85 * cart;
+  const px = x => width / 2 + (x - center) * scale;
+  const py = y => height / 2 - y * scale;
+  const railY = py(0) + 16;
   const background = ctx.createLinearGradient(0, 0, 0, height);
-  background.addColorStop(0, '#1b405a');
-  background.addColorStop(1, '#101e30');
+  background.addColorStop(0, '#ffffff');
+  background.addColorStop(1, '#f0f5fa');
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = '#a2c5df22';
+
+  ctx.strokeStyle = '#e5edf6';
   ctx.lineWidth = 1;
-  for (let x = -X_LIMIT; x <= X_LIMIT + .01; x += .4) line(ctx, px(x), 30, px(x), height - 30);
-  for (let y = -.4; y < reach + .1; y += .4) {
-    if (py(y) > 30 && py(y) < height - 30) line(ctx, px(-X_LIMIT), py(y), px(X_LIMIT), py(y));
-  }
-  const railY = py(0) + 11;
-  ctx.strokeStyle = '#9eb7cb';
-  ctx.lineWidth = 2;
+  for (let x = -3; x <= 3; x += .25) line(ctx, px(x), 34, px(x), height - 34);
+  for (let y = -reach; y <= reach; y += .25) line(ctx, 0, py(y), width, py(y));
+
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#d5e0ec';
+  ctx.lineWidth = 9;
+  line(ctx, px(-X_LIMIT), railY + 3, px(X_LIMIT), railY + 3);
+  ctx.strokeStyle = '#8499ad';
+  ctx.lineWidth = 3;
   line(ctx, px(-X_LIMIT), railY, px(X_LIMIT), railY);
-  for (const end of [-X_LIMIT, X_LIMIT]) line(ctx, px(end), railY - 4, px(end), railY + 4);
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#c1d4e5';
-  ctx.fillText('−2.4 m', px(-X_LIMIT), railY + 17);
-  ctx.fillText('+2.4 m', px(X_LIMIT), railY + 17);
-  const selected = replayFrame ? 0 : representative;
-  const active = frames[selected];
+  ctx.fillStyle = '#536a80';
+  for (const x of [-2.4, -2, -1, 0, 1, 2, 2.4]) {
+    line(ctx, px(x), railY + 7, px(x), railY + 11);
+    ctx.fillText(x === 0 ? '0 m' : String(x), px(x), railY + 25);
+  }
+
   if (active) {
-    const [x] = active.points[0];
-    ctx.strokeStyle = '#c5dae666';
+    const x = px(cart), y = py(0);
+    const half = Math.min(40, Math.max(17, .18 * scale));
+    ctx.strokeStyle = '#aebdcd';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 5]);
-    line(ctx, px(x), py(0), px(x), py(reach));
+    line(ctx, x, y, x, py(reach));
     ctx.setLineDash([]);
-  }
-  const order = frames.map((_, i) => i).filter(i => i !== selected);
-  if (active) order.push(selected);
-  for (const i of order) {
-    const f = frames[i], [x] = f.points[0], color = colors[i];
-    ctx.globalAlpha = i === selected ? 1 : .28;
-    ctx.fillStyle = color;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(4, Math.min(10, scale * .13));
-    ctx.lineCap = 'round';
-    ctx.fillRect(px(x) - 14, py(0) - 3, 28, 12);
-    for (let n = 1; n < f.points.length; n++) {
-      const [a, b] = f.points[n - 1], [u, v] = f.points[n];
-      line(ctx, px(a), py(b), px(u), py(v));
-    }
-    ctx.fillStyle = '#102438';
-    for (const [u,v] of f.points) {
-      ctx.beginPath();
-      ctx.arc(px(u), py(v), 2.4, 0, 2 * Math.PI);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  }
-  if (active) {
-    const [x] = active.points[0], origin = px(x), tip = origin + active.force / MAX_FORCE * 40;
-    if (Math.abs(tip - origin) > 4) {
-      ctx.strokeStyle = '#f6d783';
+
+    // Polymer-coated links, brushed steel axles and a blue anodized carriage.
+    for (let i = 1; i < active.points.length; i++) {
+      const [a, b] = active.points[i - 1], [u, v] = active.points[i];
+      const ax = px(a), ay = py(b), bx = px(u), by = py(v);
+      const thickness = Math.max(7, 13 - i);
+      ctx.strokeStyle = '#8f4718';
+      ctx.lineWidth = thickness;
+      line(ctx, ax, ay, bx, by);
+      ctx.strokeStyle = '#e59447';
+      ctx.lineWidth = thickness - 2;
+      line(ctx, ax, ay, bx, by);
+      ctx.strokeStyle = '#ffd9a5';
       ctx.lineWidth = 2;
-      const direction = Math.sign(tip - origin);
-      line(ctx, origin, railY - 25, tip, railY - 25);
-      line(ctx, tip, railY - 25, tip - direction * 5, railY - 29);
-      line(ctx, tip, railY - 25, tip - direction * 5, railY - 21);
+      line(ctx, ax - 1.1, ay - 1.1, bx - 1.1, by - 1.1);
+    }
+    const cartPaint = ctx.createLinearGradient(0, y - 9, 0, y + 13);
+    cartPaint.addColorStop(0, '#568cbb');
+    cartPaint.addColorStop(.35, '#32678f');
+    cartPaint.addColorStop(1, '#173c5b');
+    for (const offset of [-.67, .67]) {
+      circle(ctx, x + half * offset, railY - 2, 5, '#1b3045');
+      circle(ctx, x + half * offset, railY - 2, 2, '#8ca5bd');
+    }
+    ctx.beginPath();
+    ctx.roundRect(x - half, y - 8, half * 2, 20, 5);
+    ctx.fillStyle = cartPaint;
+    ctx.fill();
+    ctx.strokeStyle = '#8ab1d2';
+    ctx.lineWidth = 1;
+    line(ctx, x - half + 6, y - 5, x + half - 6, y - 5);
+    for (const [u, v] of active.points) {
+      circle(ctx, px(u), py(v), 4.8, '#27394b');
+      circle(ctx, px(u), py(v), 2.8, '#d0dce7');
+    }
+    const tip = x + active.force / MAX_FORCE * 40;
+    if (Math.abs(tip - x) > 4) {
+      ctx.strokeStyle = '#26746c';
+      ctx.lineWidth = 2;
+      const direction = Math.sign(tip - x);
+      line(ctx, x, railY - 31, tip, railY - 31);
+      line(ctx, tip, railY - 31, tip - direction * 5, railY - 35);
+      line(ctx, tip, railY - 31, tip - direction * 5, railY - 27);
     }
   }
-  get('live').textContent = replayFrame ? '고정 조건 1번' : '환경 ' + (selected + 1) + ' / ' + (frames.length || config.envs);
-  get('live').style.color = colors[selected];
+
+  const updates = preview?.updates ?? 0;
+  get('live').textContent = replay ? '고정 평가 · 1배속'
+    : (modelPolicy ? '모델 실행' : '실시간 관찰') + ' · PPO ' + numeric.format(updates);
   get('time').textContent = format(active?.time ?? 0) + '초';
   get('force').textContent = format(active?.force ?? 0, 1) + ' N';
   get('hold').textContent = '직립 ' + format(active?.streak ?? 0) + ' / ' + HOLD_SECONDS + '초';
-  get('hold').style.color = active?.success ? '#a7ee93' : '';
+  get('hold').style.color = active?.success ? '#19704a' : '';
   paintCount++;
   if (time - fpsTime >= 1000) {
-    renderFps = phase === 'running' ? Math.round(paintCount * 1000 / (time - fpsTime)) : 0;
+    renderFps = Math.round(paintCount * 1000 / (time - fpsTime));
     paintCount = 0;
     fpsTime = time;
   }
+  if (!document.hidden && (modelPolicy || ['running', 'complete'].includes(phase)
+      || (replay && replay.time < (recording.length - 1) * DT))) requestDraw();
 }
-
 function requestDraw() {
   if (!raf) raf = requestAnimationFrame(draw);
 }
@@ -338,17 +382,42 @@ function configure() {
 
 get('env').value = config.envs;
 get('seconds').value = config.seconds;
-get('speed').value = speed;
+get('count').value = count;
 get('env').onchange = get('seconds').onchange = configure;
-get('speed').onchange = () => {
-  speed = Number(get('speed').value);
+get('count').onchange = () => {
+  count = episodeBudget(get('count').value);
+  get('count').value = count;
   saveSettings();
-  worker?.postMessage({type: 'speed', speed});
 };
-get('representative').onchange = event => { representative = Number(event.target.value); requestDraw(); };
-get('train').onclick = () => worker?.postMessage({type: phase === 'running' ? 'pause' : 'start'});
-get('evaluate').onclick = () => worker?.postMessage({type: 'evaluate'});
-get('replay').onclick = () => worker?.postMessage({type: 'replay'});
+get('level').onchange = event => {
+  const next = Number(event.target.value);
+  if (next >= 1 && next <= unlocked && next !== level) openLevel(next);
+};
+get('train').onclick = () => {
+  if (phase === 'running') worker?.postMessage({type: 'pause'});
+  else {
+    get('count').onchange();
+    const resume = phase === 'paused' && metrics?.incomplete;
+    worker?.postMessage(resume ? {type: 'start'} : {type: 'start', count});
+  }
+};
+get('model').onclick = () => {
+  modelPolicy = modelPolicy || replay ? null : latestPolicy;
+  replay = preview = lastDraw = null;
+  controls();
+  requestDraw();
+};
+get('evaluate').onclick = () => {
+  replay = modelPolicy = lastDraw = null;
+  worker?.postMessage({type: 'evaluate'});
+};
+get('replay').onclick = () => {
+  if (!recording?.length) return;
+  replay = {time: 0};
+  modelPolicy = lastDraw = null;
+  controls();
+  requestDraw();
+};
 get('reset').onclick = () => {
   if (!confirm('이 레벨의 학습과 기록을 초기화할까요? 완료된 정책은 복원용으로 한 번 보관합니다.')) return;
   if (lastCheckpoint && !write('backup' + level, lastCheckpoint)) return;
@@ -363,12 +432,14 @@ get('results').addEventListener('toggle', showStats);
 new ResizeObserver(() => { requestDraw(); plot(); }).observe(canvas);
 new ResizeObserver(plot).observe(chart);
 document.addEventListener('visibilitychange', () => {
+  lastDraw = null;
   if (document.hidden) {
     autoResume = phase === 'running';
-    if (autoResume || phase === 'evaluating' || phase === 'replaying') worker?.postMessage({type: 'pause'});
+    if (autoResume || phase === 'evaluating') worker?.postMessage({type: 'pause'});
   } else if (autoResume) {
     autoResume = false;
     worker?.postMessage({type: 'start'});
   }
+  if (!document.hidden) requestDraw();
 });
 openLevel(level);
