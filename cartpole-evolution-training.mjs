@@ -1,5 +1,5 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=reset1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=reset1';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL} from './cartpole-evolution-core.mjs?v=recovery2';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=recovery2';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;
@@ -49,6 +49,9 @@ export class Trainer {
         throw new Error('Episode 기록 형식 오류');
       }
       for (const key of ['first', 'history', 'evaluation', 'bestEvaluation', 'milestone']) this[key] = checkpoint[key] ?? null;
+      if (checkpoint.rewardProtocol !== REWARD_PROTOCOL) {
+        this.evaluation = this.bestEvaluation = this.milestone = null;
+      }
       this.random.state = checkpoint.seed >>> 0;
     }
     this.configure(config);
@@ -105,7 +108,7 @@ export class Trainer {
 
   checkpoint() {
     const {level, steps, episodes, bestHold, travel, first, history, evaluation, bestEvaluation, milestone} = this;
-    return {version: 2, level, steps, episodes, bestHold, travel, first, history: history.slice(),
+    return {version: 2, rewardProtocol: REWARD_PROTOCOL, level, steps, episodes, bestHold, travel, first, history: history.slice(),
       evaluation, bestEvaluation, milestone, seed: this.random.state, policy: this.policy.checkpoint()};
   }
 }
@@ -115,8 +118,22 @@ export function* evaluate(level, predict, capture) {
   for (let i = 0; i < EVAL_TRIALS; i++) {
     const rng = new Random(28289 + level * 773 + i * 35491);
     const env = new CartPole(level, () => rng.uniform());
+    if (i >= EVAL_TRIALS / 2) {
+      let y = 0;
+      env.links.forEach((body, j) => {
+        const length = .65;
+        body.setTransform({x: 0, y: y + length / 2}, 0);
+        y += length;
+      });
+    }
+    let impactIndex = 0;
     if (i === 0 && capture) capture(env.frame());
     for (let n = 0; ; n++) {
+      if (impactIndex < 3 && n >= [500, 900, 1300][impactIndex]) {
+        const direction = (i + impactIndex) % 2 ? -1 : 1;
+        env.applyImpact({direction, load: [2, 5, 3][impactIndex]});
+        impactIndex++;
+      }
       const step = env.step(predict(env.observe()), EVAL_SECONDS);
       if (i === 0 && capture && !step.invalid) capture(env.frame());
       if (step.terminated || step.truncated) break;
@@ -126,5 +143,12 @@ export function* evaluate(level, predict, capture) {
     yield;
   }
   const result = summarize(results);
-  return {...result, success: result.passed >= PASS_COUNT};
+  const impacts = results.flatMap(r => r.impacts).filter(hit => hit.eligible);
+  const resisted = impacts.filter(hit => hit.resisted).length;
+  const recovery = impacts.filter(hit => hit.recoveryTime !== null);
+  return {...result, protocol: REWARD_PROTOCOL,
+    impactTrials: impacts.length, resisted, recovered: recovery.length,
+    maxImpactAngle: impacts.length ? Math.max(...impacts.map(hit => hit.maxAngle)) : null,
+    recoveryTime: recovery.length ? recovery.reduce((s,hit)=>s+hit.recoveryTime,0)/recovery.length : null,
+    success: result.passed >= PASS_COUNT && impacts.length >= 8 && resisted / impacts.length >= .75};
 }

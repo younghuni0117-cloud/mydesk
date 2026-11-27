@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Worker} from 'node:worker_threads';
 import {readFileSync} from 'node:fs';
-import {CartPole, DT, EVAL_SECONDS, GRAVITY, HOLD_SECONDS, LENGTHS, MASSES, MAX_FORCE, inputSize} from '../cartpole-evolution-core.mjs';
+import {CartPole, DT, EVAL_SECONDS, GRAVITY, HOLD_SECONDS, LENGTHS, MASSES, MAX_FORCE, inputSize, postureReward} from '../cartpole-evolution-core.mjs';
 import {Trainer, evaluate, options} from '../cartpole-evolution-training.mjs';
 import {PreviewEpisode, railProjection} from '../cartpole-evolution-preview.mjs';
 import {DEFAULT_MENUS, validateMenus, withCartPoleEvolution} from '../navigation-data.mjs';
@@ -282,4 +282,16 @@ test('post-acquisition fast rotations cost more; sustained post-impact balance e
   assert.equal(env.acquired, true);
   env.reset();
   assert.equal(env.acquired, false);
+});
+
+test('recovery rewards favor stabilization, allow vigorous cart control and discourage rail-edge drift', () => {
+  const state = {angle: .15, speed: 1, stability: .7, mean: .99, all: .99, x: 0,
+    action: 1, acquired: true, impacted: true, progress: .1, recovered: 0};
+  const improving = postureReward(state);
+  const worsening = postureReward({...state, progress: -.1});
+  assert.ok(improving.recovery > worsening.recovery);
+  assert.equal(improving.control, -.004);
+  assert.ok(Math.abs(improving.control) < improving.posture / 100);
+  assert.ok(postureReward({...state, x: 4.8}).position < postureReward({...state, x: 2}).position - .5);
+  assert.ok(postureReward({...state, angle: 2, speed: 5}).rotation > -.1);
 });

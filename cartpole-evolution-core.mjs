@@ -8,6 +8,19 @@ export const HOLD_SECONDS = 20, EVAL_SECONDS = 40, EVAL_TRIALS = 8, PASS_COUNT =
 const ANGLE_LIMIT = Math.PI / 18, WIDTH = .022;
 export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 export const inputSize = level => 2 + 3 * level;
+export const REWARD_PROTOCOL = 'recovery-2';
+export function postureReward({angle, speed, stability, mean, all, x, action, acquired, impacted, progress, recovered}) {
+  const nearUpright = Math.exp(-((angle / .65) ** 2));
+  const rotation = (acquired ? .04 : .01) * (1 - nearUpright) * Math.min(2, (speed / 8) ** 2)
+    + .1 * nearUpright * Math.min(2, (speed / 3) ** 2);
+  const center = .025 * (x / 2.4) ** 2;
+  const edge = .8 * (Math.max(0, Math.abs(x) - 3.5) / 1.5) ** 2;
+  return {
+    posture: .25 * mean + .15 * all ** 3 + 1.6 * stability,
+    recovery: impacted ? .55 * stability + 4 * progress + recovered : 0,
+    rotation: -rotation, position: -center - edge, control: -.004 * action ** 2
+  };
+}
 
 export class CartPole {
   constructor(level, random, {gravity = GRAVITY, damping = .001, cartDamping = .025, substeps = DT / PHYSICS_DT, mixedStarts = false} = {}) {
@@ -70,6 +83,8 @@ export class CartPole {
     this.impactWindowEnd = 0;
     this.impactWorstAngle = 0;
     this.impactHold = 0;
+    this.impactTrials = [];
+    this.previousStability = 0;
   }
 
   prepareImpact(load) {
@@ -87,6 +102,10 @@ export class CartPole {
     this.impactWindowEnd = this.steps * DT + 3;
     this.impactWorstAngle = 0;
     this.impactHold = 0;
+    const angle = Math.max(...this.links.map(b => Math.abs(Math.atan2(Math.sin(b.getAngle()), Math.cos(b.getAngle())))));
+    this.impactTrials.push({time: this.lastImpact.time, direction: hit.direction, load: hit.load,
+      eligible: this.acquired && angle <= Math.PI / 6, maxAngle: angle, rotations: 0,
+      startAngles: this.links.map(b => b.getAngle()), recoveryTime: null, stable: 0});
     return this.lastImpact;
   }
 
@@ -148,22 +167,26 @@ export class CartPole {
       return 1 / (1 + (angle / .23) ** 2 + (b.getAngularVelocity() / 2.5) ** 2);
     }));
     const impactActive = this.lastImpact && this.steps * DT <= this.impactWindowEnd;
+    let recovered = 0;
+    const trial = this.impactTrials.at(-1);
     if (impactActive) {
       this.impactWorstAngle = Math.max(this.impactWorstAngle, worstAngle);
       this.impactHold = safe ? this.impactHold + DT : 0;
+      trial.maxAngle = Math.max(trial.maxAngle, worstAngle);
+      trial.rotations = Math.max(trial.rotations, ...this.links.map((b, i) =>
+        Math.floor(Math.abs(b.getAngle() - trial.startAngles[i]) / (2 * Math.PI))));
+      trial.stable = safe && worstSpeed < 1 ? trial.stable + DT : 0;
+      if (trial.recoveryTime === null && trial.stable >= .5) {
+        trial.recoveryTime = this.steps * DT - trial.time;
+        recovered = .8 / (1 + trial.recoveryTime);
+      }
     }
-    // Acquisition is sampled in every episode. Once established, rotations
-    // keep accumulating costs even if a full turn returns to upright.
-    const rotationCost = this.acquired ? .7 * (worstAngle / Math.PI) ** 2
-      + .35 * Math.min(4, (worstSpeed / 4) ** 2) : 0;
-    const impactBonus = this.acquired && impactActive
-      ? .45 * stability / (1 + (this.impactWorstAngle / .35) ** 2) : 0;
-    const impactCost = this.acquired && impactActive
-      ? .35 * Math.min(2, (worstAngle / .6) ** 2) : 0;
-    const reward = terminated ? -5 : .32 * mean + .12 * all ** 3 + 1.2 * stability
-      + (safe ? .12 * Math.min(1, this.hold * DT) : 0)
-      + impactBonus - rotationCost - impactCost
-      - .05 * (x / X_LIMIT) ** 2 - .008 * action ** 2;
+    const parts = postureReward({angle: worstAngle, speed: worstSpeed, stability, mean, all, x, action,
+      acquired: this.acquired, impacted: Boolean(impactActive),
+      progress: stability - this.previousStability, recovered});
+    const reward = terminated ? -8 : Object.values(parts).reduce((sum, value) => sum + value, 0);
+    this.previousStability = stability;
+    this.rewardParts = parts;
     this.totalReward += reward;
     return {obs, reward, terminated, truncated, invalid: !finite};
   }
@@ -172,6 +195,8 @@ export class CartPole {
     return {reward: this.totalReward, hold: this.bestHold * DT, first: this.firstUpright,
       startKind: this.startKind, impactAngle: this.lastImpact ? this.impactWorstAngle : null,
       impactHold: this.impactHold,
+      impacts: this.impactTrials.map(({startAngles, stable, ...trial}) => ({...trial,
+        resisted: trial.eligible && trial.maxAngle <= Math.PI / 6 && trial.rotations === 0 && trial.recoveryTime !== null})),
       travel: this.maxTravel, success: this.bestHold >= Math.round(HOLD_SECONDS / DT)};
   }
 
