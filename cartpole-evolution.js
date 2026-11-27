@@ -1,6 +1,6 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=impact1';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=impact1';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=impact1';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=impact2';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=impact2';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=impact2';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=1';
 
 const get = name => document.getElementById('cpe-' + name);
@@ -55,7 +55,6 @@ function controls() {
   get('model').disabled = !latestPolicy?.updates || ['loading', 'evaluating', 'error'].includes(phase);
   get('impact').disabled = !modelPolicy;
   get('reset').disabled = phase === 'loading';
-  get('restore').hidden = !read('backup' + level);
 }
 
 function showLevels() {
@@ -97,7 +96,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=impact1', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=impact2', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -207,7 +206,7 @@ function draw(time) {
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#536a80';
-  const ticks = [-3, -2, -1, 0, 1, 2, 3];
+  const ticks = [-X_LIMIT, 0, X_LIMIT];
   for (const x of ticks) {
     line(ctx, px(x), railY + 7, px(x), railY + 11);
     ctx.fillText((x > 0 ? '+' : '') + x + 'm', px(x), railY + 25);
@@ -335,8 +334,9 @@ function plot() {
 
 function configure() {
   config = options({envs: get('env').value, seconds: get('seconds').value,
-    impactEnabled: get('impact-enabled').checked, impactRandom: get('impact-random').checked,
-    impactInterval: get('impact-interval').value, impactLoad: get('impact-load').value});
+    impactEnabled: get('impact-enabled').checked,
+    impactInterval: get('impact-interval').value,
+    impactMin: get('impact-min').value, impactMax: get('impact-max').value});
   get('env').value = config.envs;
   get('seconds').value = config.seconds;
   saveSettings();
@@ -348,20 +348,21 @@ get('seconds').value = config.seconds;
 get('count').value = count;
 get('env').onchange = get('seconds').onchange = configure;
 get('impact-enabled').checked = config.impactEnabled;
-get('impact-random').checked = config.impactRandom;
 get('impact-interval').value = config.impactInterval;
-get('impact-load').value = config.impactLoad;
-for (const name of ['impact-enabled', 'impact-random', 'impact-interval', 'impact-load']) {
+get('impact-min').value = config.impactMin;
+get('impact-max').value = config.impactMax;
+for (const name of ['impact-enabled', 'impact-interval', 'impact-min', 'impact-max']) {
   get(name).onchange = () => {
     configure();
     get('impact-interval').value = config.impactInterval;
-    get('impact-load').value = config.impactLoad;
+    get('impact-min').value = config.impactMin;
+    get('impact-max').value = config.impactMax;
   };
 }
 get('impact').onclick = () => {
   if (!modelPolicy) return;
   if (!preview || preview.done) displayFrame(0);
-  preview.impact(config.impactLoad, config.impactRandom);
+  preview.impact(config);
   requestDraw();
 };
 get('count').onchange = () => {
@@ -396,14 +397,6 @@ get('reset').onclick = () => {
     openLevel(level);
   }
 };
-get('restore').onclick = () => {
-  if (!confirm('초기화 직전 기록을 현재 레벨로 복원할까요?')) return;
-  const backup = read('backup' + level);
-  if (backup && write('level' + level, backup)) {
-    sync?.queue(level, backup);
-    openLevel(level);
-  }
-};
 get('range').value = chartRange;
 get('guides').checked = showGuides;
 get('guides').onchange = () => {
@@ -426,10 +419,12 @@ function touchGesture() {
   return {...center, distance};
 }
 canvas.addEventListener('pointerdown', event => {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
   canvas.setPointerCapture(event.pointerId);
   pointers.set(event.pointerId, {x:event.clientX, y:event.clientY});
   gesture = touchGesture();
 });
+canvas.addEventListener('contextmenu', event => event.preventDefault());
 canvas.addEventListener('pointermove', event => {
   if (!pointers.has(event.pointerId)) return;
   pointers.set(event.pointerId, {x:event.clientX,y:event.clientY});
@@ -491,23 +486,6 @@ async function connect() {
   } catch (error) { get('sync').textContent = error.message; }
   finally { syncing = false; }
 }
-get('connect').onclick = async () => {
-  if (!sync) {
-    const link = prompt('다른 기기에서 공유한 연결 링크');
-    if (!link) return;
-    try {
-      const url = new URL(link);
-      if (url.origin !== location.origin) throw Error();
-      location.hash = url.hash;
-      await connect();
-    } catch { get('sync').textContent = '연결 링크 확인'; }
-    return;
-  }
-  const url = new URL(location.pathname, location.origin);
-  url.hash = 'cartpole=' + sync.key;
-  try { await navigator.clipboard.writeText(url.href); get('sync').textContent = '연결 링크 복사됨'; }
-  catch { prompt('다른 기기에서 이 링크를 열어주세요.', url.href); }
-};
 setInterval(async () => {
   if (!sync || syncing || document.hidden) return;
   syncing = true;

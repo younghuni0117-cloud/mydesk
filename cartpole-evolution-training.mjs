@@ -1,16 +1,18 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=impact1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=impact1';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=impact2';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=impact2';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;
 export function options(input = {}) {
   const envs = Number(input.envs), seconds = Number(input.seconds);
+  const bound = (value, fallback) => Math.max(0, Math.min(100, Number.isFinite(Number(value)) ? Number(value) : fallback));
+  const min = bound(input.impactMin, bound(input.impactLoad, 2));
+  const max = bound(input.impactMax, bound(input.impactLoad, 5));
   return {envs: Number.isInteger(envs) && envs >= 1 && envs <= 5 ? envs : 1,
     seconds: Number.isInteger(seconds) && seconds >= HOLD_SECONDS + 5 && seconds <= 60 ? seconds : 30,
     impactEnabled: input.impactEnabled === true,
     impactInterval: Math.max(.2, Math.min(60, Number(input.impactInterval) || 3)),
-    impactLoad: Math.max(0, Math.min(100, Number.isFinite(Number(input.impactLoad)) ? Number(input.impactLoad) : 2)),
-    impactRandom: input.impactRandom !== false};
+    impactMin: Math.min(min, max), impactMax: Math.max(min, max)};
 }
 
 export function episodeBudget(value) {

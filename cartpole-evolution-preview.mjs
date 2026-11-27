@@ -1,5 +1,5 @@
-import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=impact1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=impact1';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=impact2';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=impact2';
 
 export function railProjection(width, height, level, cart) {
   const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);
@@ -49,8 +49,8 @@ export class PreviewEpisode {
     this.terminal = terminated || truncated;
   }
 
-  impact(load, randomPosition) {
-    this.env.impact(load, randomPosition);
+  impact(config) {
+    this.env.randomImpact(config);
     this.next = this.env.frame();
   }
 

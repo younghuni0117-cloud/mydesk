@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Worker} from 'node:worker_threads';
 import {readFileSync} from 'node:fs';
 import {CartPole, DT, EVAL_SECONDS, GRAVITY, HOLD_SECONDS, LENGTHS, MASSES, MAX_FORCE, inputSize} from '../cartpole-evolution-core.mjs';
-import {Trainer, evaluate} from '../cartpole-evolution-training.mjs';
+import {Trainer, evaluate, options} from '../cartpole-evolution-training.mjs';
 import {PreviewEpisode, railProjection} from '../cartpole-evolution-preview.mjs';
 import {DEFAULT_MENUS, validateMenus, withCartPoleEvolution} from '../navigation-data.mjs';
 
@@ -212,4 +212,19 @@ test('external pulses change physical velocity without adding elapsed time or up
   assert.equal(trainer.streams[0].length, 12);
   assert.equal(trainer.policy.updates, 0);
   assert.equal(trainer.envs[0].steps, 12);
+});
+
+test('random impact load stays in bounds and can hit the cart and every link', () => {
+  const trainer = new Trainer(5, {}, null, 547);
+  const env = trainer.envs[0], bodies = new Set();
+  const config = options({impactMin: 3, impactMax: 7});
+  for (let i = 0; i < 100; i++) {
+    const hit = env.randomImpact(config);
+    assert.ok(hit.load >= 3 && hit.load <= 7);
+    bodies.add(hit.body);
+    env.reset();
+  }
+  assert.deepEqual([...bodies].sort(), [0, 1, 2, 3, 4, 5]);
+  assert.equal(options({impactMin: 9, impactMax: 1}).impactMin, 1);
+  assert.equal(options({impactMin: 9, impactMax: 1}).impactMax, 9);
 });

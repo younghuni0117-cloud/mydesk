@@ -17,7 +17,7 @@
 .cpe-lab button:disabled { color: #526479; background: #edf1f5; cursor: default; }
 #cpe-train:not(:disabled) { background: #245683; color: white; border-color: #245683; }
 .cpe-grid {
-  --stage-height: clamp(260px, calc(100dvh - 145px), 950px);
+  --stage-height: max(180px, calc(100dvh - 137px));
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(242px, .40fr); gap: 8px;
 }
 .cpe-stage {
@@ -72,5 +72,5 @@
   .cpe-stats span, .cpe-stats strong { white-space: nowrap; }
 }
 @media (max-height: 560px) and (min-width: 641px) {
-  .cpe-grid { --stage-height: max(252px, calc(100dvh - 107px)); }
+  .cpe-grid { --stage-height: max(180px, calc(100dvh - 107px)); }
 }

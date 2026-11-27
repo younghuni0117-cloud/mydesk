@@ -1,6 +1,6 @@
 import {World, Vec2, Box, PrismaticJoint, RevoluteJoint} from './vendor/planck.mjs';
 
-export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 3;
+export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 5;
 export const GRAVITY = 9.81, CART_MASS = 1, MAX_FORCE = 10;
 export const LENGTHS = Array(5).fill(.65);
 export const MASSES = [.12, .09, .07, .05, .04];
@@ -74,11 +74,18 @@ export class CartPole {
     return this.lastImpact;
   }
 
+  randomImpact(config) {
+    const minimum = config.impactMin ?? config.impactLoad ?? 2;
+    const maximum = config.impactMax ?? config.impactLoad ?? 2;
+    const load = minimum + this.random() * (maximum - minimum);
+    return {...this.impact(load, true), load};
+  }
+
   disturb(config) {
     if (!config.impactEnabled) { this.nextImpact = null; return; }
     if (this.nextImpact === null) this.nextImpact = this.steps * DT + config.impactInterval;
     if (this.steps * DT + 1e-8 < this.nextImpact) return;
-    this.impact(config.impactLoad, config.impactRandom);
+    this.randomImpact(config);
     this.nextImpact = this.steps * DT + config.impactInterval;
   }
 
