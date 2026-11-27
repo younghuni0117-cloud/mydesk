@@ -296,7 +296,7 @@ function draw(time) {
     for (let i = 1; i < active.points.length; i++) {
       const [a, b] = active.points[i - 1], [u, v] = active.points[i];
       const ax = modelX(a), ay = py(b), bx = modelX(u), by = py(v);
-      const thickness = .022 * scale;
+      const thickness = .04 * scale;
       ctx.strokeStyle = '#8f4718';
       ctx.lineWidth = thickness;
       line(ctx, ax, ay, bx, by);
@@ -485,7 +485,8 @@ function fitDesktopVideo() {
   const stats = document.querySelector('.cpe-stats').getBoundingClientRect().height;
   const progress = document.querySelector('.cpe-progress').getBoundingClientRect().height;
   const bottomPadding = parseFloat(getComputedStyle(document.querySelector('.cpe-lab')).paddingBottom) || 0;
-  const height = Math.max(100, Math.floor(viewportHeight - top - stats - progress - bottomPadding - 10));
+  const panelHeight = document.querySelector('.cpe-panel').getBoundingClientRect().height;
+  const height = Math.max(180, Math.floor(viewportHeight - top - stats - progress - panelHeight - bottomPadding - 16));
   grid.style.setProperty('--stage-height', height + 'px');
 }
 function requestFit() {
@@ -497,6 +498,7 @@ const layoutObserver = new ResizeObserver(requestFit);
 layoutObserver.observe(document.querySelector('.topbar'));
 layoutObserver.observe(document.querySelector('.cpe-stats'));
 layoutObserver.observe(document.querySelector('.cpe-progress'));
+layoutObserver.observe(document.querySelector('.cpe-panel'));
 document.fonts?.ready.then(requestFit);
 requestFit();
 function touchGesture() {
