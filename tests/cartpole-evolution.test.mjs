@@ -50,15 +50,19 @@ test('1–5 passive links hang, with stable rail constraints, anchors and conver
   }
 });
 
-test('force moves cart and reacts through passive pole; timeout bootstraps and boundary terminates', () => {
+test('force moves cart and reacts through passive pole; time and rail limits truncate without a boundary penalty', () => {
   const env = new CartPole(1, () => .5);
   env.step(2, 20);
   assert.ok(Math.abs(env.force - MAX_FORCE * (1 - Math.exp(-DT / MOTOR_TIME))) < 1e-10);
   assert.equal(env.observe().at(-2), env.force / MAX_FORCE);
   assert.ok(env.cart.getPosition().x > 0 && env.cart.getLinearVelocity().x > 0);
   assert.ok(Math.abs(env.links[0].getAngularVelocity()) > .01);
-  while (!env.step(1, 20).terminated) {}
-  assert.ok(env.maxTravel > 2.4);
+  let end;
+  do { end = env.step(1, 20); } while (!end.truncated && !end.terminated);
+  assert.equal(end.terminated, false);
+  assert.equal(end.truncated, true);
+  assert.ok(env.maxTravel > 10);
+  assert.ok(end.reward > -1);
   env.reset();
   for (let i = 0; i < 249; i++) assert.equal(env.step(0, 5).truncated, false);
   assert.deepEqual([env.step(0, 5).truncated, env.result().success], [true, false]);
@@ -324,7 +328,7 @@ test('post-acquisition fast rotations cost more; sustained post-impact balance e
   assert.equal(env.acquired, false);
 });
 
-test('recovery rewards favor stabilization, allow vigorous cart control and discourage rail-edge drift', () => {
+test('recovery rewards favor stabilization and vigorous control with position-independent rewards', () => {
   const state = {angle: .15, speed: 1, stability: .7, mean: .99, all: .99, x: 0,
     action: 1, acquired: true, impacted: true, progress: .1, recovered: 0};
   const improving = postureReward(state);
@@ -332,6 +336,7 @@ test('recovery rewards favor stabilization, allow vigorous cart control and disc
   assert.ok(improving.recovery > worsening.recovery);
   assert.equal(improving.control, -.001);
   assert.ok(Math.abs(improving.control) < improving.posture / 100);
-  assert.ok(postureReward({...state, x: 4.8}).position < postureReward({...state, x: 2}).position - .5);
+  assert.deepEqual(postureReward({...state, x: 9.9}), postureReward({...state, x: 0}));
+  assert.deepEqual(postureReward({...state, x: -9.9}), postureReward({...state, x: 0}));
   assert.ok(postureReward({...state, angle: 2, speed: 5}).rotation > -.1);
 });

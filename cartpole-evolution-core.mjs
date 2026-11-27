@@ -1,6 +1,6 @@
 import {World, Vec2, Box, PrismaticJoint, RevoluteJoint} from './vendor/planck.mjs';
 
-export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 5;
+export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 10;
 export const GRAVITY = 9.81, CART_MASS = 2, MAX_FORCE = 80, MOTOR_TIME = .02;
 export const CONTINUOUS_FORCE = 40, MAX_SPEED = 3, PEAK_SECONDS = .2;
 export const PHYSICS_VERSION = 'servo-40N-80N-3mps';
@@ -31,17 +31,15 @@ export class ServoDrive {
     return this.force;
   }
 }
-export const REWARD_PROTOCOL = 'recovery-2';
-export function postureReward({angle, speed, stability, mean, all, x, action, acquired, impacted, progress, recovered}) {
+export const REWARD_PROTOCOL = 'recovery-free-travel-20m';
+export function postureReward({angle, speed, stability, mean, all, action, acquired, impacted, progress, recovered}) {
   const nearUpright = Math.exp(-((angle / .65) ** 2));
   const rotation = (acquired ? .04 : .01) * (1 - nearUpright) * Math.min(2, (speed / 8) ** 2)
     + .1 * nearUpright * Math.min(2, (speed / 3) ** 2);
-  const center = .025 * (x / 2.4) ** 2;
-  const edge = .8 * (Math.max(0, Math.abs(x) - 3.5) / 1.5) ** 2;
   return {
     posture: .25 * mean + .15 * all ** 3 + 1.6 * stability,
     recovery: impacted ? .55 * stability + 4 * progress + recovered : 0,
-    rotation: -rotation, position: -center - edge, control: -.001 * action ** 2
+    rotation: -rotation, control: -.001 * action ** 2
   };
 }
 
@@ -154,7 +152,7 @@ export class CartPole {
   }
 
   observe() {
-    return [this.cart.getPosition().x / X_LIMIT, clamp(this.cart.getLinearVelocity().x / 5, -4, 4),
+    return [this.cart.getPosition().x / 5, clamp(this.cart.getLinearVelocity().x / 5, -4, 4),
       ...this.links.flatMap(b => [Math.sin(b.getAngle()), Math.cos(b.getAngle()), clamp(b.getAngularVelocity() / 10, -4, 4)]),
       this.force / MAX_FORCE, this.drive.reserve / PEAK_SECONDS];
   }
@@ -174,8 +172,8 @@ export class CartPole {
     this.steps++;
     const x = this.cart.getPosition().x, obs = this.observe();
     const finite = obs.every(Number.isFinite) && this.links.every(b => Number.isFinite(b.getAngularVelocity()));
-    const terminated = !finite || Math.abs(x) > X_LIMIT;
-    const truncated = !terminated && this.steps >= Math.round(seconds / DT);
+    const terminated = !finite;
+    const truncated = !terminated && (Math.abs(x) > X_LIMIT || this.steps >= Math.round(seconds / DT));
     const heights = this.links.map(b => (1 + Math.cos(b.getAngle())) / 2);
     const mean = heights.reduce((sum, h) => sum + h, 0) / this.level;
     const all = Math.min(...heights);
