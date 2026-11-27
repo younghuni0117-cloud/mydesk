@@ -1,6 +1,6 @@
 import {World, Vec2, Box, PrismaticJoint, RevoluteJoint} from './vendor/planck.mjs';
 
-export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 10;
+export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 5;
 export const GRAVITY = 9.81, CART_MASS = 2, MAX_FORCE = 80, MOTOR_TIME = .02;
 export const CONTINUOUS_FORCE = 40, MAX_SPEED = 3, PEAK_SECONDS = .2;
 export const PHYSICS_VERSION = 'servo-40N-80N-3mps';

@@ -61,7 +61,7 @@ test('force moves cart and reacts through passive pole; time and rail limits tru
   do { end = env.step(1, 20); } while (!end.truncated && !end.terminated);
   assert.equal(end.terminated, false);
   assert.equal(end.truncated, true);
-  assert.ok(env.maxTravel > 10);
+  assert.ok(env.maxTravel > 5);
   assert.ok(end.reward > -1);
   env.reset();
   for (let i = 0; i < 249; i++) assert.equal(env.step(0, 5).truncated, false);
@@ -240,7 +240,7 @@ test('rail, cart and links share one physical metre scale in portrait and landsc
       const metre = left.railX(1) - left.railX(0);
       assert.ok(Math.abs(left.modelX(1) - left.modelX(0) - metre) < 1e-9);
       assert.ok(Math.abs(left.modelY(0) - left.modelY(1) - metre) < 1e-9);
-      assert.ok(Math.abs(left.railX(10) - left.railX(-10) - metre * 20) < 1e-9);
+      assert.ok(Math.abs(left.railX(5) - left.railX(-5) - metre * 10) < 1e-9);
       assert.ok(Math.abs(left.modelX(.65) - left.modelX(0) - metre * .65) < 1e-9);
     }
   }

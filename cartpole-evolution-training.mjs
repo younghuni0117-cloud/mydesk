@@ -1,5 +1,5 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=scale1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=scale1';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=rail10';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=rail10';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;

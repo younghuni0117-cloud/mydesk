@@ -1,6 +1,6 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=scale1';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=scale1';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=scale1';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=rail10';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=rail10';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=rail10';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=quota1';
 import {cacheGet, cachePut} from './cartpole-evolution-cache.mjs?v=quota1';
 
@@ -106,7 +106,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=scale1', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=rail10', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
