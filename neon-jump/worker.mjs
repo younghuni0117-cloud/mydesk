@@ -1,6 +1,6 @@
-import { levelKey, loadLevels, observe } from './physics.mjs?v=2';
+import { levelKey, loadLevels, observe } from './physics.mjs?v=3';
 import { forward } from './dqn.mjs';
-import { runPolicy, Training } from './training.mjs';
+import { runPolicy, Training } from './training.mjs?v=3';
 import { checkpoint, read } from './storage.mjs';
 
 const levels = loadLevels();
@@ -83,14 +83,14 @@ function loop() {
   const start = performance.now();
   try {
     do {
-      session.tick();
+      session.tick(true);
       dirty = true;
-    } while (!session.trained && session.episode < runTarget && performance.now() - start < budget);
-    const finished = session.trained || session.episode >= runTarget;
+    } while (session.episode < runTarget && performance.now() - start < budget);
+    const finished = session.episode >= runTarget;
     compute = performance.now() - start;
     if (start - updateTime >= 250 || finished) {
       if (finished) {
-        stopReason = session.trained ? 'solved' : 'target';
+        stopReason = 'target';
         pause();
       }
       publish();
@@ -153,8 +153,6 @@ async function handle(message) {
       break;
     case 'train':
       if (mode === 'training') break;
-      if (message.continue) session.trained = false;
-      if (session.trained) break;
       if (!message.resume || runTarget <= session.episode) {
         if (!Number.isInteger(message.count) || message.count < 1 || message.count > 100000) break;
         runStart = session.episode;

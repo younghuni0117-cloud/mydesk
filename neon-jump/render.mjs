@@ -1,4 +1,4 @@
-import { SIZE } from './physics.mjs';
+import { obstacleVertices, SIZE } from './physics.mjs?v=3';
 
 const palettes = [
   ['#111636', '#2d3c88', '#8de9ff', '#619eff'],
@@ -10,10 +10,10 @@ export function render(canvas, level, state, effects = true, crashAge = 0, attem
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   const [dark, light, edge, accent] = palettes[Math.max(0, ['first-jump', 'double-trouble', 'neon-rush'].indexOf(level.id))];
-  const scale = Math.min(width / 430, height / 220);
+  const scale = Math.min(width / 555, height / 204);
   const view = width / scale;
   const floor = height * .79;
-  const anchor = Math.min(140, view * .24);
+  const anchor = Math.min(140, view * .21);
   const camera = state.x - anchor;
   const gradient = ctx.createLinearGradient(0, 0, width * .25, floor);
   gradient.addColorStop(0, dark);
@@ -83,28 +83,39 @@ export function render(canvas, level, state, effects = true, crashAge = 0, attem
     if (x + w < 0 || x > view) continue;
     const fill = ctx.createLinearGradient(x, 0, x, h);
     fill.addColorStop(0, '#111332');
-    fill.addColorStop(1, type === 'spike' ? '#525b97' : '#56468e');
+    fill.addColorStop(1, { spike: '#525b97', block: '#56468e', ramp: '#356e86', trapezoid: '#784357' }[type]);
+    const outline = { spike: edge, block: '#c7a1ff', ramp: '#87f4dd', trapezoid: '#ffb4bb' }[type];
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x + w, 0);
-    if (type === 'spike') ctx.lineTo(x + w / 2, h);
-    else { ctx.lineTo(x + w, h); ctx.lineTo(x, h); }
+    obstacleVertices(obstacle).forEach(([px, py], i) => {
+      if (i === 0) ctx.moveTo(px - camera, py);
+      else ctx.lineTo(px - camera, py);
+    });
     ctx.closePath();
     ctx.fillStyle = fill;
     ctx.fill();
-    ctx.strokeStyle = type === 'spike' ? edge : '#c7a1ff';
+    ctx.strokeStyle = outline;
     ctx.stroke();
-    ctx.strokeStyle = '#d6e6ff66';
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = outline + (outline.length === 7 ? '70' : '');
+    ctx.beginPath();
     if (type === 'spike') {
-      ctx.beginPath();
       ctx.moveTo(x + w * .32, h * .22); ctx.lineTo(x + w * .50, h * .62); ctx.lineTo(x + w * .68, h * .22);
-      ctx.stroke();
     } else {
-      ctx.strokeRect(x + 4, 4, w - 8, h - 8);
-      ctx.fillStyle = '#ca9fff91';
-      ctx.fillRect(x + 7, h - 9, w - 14, 2);
-      ctx.fillRect(x + w * .42, h * .36, w * .16, 2);
+      for (let i = 1; i <= 2; i++) {
+        const y = h * i / 4;
+        ctx.moveTo(x + 4, y); ctx.lineTo(x + w - 4, y);
+      }
+      if (type === 'ramp') {
+        ctx.moveTo(x + w * .31, h * .16); ctx.lineTo(x + w * .82, h * .71);
+      } else {
+        ctx.moveTo(x + w * .40, h * .65); ctx.lineTo(x + w * .60, h * .65);
+        ctx.lineTo(x + w * .60, h * .82); ctx.lineTo(x + w * .40, h * .82);
+        ctx.closePath();
+      }
     }
+    ctx.stroke();
+    ctx.restore();
   }
 
   const radius = SIZE / 2;
@@ -133,15 +144,30 @@ export function render(canvas, level, state, effects = true, crashAge = 0, attem
     // The physics square has the same silhouette at either rotation sign.
     ctx.rotate(-state.angle);
     if (effects) { ctx.shadowColor = edge; ctx.shadowBlur = 8 * scale; }
-    ctx.fillStyle = state.status === 'crashed' ? '#f69abe' : edge;
+    const armor = ctx.createLinearGradient(-radius, 0, radius, 0);
+    const armorEdge = state.status === 'crashed' ? '#f69abe' : edge;
+    armor.addColorStop(0, armorEdge);
+    armor.addColorStop(.48, '#49668f');
+    armor.addColorStop(.52, '#49668f');
+    armor.addColorStop(1, armorEdge);
+    ctx.fillStyle = armor;
     ctx.fillRect(-radius, -radius, SIZE, SIZE);
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#141638';
-    ctx.strokeRect(-radius + 1, -radius + 1, SIZE - 2, SIZE - 2);
-    ctx.fillStyle = '#1c2550';
-    ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(-4, 4); ctx.lineTo(4, 4); ctx.lineTo(7, 0); ctx.lineTo(4, -4); ctx.lineTo(-4, -4); ctx.fill();
-    ctx.fillStyle = '#d9f6ff';
-    ctx.fillRect(-4, -1, 8, 2);
+    ctx.strokeStyle = '#10122d';
+    ctx.strokeRect(-radius + .7, -radius + .7, SIZE - 1.4, SIZE - 1.4);
+    ctx.fillStyle = '#142240';
+    ctx.beginPath();
+    ctx.moveTo(-9, 0); ctx.lineTo(-6, 5); ctx.lineTo(6, 5); ctx.lineTo(9, 0);
+    ctx.lineTo(6, -5); ctx.lineTo(-6, -5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e5fbff';
+    ctx.fillRect(-5, -1.65, 3, 3.3);
+    ctx.fillRect(2, -1.65, 3, 3.3);
+    ctx.fillStyle = armorEdge;
+    ctx.fillRect(-7, 7, 4, 1.5);
+    ctx.fillRect(3, -8.5, 4, 1.5);
+    ctx.fillStyle = '#172a4b';
+    ctx.fillRect(-11, -8, 2, 5);
+    ctx.fillRect(9, 3, 2, 5);
   }
   ctx.restore();
 
@@ -156,71 +182,40 @@ export function render(canvas, level, state, effects = true, crashAge = 0, attem
   }
 }
 
-export const chartMetrics = {
-  progress: ['최고 · 평균 진행률', '#245683'], best: ['최고 진행률', '#7d42de'], average: ['최근 20회 평균 진행률', '#356bd5'],
-  score: ['회차별 누적 보상', '#6346aa'], loss: ['손실', '#b94386'],
-  epsilon: ['탐색률', '#4365b2'], qJump: ['Q(점프)', '#7d42de'], qWait: ['Q(대기)', '#356bd5'],
-  updates: ['가중치 갱신 횟수', '#4d5098'], hit: ['충돌 장애물 분포', '#b94386']
-};
-
-export function drawChart(canvas, rows, key) {
+export function drawChart(canvas, rows) {
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   ctx.clearRect(0, 0, width, height);
-  const [label, color] = chartMetrics[key];
-  if (key === 'hit') {
-    const counts = new Map();
-    for (const { hit } of rows) if (hit !== null) counts.set(hit + 1, (counts.get(hit + 1) ?? 0) + 1);
-    const entries = [...counts].sort((a, b) => a[0] - b[0]);
-    const peak = Math.max(1, ...counts.values()), gap = (width - 30) / Math.max(1, entries.length);
-    ctx.fillStyle = color;
-    ctx.font = '17px sans-serif';
-    entries.forEach(([obstacle, count], i) => {
-      const x = 15 + i * gap, h = count / peak * (height - 50);
-      ctx.fillRect(x, height - 30 - h, gap * 0.65, h);
-      ctx.fillText(String(obstacle), x, height - 7);
-    });
-    return entries.length ? entries.map(([i, n]) => `#${i} ${n}회`).join(' · ') : '충돌 기록이 없습니다.';
-  }
-  const series = key === 'progress'
-    ? [[rows.map(row => row.best), '#245683'], [rows.map(row => row.average), '#9464cc']]
-    : [[rows.map(row => key === 'qJump' ? row.q[1] : key === 'qWait' ? row.q[0] : row[key]), color]];
-  const valid = series.flatMap(([values]) => values.filter(Number.isFinite));
-  if (!valid.length) return '아직 완료된 학습 기록이 없습니다.';
-  const positive = ['progress', 'best', 'average', 'epsilon'].includes(key);
-  const bottom = positive ? 0 : Math.min(...valid);
-  const top = positive ? 1 : Math.max(...valid);
-  const y = value => height - 31 - (height - 48) * (value - bottom) / (top - bottom || 1);
+  const left = 35, right = width - 8, top = 7, bottom = height - 17;
+  if (right <= left || bottom <= top) return '';
+  const y = value => bottom - (bottom - top) * value;
   ctx.strokeStyle = '#dce2ed';
   ctx.fillStyle = '#435a71';
-  ctx.font = '18px system-ui';
+  ctx.font = '10px system-ui';
   ctx.beginPath();
-  for (const mark of [bottom, (top + bottom) / 2, top]) {
-    ctx.moveTo(64, y(mark)); ctx.lineTo(width - 12, y(mark));
-    ctx.fillText(positive ? Math.round(mark * 100) + '%' : Number(mark.toPrecision(3)), 0, y(mark) + 5);
+  for (const mark of [0, .5, 1]) {
+    ctx.moveTo(left, y(mark)); ctx.lineTo(right, y(mark));
+    ctx.fillText(mark * 100 + '%', 2, y(mark) + 3);
   }
   ctx.stroke();
-  ctx.fillText(rows[0].episode + '회', 64, height - 5);
+  if (!rows.length) return '아직 완료된 학습 기록이 없습니다.';
+  ctx.fillText(rows[0].episode + '회', left, height - 3);
   if (rows.length > 1) {
     ctx.textAlign = 'right';
-    ctx.fillText(rows.at(-1).episode + '회', width - 12, height - 5);
+    ctx.fillText(rows.at(-1).episode + '회', right, height - 3);
     ctx.textAlign = 'left';
   }
-  for (const [values, line] of series) {
-    ctx.strokeStyle = ctx.fillStyle = line;
-    ctx.lineWidth = 3;
+  for (const [key, color] of [['best', '#245683'], ['average', '#9464cc']]) {
+    ctx.strokeStyle = ctx.fillStyle = color;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    let started = false;
-    values.forEach((value, i) => {
-      if (!Number.isFinite(value)) { started = false; return; }
-      const x = 64 + (width - 76) * i / Math.max(1, values.length - 1);
-      if (!started) { ctx.moveTo(x, y(value)); ctx.fillRect(x - 2, y(value) - 2, 4, 4); }
-      else ctx.lineTo(x, y(value));
-      started = true;
+    rows.forEach((row, i) => {
+      const x = left + (right - left) * i / Math.max(1, rows.length - 1);
+      if (i === 0) { ctx.moveTo(x, y(row[key])); ctx.fillRect(x - 1.5, y(row[key]) - 1.5, 3, 3); }
+      else ctx.lineTo(x, y(row[key]));
     });
     ctx.stroke();
   }
   const last = rows.at(-1);
-  return key === 'progress' ? '파랑 최고 ' + (last.best * 100).toFixed(1) + '% · 보라 평균 ' + (last.average * 100).toFixed(1) + '%'
-    : label + ' · 최근 ' + valid.at(-1).toFixed(3);
+  return '파랑 최고 ' + (last.best * 100).toFixed(1) + '% · 보라 평균 ' + (last.average * 100).toFixed(1) + '%';
 }

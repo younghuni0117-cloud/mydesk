@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f8fa">
   <title>Neon Jump | My Desk</title>
   <link rel="stylesheet" href="style.css?v=update69">
-  <link rel="stylesheet" href="neon-jump/game.css?v=2">
+  <link rel="stylesheet" href="neon-jump/game.css?v=3">
 </head>
 <body data-page="neon-jump">
 <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -58,9 +58,7 @@
         <aside class="neon-data" aria-label="플레이 기록">
           <div id="ai-chart" hidden>
             <div class="neon-chart-head">
-              <span>학습 추이</span>
-              <label class="neon-visually-hidden" for="metric">그래프 지표</label>
-              <select id="metric"></select>
+              <span>진행률 추이</span>
             </div>
             <canvas id="chart" width="576" height="220" role="img" aria-label="학습 지표 그래프"></canvas>
             <p id="chart-label"></p>
@@ -73,7 +71,7 @@
           </div>
           <div id="ai-panel" hidden>
             <div class="neon-actions">
-              <button id="train" class="primary" disabled>고속 학습</button>
+              <button id="train" class="primary" disabled>학습 시작</button>
               <button id="observe" class="secondary" disabled>실시간 관찰</button>
               <button id="best" class="secondary" disabled>최고 정책 재생</button>
             </div>
@@ -110,6 +108,6 @@
   </main>
 </div>
 <script src="shell.js?v=neon1"></script>
-<script type="module" src="neon-jump/game.mjs?v=2"></script>
+<script type="module" src="neon-jump/game.mjs?v=3"></script>
 </body>
 </html>

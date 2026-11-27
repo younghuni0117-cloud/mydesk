@@ -113,6 +113,10 @@ test('measures learned policy against initial and random policies and replays su
   assert.equal(replay.tick, learned.ticks);
   assert.equal(replay.status, 'cleared');
   assert.ok(forward(training.best.weights, observe(level, initialState(level))).at(-1).every(Number.isFinite));
+  const clearedEpisode = training.episode;
+  for (let i = 0; i < 1500 && training.episode === clearedEpisode; i++) training.tick(true);
+  assert.ok(training.episode > clearedEpisode, 'a requested batch continues after a successful evaluation');
+  assert.equal(training.trained, true);
   console.log(JSON.stringify({ initial: initial.progress, learned: learned.progress, randomMean: mean,
     randomClears: random.filter(row => row.cleared).length, episode: training.episode, updates: training.agent.updates }));
 });

@@ -1,21 +1,21 @@
-import { DECISION_STEPS, initialState, levelKey, loadLevels, observe, progress, step, STEP } from './physics.mjs?v=2';
+import { DECISION_STEPS, initialState, levelKey, loadLevels, observe, progress, step, STEP } from './physics.mjs?v=3';
 import { forward, greedy } from './dqn.mjs';
-import { compatible, makeReplay } from './training.mjs';
-import { chartMetrics, drawChart, render } from './render.mjs?v=2';
+import { compatible, makeReplay } from './training.mjs?v=3';
+import { drawChart, render } from './render.mjs?v=3';
 import { enableAudio, playJump } from './sound.mjs';
 import { put, read, saveManual } from './storage.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('course');
 let worker;
-try { worker = new Worker(new URL('./worker.mjs?v=2', import.meta.url), { type: 'module' }); }
+try { worker = new Worker(new URL('./worker.mjs?v=3', import.meta.url), { type: 'module' }); }
 catch { /* Manual play can run without a Worker. */ }
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobile = matchMedia('(pointer: coarse)');
 const percent = value => value == null ? '—' : (100 * value).toFixed(1) + '%';
 const number = value => value == null ? '—' : value.toFixed(3);
 let levels, level, state, previousState, ai, user, policy, previewPolicy, replay, lastReplay, watchingBest;
-let sound = true, previewAttempt = 0, chartReport, chartMetric;
+let sound = true, previewAttempt = 0, chartReport;
 let mode = 'manual', activity = 'ready', resumeActivity, pendingActivity;
 let epoch = 0, pendingLevel, actions = [], replayIndex = 0, jump = false, q, selectedAction;
 let lastFrame, elapsed = 0, crashAge = 0, cooldown = 0, clock = 0;
@@ -69,11 +69,9 @@ function diagnostics() {
     ['에피소드/초', activity === 'training' ? ai.episodeRate.toFixed(1) : '—'],
     ['Worker 처리 시간', activity === 'training' ? ai.compute.toFixed(1) + ' ms' : '—']
   ]);
-  const metric = $('metric').value;
-  if (chartReport !== ai || chartMetric !== metric) {
+  if (chartReport !== ai && mode === 'ai') {
     chartReport = ai;
-    chartMetric = metric;
-    $('chart-label').textContent = drawChart($('chart'), ai.history, metric);
+    $('chart-label').textContent = drawChart($('chart'), ai.history);
   }
   $('evaluation').textContent = ai.evaluation
     ? '고정 조건 · ' + percent(ai.evaluation.fixed) + ' / 시작점 변화 · '
@@ -113,7 +111,7 @@ function refresh() {
   $('controls-help').hidden = mode !== 'manual';
   $('level').disabled = !!pendingLevel;
   $('train').disabled = !ai || pendingActivity === 'training';
-  $('train').textContent = activity === 'training' ? '학습 일시정지' : ai?.trained ? '추가 학습' : '고속 학습';
+  $('train').textContent = activity === 'training' ? '학습 일시정지' : ai?.trained ? '추가 학습' : '학습 시작';
   $('observe').disabled = !ai || activity === 'observe' || pendingActivity === 'observe';
   $('best').disabled = ai?.best == null || pendingActivity === 'observe';
   $('benchmark').disabled = !ai;
@@ -133,7 +131,7 @@ function refresh() {
     cleared: '스테이지 클리어', 'replay-finished': '재현 종료' })[activity] ?? '';
   $('overlay-action').disabled = !level || !!pendingLevel || (mode === 'ai' && !ai);
   $('overlay-action').textContent = activity === 'paused' ? '계속'
-    : activity === 'replay-finished' ? '다시 재생' : mode === 'ai' ? (ai?.trained ? '최고 정책 보기' : '고속 학습 시작')
+    : activity === 'replay-finished' ? '다시 재생' : mode === 'ai' ? (ai?.trained ? '최고 정책 보기' : '학습 시작')
       : activity === 'cleared' ? '다시 시작' : '시작';
   comparison();
   diagnostics();
@@ -154,7 +152,7 @@ function start(activityName, offset = 0) {
 }
 function ready() {
   start('ready');
-  status(mode === 'manual' ? '직접 플레이를 시작하세요.' : '고속 학습이나 실시간 관찰을 선택하세요.');
+  status(mode === 'manual' ? '직접 플레이를 시작하세요.' : '학습이나 실시간 관찰을 선택하세요.');
 }
 function manualKey(currentLevel) { return 'manual:' + currentLevel.id + ':' + currentLevel.version; }
 async function loadManual(currentLevel) {
@@ -164,7 +162,7 @@ async function loadManual(currentLevel) {
   } catch { notice('브라우저에서 수동 기록을 읽을 수 없습니다.'); }
 }
 function saveSettings() {
-  if (level) put('settings', { level: levelKey(level), mode, sound, count: $('count').value }).catch(() => notice('설정을 저장할 수 없습니다.'));
+  if (level) put('settings', { level: levelKey(level), mode, sound, courseVersion: 3, count: $('count').value }).catch(() => notice('설정을 저장할 수 없습니다.'));
 }
 function loadLevel(target) {
   if (pendingLevel) return;
@@ -194,9 +192,9 @@ function train(resume = false) {
   }
   pendingActivity = 'training';
   activity = 'training';
-  status('고속 학습 중');
+  status('학습 중');
   send('budget', { ms: budget });
-  send('train', { continue: ai.trained, resume, count: $('count').valueAsNumber });
+  send('train', { resume, count: $('count').valueAsNumber });
   refresh();
 }
 function observePolicy(best = false) {
@@ -243,7 +241,7 @@ function mainAction() {
     if (sound) enableAudio();
     start('manual');
     status('플레이 중');
-    canvas.focus({ preventScroll: true });
+
   }
 }
 function acceptJump() {
@@ -367,7 +365,7 @@ function finishLoad(report) {
   user = lastReplay = null;
   for (const id of ['baseline', 'replay-comparison']) $(id).textContent = '';
   $('transfer-source').replaceChildren(new Option('선택', ''), ...levels.filter(entry => entry !== level)
-    .map(entry => new Option(entry.name + (entry.legacy ? ' · 기존' : ''), levelKey(entry))));
+    .map(entry => new Option(entry.name + (entry.legacy ? ' · v' + entry.version : ''), levelKey(entry))));
   send('budget', { ms: budget });
   ready();
   void loadManual(level);
@@ -401,8 +399,7 @@ if (worker) worker.onmessage = ({ data }) => {
       if (activity === 'training' && data.mode === 'paused' && (!pendingActivity || data.stopReason)) {
         pendingActivity = null;
         activity = 'ready';
-        status(data.stopReason === 'solved' ? '고정 조건 평가 성공 · 학습 완료'
-          : data.stopReason === 'target' ? '설정한 학습 횟수를 완료했습니다.' : '학습 일시정지');
+        status(data.stopReason === 'target' ? '설정한 학습 횟수를 완료했습니다.' : '학습 일시정지');
       }
       refresh();
       break;
@@ -475,8 +472,6 @@ $('fullscreen').onclick = async () => {
     else notice('이 브라우저에서는 전체 화면을 사용할 수 없습니다.');
   } catch { notice('전체 화면을 열 수 없습니다.'); }
 };
-$('metric').replaceChildren(...Object.entries(chartMetrics).map(([key, [label]]) => new Option(label, key)));
-$('metric').onchange = diagnostics;
 $('analysis').ontoggle = diagnostics;
 canvas.addEventListener('pointerdown', event => {
   if (!event.isPrimary || event.button !== 0) return;
@@ -511,6 +506,15 @@ new ResizeObserver(([entry]) => {
   renderedState = null;
   if (level && state) render(canvas, level, state, !reducedMotion.matches, crashAge);
 }).observe(canvas);
+new ResizeObserver(([{ contentRect }]) => {
+  const chart = $('chart');
+  if (!contentRect.width || !contentRect.height) return;
+  if (chart.width === Math.round(contentRect.width) && chart.height === Math.round(contentRect.height)) return;
+  chart.width = Math.round(contentRect.width);
+  chart.height = Math.round(contentRect.height);
+  chartReport = null;
+  diagnostics();
+}).observe($('chart'));
 try {
   levels = await loadLevels();
   let settings;
@@ -518,17 +522,21 @@ try {
   mode = worker && settings?.mode === 'ai' ? 'ai' : 'manual';
   sound = settings?.sound !== false;
   if (settings?.count) $('count').value = settings.count;
-  const groups = ['새 코스', '기존 코스와 기록'].map((label, index) => {
+  const versions = [...new Set(levels.map(entry => entry.version))];
+  const groups = versions.map((version, index) => {
     const group = document.createElement('optgroup');
-    group.label = label;
-    for (const [n, entry] of levels.filter(stage => !!stage.legacy === !!index).entries()) {
+    group.label = index === 0 ? '새 코스' : '기존 코스와 기록 · v' + version;
+    for (const [n, entry] of levels.filter(stage => stage.version === version).entries()) {
       group.append(new Option('0' + (n + 1) + ' · ' + entry.name, levelKey(entry)));
     }
     return group;
   });
   $('level').replaceChildren(...groups);
-  loadLevel(levels.find(entry => levelKey(entry) === settings?.level)
-    ?? levels.find(entry => !entry.legacy && entry.id === settings?.level) ?? levels[0]);
+  const savedLevel = levels.find(entry => levelKey(entry) === settings?.level);
+  const migratedLevel = !settings?.courseVersion && savedLevel?.version === 2
+    ? levels.find(entry => !entry.legacy && entry.id === savedLevel.id)
+    : savedLevel;
+  loadLevel(migratedLevel ?? levels.find(entry => !entry.legacy && entry.id === settings?.level) ?? levels[0]);
   requestAnimationFrame(frame);
 } catch (error) {
   status(error.message);

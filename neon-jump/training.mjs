@@ -126,8 +126,8 @@ export class Training {
     this.event('자동 복구 · 탐색률 상향', row);
   }
 
-  tick() {
-    if (this.trained) return;
+  tick(continueAfterClear = false) {
+    if (this.trained && !continueAfterClear) return;
     const { level, state, agent } = this;
     const s = observe(level, state);
     const a = agent.select(s);

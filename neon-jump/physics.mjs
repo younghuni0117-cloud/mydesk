@@ -18,7 +18,7 @@ export function validateLevels(levels) {
     let previous = start + SIZE;
     for (const { x, type, w, h } of obstacles) {
       if (![x, w, h].every(Number.isFinite) || x < previous || x + w > end
-        || w <= 0 || h <= 0 || !['spike', 'block'].includes(type)) throw Error('장애물 데이터 오류');
+        || w <= 0 || h <= 0 || !['spike', 'block', 'ramp', 'trapezoid'].includes(type)) throw Error('장애물 데이터 오류');
       previous = x + w;
     }
     ids.add(levelKey(level));
@@ -29,7 +29,7 @@ export function validateLevels(levels) {
 export const levelKey = level => level.id + ':' + level.version;
 
 export async function loadLevels() {
-  const response = await fetch(new URL('./levels.json?v=2', import.meta.url));
+  const response = await fetch(new URL('./levels.json?v=3', import.meta.url));
   if (!response.ok) throw Error('스테이지를 불러올 수 없습니다.');
   return validateLevels(await response.json());
 }
@@ -43,11 +43,19 @@ export function progress(level, state) {
   return Math.max(0, Math.min(1, (state.x - level.start) / level.length));
 }
 
-// Convex polygon SAT, including the rotating cube and the actual spike slopes.
+export function obstacleVertices({ x, w, h, type }) {
+  const base = [[x, 0], [x + w, 0]];
+  switch (type) {
+    case 'spike': return [...base, [x + w / 2, h]];
+    case 'ramp': return [...base, [x + w, h]];
+    case 'trapezoid': return [...base, [x + w * .79, h], [x + w * .29, h]];
+    default: return [...base, [x + w, h], [x, h]];
+  }
+}
+
+// Convex polygon SAT, including the rotating cube and actual obstacle slopes.
 function intersects(cube, obstacle) {
-  const { x, w, h, type } = obstacle;
-  const shape = type === 'spike' ? [[x, 0], [x + w, 0], [x + w / 2, h]]
-    : [[x, 0], [x + w, 0], [x + w, h], [x, h]];
+  const shape = obstacleVertices(obstacle);
   for (const polygon of [cube, shape]) {
     for (let i = 0; i < polygon.length; i++) {
       const [a, b] = polygon[i];
@@ -103,7 +111,7 @@ export function observe(level, state) {
   for (let i = 0; i < 3; i++) {
     const obstacle = level.obstacles[state.passed + i];
     const distance = obstacle ? obstacle.x - state.x - SIZE : Infinity;
-    if (distance <= RANGE) input.push(distance / RANGE, obstacle.h / 80, obstacle.w / 70, +(obstacle.type === 'block'), 1);
+    if (distance <= RANGE) input.push(distance / RANGE, obstacle.h / 80, obstacle.w / 70, ({ spike: 0, block: 1, ramp: .33, trapezoid: .67 })[obstacle.type], 1);
     else input.push(1, 0, 0, 0, 0);
   }
   return input;
