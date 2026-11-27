@@ -1,4 +1,6 @@
 export const DEFAULT_MENUS=[
+ {id:'simulation-lab',parent_id:null,label:'Simulation',kind:'folder',href:null},
+ {id:'fem-live',parent_id:'simulation-lab',label:'FEM 시각화',kind:'link',href:'fem-live.html'},
  {id:'home',parent_id:null,label:'홈',kind:'link',href:'index.html'},
  {id:'calendar',parent_id:null,label:'가족 달력',kind:'link',href:'calendar.html'},
  {id:'mindmap',parent_id:null,label:'마인드맵',kind:'link',href:'mindmap.html'},
@@ -20,6 +22,11 @@ export const DEFAULT_MENUS=[
  {id:'robotdog',parent_id:'experiments',label:'로봇독 강화학습',kind:'link',href:'robotdog.html'},
  {id:'swing',parent_id:'experiments',label:'그네타기 강화학습',kind:'link',href:'swing.html'}
 ];
+export function withFEMMenu(menus){
+ const next=menus.map(m=>({...m}));
+ for(const entry of DEFAULT_MENUS.filter(m=>['simulation-lab','fem-live'].includes(m.id)))if(!next.some(m=>m.id===entry.id))next.push({...entry});
+ return validateMenus(next);
+}
 export function safeMenuHref(href){
  if(typeof href!=='string'||/\s/.test(href))return false;
  if(/^[a-zA-Z0-9_-]+\.html(?:[?#][^\s]*)?$/.test(href))return true;
