@@ -1,5 +1,5 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL} from './cartpole-evolution-core.mjs?v=recovery2';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=recovery2';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=experiment1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=experiment1';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;
@@ -31,6 +31,7 @@ export function summarize(results) {
 
 export class Trainer {
   constructor(level, config, checkpoint, seed = (Math.random() * 2 ** 32) >>> 0) {
+    if (checkpoint && checkpoint.physicsVersion !== PHYSICS_VERSION) checkpoint = null;
     this.level = level;
     this.random = new Random(seed ^ 0x13a15);
     this.policy = new CartPPO(level, seed);
@@ -108,7 +109,7 @@ export class Trainer {
 
   checkpoint() {
     const {level, steps, episodes, bestHold, travel, first, history, evaluation, bestEvaluation, milestone} = this;
-    return {version: 2, rewardProtocol: REWARD_PROTOCOL, level, steps, episodes, bestHold, travel, first, history: history.slice(),
+    return {version: 2, physicsVersion: PHYSICS_VERSION, rewardProtocol: REWARD_PROTOCOL, level, steps, episodes, bestHold, travel, first, history: history.slice(),
       evaluation, bestEvaluation, milestone, seed: this.random.state, policy: this.policy.checkpoint()};
   }
 }

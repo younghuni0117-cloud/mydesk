@@ -1,13 +1,14 @@
 import {World, Vec2, Box, PrismaticJoint, RevoluteJoint} from './vendor/planck.mjs';
 
 export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 5;
-export const GRAVITY = 9.81, CART_MASS = 1, MAX_FORCE = 10;
+export const GRAVITY = 9.81, CART_MASS = 2, MAX_FORCE = 10, MOTOR_TIME = .05;
+export const PHYSICS_VERSION = 'experiment-2kg-300g';
 export const LENGTHS = Array(5).fill(.65);
-export const MASSES = [.12, .09, .07, .05, .04];
+export const MASSES = Array(5).fill(.30);
 export const HOLD_SECONDS = 20, EVAL_SECONDS = 40, EVAL_TRIALS = 8, PASS_COUNT = 7;
 const ANGLE_LIMIT = Math.PI / 18, WIDTH = .022;
 export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
-export const inputSize = level => 2 + 3 * level;
+export const inputSize = level => 3 + 3 * level;
 export const REWARD_PROTOCOL = 'recovery-2';
 export function postureReward({angle, speed, stability, mean, all, x, action, acquired, impacted, progress, recovered}) {
   const nearUpright = Math.exp(-((angle / .65) ** 2));
@@ -23,7 +24,7 @@ export function postureReward({angle, speed, stability, mean, all, x, action, ac
 }
 
 export class CartPole {
-  constructor(level, random, {gravity = GRAVITY, damping = .001, cartDamping = .025, substeps = DT / PHYSICS_DT, mixedStarts = false} = {}) {
+  constructor(level, random, {gravity = GRAVITY, damping = .005, cartDamping = .025, substeps = DT / PHYSICS_DT, mixedStarts = false} = {}) {
     this.level = level;
     this.random = random;
     this.mixedStarts = mixedStarts;
@@ -76,6 +77,7 @@ export class CartPole {
     this.steps = this.hold = this.bestHold = this.totalReward = this.maxTravel = 0;
     this.firstUpright = null;
     this.force = 0;
+    this.commandForce = 0;
     this.lastImpact = null;
     this.nextImpact = null;
     this.acquired = false;
@@ -130,12 +132,14 @@ export class CartPole {
 
   observe() {
     return [this.cart.getPosition().x / X_LIMIT, clamp(this.cart.getLinearVelocity().x / 5, -4, 4),
-      ...this.links.flatMap(b => [Math.sin(b.getAngle()), Math.cos(b.getAngle()), clamp(b.getAngularVelocity() / 10, -4, 4)])];
+      ...this.links.flatMap(b => [Math.sin(b.getAngle()), Math.cos(b.getAngle()), clamp(b.getAngularVelocity() / 10, -4, 4)]),
+      this.force / MAX_FORCE];
   }
 
   step(action, seconds) {
-    this.force = MAX_FORCE * clamp(action, -1, 1);
+    this.commandForce = MAX_FORCE * clamp(action, -1, 1);
     for (let j = 0; j < this.substeps; j++) {
+      this.force += (this.commandForce - this.force) * (1 - Math.exp(-DT / this.substeps / MOTOR_TIME));
       this.cart.applyForceToCenter(Vec2(this.force, 0), true);
       if (this.damping) for (const joint of this.joints) {
         const torque = this.damping * joint.getJointSpeed();

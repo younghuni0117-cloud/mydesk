@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Worker} from 'node:worker_threads';
 import {readFileSync} from 'node:fs';
-import {CartPole, DT, EVAL_SECONDS, GRAVITY, HOLD_SECONDS, LENGTHS, MASSES, MAX_FORCE, inputSize, postureReward} from '../cartpole-evolution-core.mjs';
+import {CartPole, DT, EVAL_SECONDS, GRAVITY, HOLD_SECONDS, LENGTHS, MASSES, MAX_FORCE, CART_MASS, MOTOR_TIME, PHYSICS_VERSION, inputSize, postureReward} from '../cartpole-evolution-core.mjs';
 import {Trainer, evaluate, options} from '../cartpole-evolution-training.mjs';
 import {PreviewEpisode, railProjection} from '../cartpole-evolution-preview.mjs';
 import {DEFAULT_MENUS, validateMenus, withCartPoleEvolution} from '../navigation-data.mjs';
@@ -21,6 +21,8 @@ test('1–5 passive links hang, with stable rail constraints, anchors and conver
       const env = new CartPole(level, () => .99, {substeps, damping: 0, cartDamping: 0});
       assert.equal(env.observe().length, inputSize(level));
       assert.equal(env.frame().points.length, level + 1);
+      assert.ok(Math.abs(env.cart.getMass() - 2) < 1e-9);
+      assert.equal(CART_MASS, 2);
       let prevY = 0;
       env.links.forEach((b, i) => {
         assert.ok(b.getPosition().y < prevY);
@@ -42,7 +44,7 @@ test('1–5 passive links hang, with stable rail constraints, anchors and conver
         const a = joint.getAnchorA(), b = joint.getAnchorB();
         assert.ok(Math.hypot(a.x - b.x, a.y - b.y) < .001);
       }
-      return error;
+      return error / Math.max(1, Math.abs(initial));
     });
     assert.ok(errors[1] < errors[0] && errors[1] < .002);
   }
@@ -51,7 +53,8 @@ test('1–5 passive links hang, with stable rail constraints, anchors and conver
 test('force moves cart and reacts through passive pole; timeout bootstraps and boundary terminates', () => {
   const env = new CartPole(1, () => .5);
   env.step(2, 20);
-  assert.equal(env.force, MAX_FORCE);
+  assert.ok(Math.abs(env.force - MAX_FORCE * (1 - Math.exp(-DT / MOTOR_TIME))) < 1e-10);
+  assert.equal(env.observe().at(-1), env.force / MAX_FORCE);
   assert.ok(env.cart.getPosition().x > 0 && env.cart.getLinearVelocity().x > 0);
   assert.ok(Math.abs(env.links[0].getAngularVelocity()) > .01);
   while (!env.step(1, 20).terminated) {}
@@ -59,6 +62,21 @@ test('force moves cart and reacts through passive pole; timeout bootstraps and b
   env.reset();
   for (let i = 0; i < 249; i++) assert.equal(env.step(0, 5).truncated, false);
   assert.deepEqual([env.step(0, 5).truncated, env.result().success], [true, false]);
+});
+
+test('motor response reaches 95 percent at 0.15 seconds and old physical checkpoints cannot reuse mismatched weights', () => {
+  const env = new CartPole(1, () => .5);
+  for (let i = 0; i < 8; i++) env.step(1, 30);
+  assert.ok(env.force > 9.5 && env.force < 10);
+  const previous = new Trainer(1, {}, null, 19).checkpoint();
+  delete previous.physicsVersion;
+  previous.episodes = 900;
+  const current = new Trainer(1, {}, previous, 21);
+  assert.equal(current.episodes, 0);
+  assert.equal(current.checkpoint().physicsVersion, PHYSICS_VERSION);
+  assert.notDeepEqual(current.policy.actor.w, previous.policy.actor);
+  env.reset();
+  assert.equal(env.force, 0);
 });
 
 test('terminal does not fire at upright success; all absolute angles must qualify for 20 seconds', () => {

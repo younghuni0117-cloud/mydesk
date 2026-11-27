@@ -1,6 +1,6 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=recovery2';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=recovery2';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=recovery2';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=experiment1';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=experiment1';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=experiment1';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=quota1';
 import {cacheGet, cachePut} from './cartpole-evolution-cache.mjs?v=quota1';
 
@@ -22,9 +22,8 @@ let zoom = 1, panX = 0, panY = 0;
 const pointers = new Map();
 let gesture = null;
 let showGuides = savedSettings.showGuides !== false;
-let unlocked = read('unlocked');
-unlocked = Number.isInteger(unlocked) ? Math.min(5, Math.max(1, unlocked)) : 1;
-for (let i = 1; i < 5; i++) if (read('level' + i)?.milestone?.passed >= 7) unlocked = Math.max(unlocked, i + 1);
+let unlocked = 1;
+for (let i = 1; i < 5; i++) if (read('level' + i)?.physicsVersion === PHYSICS_VERSION && read('level' + i)?.milestone?.passed >= 7) unlocked = Math.max(unlocked, i + 1);
 let level = Math.min(unlocked, Math.max(1, Math.trunc(Number(savedSettings.level)) || 1));
 let count = episodeBudget(savedSettings.count);
 let sync = null, syncing = false;
@@ -107,7 +106,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=recovery2', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=experiment1', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -564,7 +563,7 @@ async function connect() {
       else if (row.model) write('level' + row.id, row.model);
       else if (local && Number(row.revision) === 1) candidate.queue(row.id, local);
       else write('level' + row.id, null);
-      if (row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
+      if (row.model?.physicsVersion === PHYSICS_VERSION && row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
     }
     await candidate.flush();
     try { localStorage.setItem('mydesk.cartpole.connection', key); } catch {}
@@ -587,7 +586,7 @@ setInterval(async () => {
       const rows = await sync.load();
       for (const row of rows) {
         write('level' + row.id, row.model);
-        if (row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
+        if (row.model?.physicsVersion === PHYSICS_VERSION && row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
       }
       if (sync.rows.get(level)?.revision !== revision) openLevel(level);
       showLevels();
@@ -617,7 +616,7 @@ async function start() {
         if (legacy !== null) write(name, legacy);
       }
     } catch {}
-    if (read(name)?.milestone) unlocked = Math.max(unlocked, Math.min(5, i + 1));
+    if (read(name)?.physicsVersion === PHYSICS_VERSION && read(name)?.milestone) unlocked = Math.max(unlocked, Math.min(5, i + 1));
   }
   level = Math.min(unlocked, Math.max(1, Math.trunc(Number(savedSettings.level)) || 1));
   openLevel(level);
