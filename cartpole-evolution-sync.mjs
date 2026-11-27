@@ -1,4 +1,5 @@
 import {SHARED_MODEL_URL, SHARED_MODEL_KEY} from './robot-shared-config.mjs';
+import {cacheGet, cachePut} from './cartpole-evolution-cache.mjs?v=quota1';
 
 export class CartSync {
   constructor({key, storage = localStorage, fetcher = fetch.bind(globalThis)}) {
@@ -6,16 +7,39 @@ export class CartSync {
     this.rows = new Map();
     this.pending = new Map();
     this.busy = false;
+    this.persistence = Promise.resolve();
     try {
       const saved = JSON.parse(storage.getItem('mydesk.cartpole.pending.v1'));
       if (saved?.scope === key.slice(-12)) this.pending = new Map(saved.entries);
     } catch {}
+    this.ready = cacheGet('pending:' + key.slice(-12)).then(saved => {
+      if (saved?.scope === key.slice(-12)) this.pending = new Map(saved.entries);
+    }).catch(() => {});
   }
 
   persist() {
-    this.storage.setItem('mydesk.cartpole.pending.v1', JSON.stringify({
+    const saved = structuredClone({
       scope: this.key.slice(-12), entries: [...this.pending]
-    }));
+    });
+    this.persistence = this.persistence.then(async () => {
+      try {
+        await cachePut('pending:' + saved.scope, saved);
+        try { this.storage.removeItem('mydesk.cartpole.pending.v1'); } catch {}
+        this.durable = true;
+      } catch {
+        try {
+          this.storage.setItem('mydesk.cartpole.pending.v1', JSON.stringify(saved));
+          this.durable = true;
+        } catch { this.durable = false; }
+      }
+    });
+    return this.persistence;
+  }
+
+  archive(id, model) {
+    this.conflicts ??= new Map();
+    this.conflicts.set(id, model);
+    cachePut('conflict:' + this.key.slice(-12) + ':' + id, model).catch(() => {});
   }
 
   async request(query = '', data) {
@@ -31,12 +55,13 @@ export class CartSync {
   }
 
   async load() {
+    await this.ready;
     const rows = await this.request('?select=id,model,revision');
     if (rows.length !== 5) throw Error('기기 연결 링크 필요');
     for (const row of rows) this.rows.set(row.id, row);
     for (const [id, pending] of this.pending) {
       if (this.rows.get(id).revision !== pending.revision) {
-        this.storage.setItem('mydesk.cartpole.conflict.' + id, JSON.stringify(pending.model));
+        this.archive(id, pending.model);
         this.pending.delete(id);
       }
     }
@@ -76,7 +101,7 @@ export class CartSync {
         const rows = await this.request('?id=eq.' + id + '&revision=eq.' + snapshot.revision + '&select=id,model,revision', snapshot);
         if (!rows.length) {
           this.blocked = true;
-          this.storage.setItem('mydesk.cartpole.conflict.' + id, JSON.stringify(snapshot.model));
+          this.archive(id, snapshot.model);
           this.pending.delete(id);
           this.persist();
           throw Error('다른 기기의 최신 결과 적용 필요 · 새로고침');

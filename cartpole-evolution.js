@@ -1,7 +1,8 @@
 import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=reset1';
 import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=reset1';
 import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=reset1';
-import {CartSync} from './cartpole-evolution-sync.mjs?v=reset1';
+import {CartSync} from './cartpole-evolution-sync.mjs?v=quota1';
+import {cacheGet, cachePut} from './cartpole-evolution-cache.mjs?v=quota1';
 
 const get = name => document.getElementById('cpe-' + name);
 const prefix = 'mydesk.cartpole-evolution.v4.';
@@ -37,6 +38,12 @@ function read(key) {
 
 function write(key, value) {
   memory.set(key, value);
+  if (/^level[1-5]$/.test(key)) {
+    cachePut(prefix + key, value).then(() => {
+      try { localStorage.removeItem(prefix + key); } catch {}
+    }).catch(() => {});
+    return true;
+  }
   try {
     localStorage.setItem(key === 'settings' ? settingsKey : prefix + key, JSON.stringify(value));
     return true;
@@ -560,7 +567,7 @@ async function connect() {
       if (row.model?.milestone) unlocked = Math.max(unlocked, Math.min(5, row.id + 1));
     }
     await candidate.flush();
-    localStorage.setItem('mydesk.cartpole.connection', key);
+    try { localStorage.setItem('mydesk.cartpole.connection', key); } catch {}
     if (fragment) history.replaceState(null, '', location.pathname + location.search);
     sync = candidate;
     get('sync').textContent = '웹 연결됨';
@@ -599,5 +606,21 @@ try {
   }
   retired.forEach(key => localStorage.removeItem(key));
 } catch {}
-openLevel(level);
-connect();
+async function start() {
+  for (let i = 1; i <= 5; i++) {
+    const name = 'level' + i;
+    try {
+      const cached = await cacheGet(prefix + name);
+      if (cached !== undefined) memory.set(name, cached);
+      else {
+        const legacy = read(name);
+        if (legacy !== null) write(name, legacy);
+      }
+    } catch {}
+    if (read(name)?.milestone) unlocked = Math.max(unlocked, Math.min(5, i + 1));
+  }
+  level = Math.min(unlocked, Math.max(1, Math.trunc(Number(savedSettings.level)) || 1));
+  openLevel(level);
+  await connect();
+}
+start();
