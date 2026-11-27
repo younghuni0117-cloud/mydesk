@@ -14,6 +14,7 @@ export const DEFAULT_MENUS=[
  {id:'experiments',parent_id:null,label:'강화학습 체험',kind:'folder',href:null},
  {id:'maze',parent_id:'experiments',label:'미로 탐험',kind:'link',href:'maze.html'},
  {id:'cartpole',parent_id:'experiments',label:'카트폴',kind:'link',href:'cartpole.html'},
+ {id:'cartpole-evolution',parent_id:'experiments',label:'Cart-Pole Evolution Lab',kind:'link',href:'cartpole-evolution.html'},
  {id:'robot',parent_id:'experiments',label:'로봇 강화학습',kind:'link',href:'robot.html'},
  {id:'robot-evolution',parent_id:'experiments',label:'로봇 강화학습2',kind:'link',href:'robot-evolution.html'},
  {id:'robotdog',parent_id:'experiments',label:'로봇독 강화학습',kind:'link',href:'robotdog.html'},
