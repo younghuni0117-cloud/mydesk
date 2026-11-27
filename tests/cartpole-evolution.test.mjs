@@ -301,15 +301,17 @@ test('hammer speed follows the selected load range and the impulse waits for con
   assert.equal(hard.pendingHit, null);
 });
 
-test('mixed training starts include down, tilted and upright from the first batch', () => {
+test('all training starts and repeated resets hang downward from the first batch', () => {
   const trainer = new Trainer(1, {envs: 5}, null, 791);
   const kinds = new Set();
   for (let i = 0; i < 60; i++) {
     const env = trainer.envs[i % 5];
     kinds.add(env.startKind);
+    assert.ok(env.links.every(b=>Math.cos(b.getAngle())<-.99));
+    assert.ok(env.links.every(b=>b.getAngularVelocity()===0));
     env.reset();
   }
-  assert.deepEqual([...kinds].sort(), ['down', 'tilted', 'upright']);
+  assert.deepEqual([...kinds], ['down']);
 });
 
 test('post-acquisition fast rotations cost more; sustained post-impact balance earns more', () => {

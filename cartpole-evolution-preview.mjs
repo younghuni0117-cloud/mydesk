@@ -1,5 +1,5 @@
-import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=resistance1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=resistance1';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=downstart1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=downstart1';
 
 export function railProjection(width, height, level, cart) {
   const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);
@@ -33,7 +33,7 @@ export class PreviewEpisode {
     this.policy.logStd = snapshot.logStd.slice();
     this.updates = snapshot.updates;
     this.stochastic = stochastic;
-    this.env = new CartPole(level, () => this.policy.random.uniform(), {...resistance,mixedStarts: stochastic});
+    this.env = new CartPole(level, () => this.policy.random.uniform(), resistance);
     this.current = this.env.frame();
     this.debt = 0;
     this.done = false;

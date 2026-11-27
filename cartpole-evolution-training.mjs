@@ -1,5 +1,5 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=resistance1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=resistance1';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT, REWARD_PROTOCOL, PHYSICS_VERSION} from './cartpole-evolution-core.mjs?v=downstart1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=downstart1';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;
@@ -66,7 +66,7 @@ export class Trainer {
     this.envs = Array.from({length: this.config.envs}, (_, i) => {
       if (previous[i]) { previous[i].setJointResistance(this.config);return previous[i]; }
       const random = new Random((this.random.uniform() * 2 ** 32) >>> 0);
-      return new CartPole(this.level, () => random.uniform(), {...this.config,mixedStarts: true});
+      return new CartPole(this.level, () => random.uniform(), this.config);
     });
     this.streams = this.envs.map(() => []);
     this.count = 0;
@@ -87,7 +87,7 @@ export class Trainer {
       if (!next.terminated && !next.truncated) continue;
       if (next.invalid) {
         const random = new Random((this.random.uniform() * 2 ** 32) >>> 0);
-        this.envs[i] = new CartPole(this.level, () => random.uniform(), {...this.config,mixedStarts: true});
+        this.envs[i] = new CartPole(this.level, () => random.uniform(), this.config);
       } else {
         const result = {...env.result(), episode: ++this.episodes};
         this.bestHold = Math.max(this.bestHold, result.hold);
@@ -121,14 +121,6 @@ export function* evaluate(level, predict, capture, config={}) {
   for (let i = 0; i < EVAL_TRIALS; i++) {
     const rng = new Random(28289 + level * 773 + i * 35491);
     const env = new CartPole(level, () => rng.uniform(),options(config));
-    if (i >= EVAL_TRIALS / 2) {
-      let y = 0;
-      env.links.forEach((body, j) => {
-        const length = .65;
-        body.setTransform({x: 0, y: y + length / 2}, 0);
-        y += length;
-      });
-    }
     let impactIndex = 0;
     if (i === 0 && capture) capture(env.frame());
     for (let n = 0; ; n++) {

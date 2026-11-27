@@ -44,10 +44,9 @@ export function postureReward({angle, speed, stability, mean, all, action, acqui
 }
 
 export class CartPole {
-  constructor(level, random, {gravity = GRAVITY, damping = .005, jointDamping = damping, jointFriction = 0, cartDamping = .025, substeps = DT / PHYSICS_DT, mixedStarts = false} = {}) {
+  constructor(level, random, {gravity = GRAVITY, damping = .005, jointDamping = damping, jointFriction = 0, cartDamping = .025, substeps = DT / PHYSICS_DT} = {}) {
     this.level = level;
     this.random = random;
-    this.mixedStarts = mixedStarts;
     this.world = new World(Vec2(0, -gravity));
     this.world.setAllowSleeping(false);
     this.substeps = substeps;
@@ -88,10 +87,8 @@ export class CartPole {
     this.cart.setAngularVelocity(0);
     this.cart.setLinearVelocity(Vec2(0, 0));
     let x = 0, y = 0;
-    const choice = this.mixedStarts ? this.random() : 0;
-    this.startKind = !this.mixedStarts || choice < .34 ? 'down' : choice < .67 ? 'tilted' : 'upright';
-    const base = this.startKind === 'down' ? Math.PI
-      : this.startKind === 'tilted' ? (this.random() < .5 ? -1 : 1) * (.35 + this.random() * 1.2) : 0;
+    this.startKind = 'down';
+    const base = Math.PI;
     this.links.forEach((body, i) => {
       const angle = base + (this.random() - .5) * .12, l = LENGTHS[i];
       const dx = -l * Math.sin(angle), dy = l * Math.cos(angle);
