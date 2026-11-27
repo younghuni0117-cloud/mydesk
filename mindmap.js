@@ -1,5 +1,5 @@
 import {nodeWidth,groupPositions,moveGroup,wouldCycle,MIN_WIDTH,MAX_WIDTH} from './mindmap-layout.mjs?v=layout3';
-const release='layout3';
+const release='backup1';
 if(document.body.dataset.mapRelease!==release){const url=new URL(location.href);if(!(url.searchParams.get('map-update')||'').startsWith(release)){url.searchParams.set('map-update',release+'-'+Date.now());location.replace(url.href);}else{const status=document.getElementById('map-status');if(status)status.textContent='화면 파일 버전이 맞지 않습니다. 저장 자료를 삭제하지 말고 새로고침해 주세요.';}}else{
 const $=id=>document.getElementById('map-'+id),KEY='mydesk.mindmap.v2',NS='http://www.w3.org/2000/svg';
 const fresh=()=>({version:1,id:crypto.randomUUID(),title:'새 마인드맵',nodes:[{id:crypto.randomUUID(),x:80,y:160,text:'중심 주제',notes:'',color:0}],edges:[]});
@@ -49,6 +49,7 @@ $('viewport').oncontextmenu=e=>{if(e.target.isContentEditable)return;e.preventDe
 $('viewport').ondblclick=e=>{if(blankTap.count>=2&&!e.target.closest('.map-node,.map-view-tools')){blankTap.count=0;add();}};
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('#map-viewport'))blankTap.count=0;if(!e.target.closest('#map-context')&&!e.target.closest('#map-viewport'))closeContext();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.activeElement?.blur();source=null;closeContext();select(selected);}if(e.target.isContentEditable||e.target.matches('input,textarea,select')||e.target.closest('#map-rename-dialog,#map-context,.map-view-tools,.map-switcher,.map-details'))return;const delta={ArrowLeft:[-10,0],ArrowRight:[10,0],ArrowUp:[0,-10],ArrowDown:[0,10]}[e.key];if(delta&&selected){e.preventDefault();const n=data.nodes.find(n=>n.id===selected);if(n){remember();if(e.target.closest('.map-resize-handle'))setWidth(n.id,nodeWidth(n)+delta[0]);else moveGroup(data.nodes,groupPositions(data.nodes,data.edges,n.id),delta[0],delta[1]);draw();save();}}if(e.key==='Enter'&&selected){e.preventDefault();const r=[...$('nodes').children].find(n=>n.dataset.id===selected).getBoundingClientRect();context(selected,r.x,r.y);}if(e.shiftKey&&e.key==='F10'&&selected){e.preventDefault();const r=[...$('nodes').children].find(n=>n.dataset.id===selected).getBoundingClientRect();context(selected,r.x,r.y);}});
+$('export').onclick=()=>{document.activeElement?.blur();if(blocked){$('status').textContent='자료 오류 상태이므로 백업을 중단했습니다.';return;}commit();const url=URL.createObjectURL(new Blob([JSON.stringify(library,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='mydesk-mindmap-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);$('status').textContent='이 기기의 전체 마인드맵 백업을 저장했습니다.';};
 window.addEventListener('pagehide',()=>{if(saveTimer)commit();});list();draw();fit();new ResizeObserver(()=>{if(!drag)paths();}).observe($('viewport'));
 
 }
