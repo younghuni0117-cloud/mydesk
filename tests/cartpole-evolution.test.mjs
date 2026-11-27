@@ -228,3 +228,26 @@ test('random impact load stays in bounds and can hit the cart and every link', (
   assert.equal(options({impactMin: 9, impactMax: 1}).impactMin, 1);
   assert.equal(options({impactMin: 9, impactMax: 1}).impactMax, 9);
 });
+
+test('finger approach speed follows the selected load range and the impulse waits for contact', () => {
+  const snapshot = new Trainer(1, {}, null, 19).policy.checkpoint();
+  snapshot.actor.fill(0);
+  function viewer(strength) {
+    const preview = new PreviewEpisode(1, 30, snapshot, false, 19);
+    preview.policy.random.uniform = () => strength;
+    preview.impact({impactMin: 1, impactMax: 9, impactInterval: 3});
+    return preview;
+  }
+  const soft = viewer(.1), hard = viewer(.9);
+  assert.ok(soft.pendingHit.duration > hard.pendingHit.duration);
+  assert.equal(hard.env.lastImpact, null);
+  const end = hard.pendingHit.end;
+  for (let i = 0; i < 4; i++) hard.frame(.1);
+  assert.ok(hard.env.lastImpact);
+  assert.equal(hard.env.lastImpact.body, hard.pendingHit.body);
+  assert.equal(hard.env.lastImpact.direction, hard.pendingHit.direction);
+  assert.ok(Math.abs(hard.env.lastImpact.load - 8.2) < 1e-9);
+  assert.ok(hard.env.lastImpact.time >= hard.pendingHit.contact);
+  while (hard.env.steps * DT <= end + DT) hard.frame(.02);
+  assert.equal(hard.pendingHit, null);
+});

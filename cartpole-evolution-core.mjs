@@ -62,16 +62,25 @@ export class CartPole {
     this.nextImpact = null;
   }
 
-  impact(load, randomPosition = true) {
+  prepareImpact(load, randomPosition = true) {
     const bodyIndex = randomPosition ? Math.floor(this.random() * (this.level + 1)) : 0;
     const body = bodyIndex ? this.links[bodyIndex - 1] : this.cart;
     const localY = bodyIndex ? (this.random() - .5) * LENGTHS[bodyIndex - 1] : 0;
     const point = body.getWorldPoint(Vec2(0, localY));
     const direction = this.random() < .5 ? -1 : 1;
-    // A 0.1-second force pulse is represented by its impulse, in N·s.
-    body.applyLinearImpulse(Vec2(direction * clamp(load, 0, 100) * .1, 0), point, true);
-    this.lastImpact = {body: bodyIndex, point: [point.x, point.y], direction, time: this.steps * DT};
+    return {body: bodyIndex, localY, load: clamp(load, 0, 100), direction, point: [point.x, point.y]};
+  }
+
+  applyImpact(hit) {
+    const body = hit.body ? this.links[hit.body - 1] : this.cart;
+    const point = body.getWorldPoint(Vec2(0, hit.localY));
+    body.applyLinearImpulse(Vec2(hit.direction * hit.load * .1, 0), point, true);
+    this.lastImpact = {...hit, point: [point.x, point.y], time: this.steps * DT};
     return this.lastImpact;
+  }
+
+  impact(load, randomPosition = true) {
+    return this.applyImpact(this.prepareImpact(load, randomPosition));
   }
 
   randomImpact(config) {

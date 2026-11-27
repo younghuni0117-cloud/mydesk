@@ -1,6 +1,6 @@
-import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=impact2';
-import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=impact2';
-import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=impact2';
+import {X_LIMIT, HOLD_SECONDS, MAX_FORCE} from './cartpole-evolution-core.mjs?v=finger1';
+import {episodeBudget, options} from './cartpole-evolution-training.mjs?v=finger1';
+import {PreviewEpisode, railProjection} from './cartpole-evolution-preview.mjs?v=finger1';
 import {CartSync} from './cartpole-evolution-sync.mjs?v=1';
 
 const get = name => document.getElementById('cpe-' + name);
@@ -96,7 +96,7 @@ function openLevel(next) {
   showStats();
   requestDraw();
   try {
-    const instance = new Worker('./cartpole-evolution-worker.mjs?v=impact2', {type: 'module'});
+    const instance = new Worker('./cartpole-evolution-worker.mjs?v=finger1', {type: 'module'});
     worker = instance;
     instance.onerror = () => error('학습 Worker를 불러오지 못했습니다.');
     instance.onmessage = ({data}) => {
@@ -164,7 +164,7 @@ function displayFrame(elapsed) {
     preview.env.nextImpact = null;
     elapsed = 0;
   }
-  if (!modelPolicy && playing) preview.env.disturb(config);
+  preview.setDisturbance({...config, impactEnabled: !modelPolicy && playing && config.impactEnabled});
   return preview.frame(playing ? elapsed : 0);
 }
 
@@ -173,6 +173,56 @@ function circle(ctx, x, y, radius, color) {
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawFinger(ctx, active, modelX, modelY) {
+  const hit = active.finger;
+  const age = active.time - hit.start;
+  if (age < 0 || age > hit.duration + .22) return;
+  const start = active.points[Math.max(0, hit.body - 1)];
+  const end = active.points[hit.body];
+  const fraction = hit.body ? (hit.localY / .65 + .5) : 0;
+  const x = start[0] + (end[0] - start[0]) * fraction;
+  const y = start[1] + (end[1] - start[1]) * fraction;
+  const progress = Math.min(1, age / hit.duration);
+  const retreat = Math.max(0, (age - hit.duration) / .22);
+  const gap = age < hit.duration ? 55 * (1 - progress * progress) : 35 * retreat;
+  const tipX = modelX(x) - hit.direction * ((hit.body ? 6 : 24) + gap);
+  ctx.save();
+  ctx.translate(tipX, modelY(y));
+  ctx.scale(hit.direction, 1);
+  ctx.globalAlpha = Math.max(0, 1 - retreat);
+  const skin = ctx.createLinearGradient(0, -8, 0, 31);
+  skin.addColorStop(0, '#ffe0bd');
+  skin.addColorStop(1, '#d79e74');
+  ctx.fillStyle = skin;
+  ctx.strokeStyle = '#af7958';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-58, 2);
+  ctx.lineTo(-41, -5);
+  ctx.lineTo(-7, -5);
+  ctx.bezierCurveTo(2, -5, 2, 5, -7, 5);
+  ctx.lineTo(-27, 5);
+  ctx.bezierCurveTo(-15, 8, -21, 14, -27, 14);
+  ctx.bezierCurveTo(-18, 17, -25, 22, -31, 22);
+  ctx.bezierCurveTo(-24, 25, -34, 29, -41, 27);
+  ctx.lineTo(-58, 21);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#bc8864';
+  line(ctx, -20, -4, -20, 4);
+  line(ctx, -37, 8, -28, 11);
+  ctx.fillStyle = '#f5f9ff';
+  ctx.fillRect(-65, 0, 9, 24);
+  if (age >= hit.duration && retreat < .45) {
+    ctx.strokeStyle = '#edaa58';
+    line(ctx, 3, -9, 7, -13);
+    line(ctx, 6, 0, 12, 0);
+    line(ctx, 3, 9, 7, 13);
+  }
+  ctx.restore();
 }
 
 function draw(time) {
@@ -198,8 +248,8 @@ function draw(time) {
 
   ctx.lineCap = 'round';
   ctx.strokeStyle = '#d5e0ec';
-  ctx.lineWidth = 9;
-  line(ctx, px(-X_LIMIT), railY + 3, px(X_LIMIT), railY + 3);
+  ctx.lineWidth = 27;
+  line(ctx, px(-X_LIMIT), railY + 12, px(X_LIMIT), railY + 12);
   ctx.strokeStyle = '#8499ad';
   ctx.lineWidth = 3;
   line(ctx, px(-X_LIMIT), railY, px(X_LIMIT), railY);
@@ -209,15 +259,7 @@ function draw(time) {
   const ticks = [-X_LIMIT, 0, X_LIMIT];
   for (const x of ticks) {
     line(ctx, px(x), railY + 7, px(x), railY + 11);
-    ctx.fillText((x > 0 ? '+' : '') + x + 'm', px(x), railY + 25);
-  }
-  if (active?.impact && active.time - active.impact.time < .3) {
-    const [x, y] = active.impact.point;
-    ctx.strokeStyle = '#e56e45';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(modelX(x), py(y), 10, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.fillText((x > 0 ? '+' : '') + x + 'm', px(x), railY + 40);
   }
   if (active) {
     const x = px(cart), y = py(0);
@@ -273,6 +315,7 @@ function draw(time) {
     }
   }
 
+  if (active?.finger) drawFinger(ctx, active, modelX, py);
   ctx.restore();
   const updates = preview?.updates ?? 0;
   get('live').textContent = (modelPolicy ? '모델 실행' : '실시간 관찰') + ' · PPO ' + numeric.format(updates);

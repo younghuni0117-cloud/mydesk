@@ -1,5 +1,5 @@
-import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=impact2';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=impact2';
+import {CartPole, DT, LENGTHS, X_LIMIT} from './cartpole-evolution-core.mjs?v=finger1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=finger1';
 
 export function railProjection(width, height, level, cart) {
   const reach = LENGTHS.slice(0, level).reduce((sum, length) => sum + length, 0);
@@ -42,6 +42,14 @@ export class PreviewEpisode {
   }
 
   advance() {
+    if (this.pendingHit && !this.pendingHit.applied && this.env.steps * DT >= this.pendingHit.contact) {
+      this.env.applyImpact(this.pendingHit);
+      this.pendingHit.applied = true;
+    }
+    if (this.pendingHit && this.env.steps * DT > this.pendingHit.end) this.pendingHit = null;
+    if (this.disturbance?.impactEnabled && !this.pendingHit && this.env.steps * DT >= this.nextHit) {
+      this.impact(this.disturbance);
+    }
     const obs = this.env.observe();
     const action = this.stochastic ? this.policy.action(obs).action : this.policy.predict(obs);
     const {invalid, terminated, truncated} = this.env.step(action, this.seconds);
@@ -50,8 +58,19 @@ export class PreviewEpisode {
   }
 
   impact(config) {
-    this.env.randomImpact(config);
-    this.next = this.env.frame();
+    if (this.pendingHit) return;
+    const load = config.impactMin + this.policy.random.uniform() * (config.impactMax - config.impactMin);
+    const strength = config.impactMax > config.impactMin ? (load - config.impactMin) / (config.impactMax - config.impactMin) : .5;
+    const duration = .46 - .34 * strength;
+    const start = this.env.steps * DT;
+    this.pendingHit = {...this.env.prepareImpact(load), start, duration,
+      contact: start + duration, end: start + duration + .22, applied: false};
+    this.nextHit = start + config.impactInterval;
+  }
+
+  setDisturbance(config) {
+    this.disturbance = config;
+    if (!Number.isFinite(this.nextHit)) this.nextHit = this.env.steps * DT + config.impactInterval;
   }
 
   frame(elapsed) {
@@ -62,6 +81,7 @@ export class PreviewEpisode {
       if (this.terminal) this.done = true;
       else this.advance();
     }
-    return this.done ? this.current : interpolateFrame(this.current, this.next, this.debt / DT);
+    const result = this.done ? this.current : interpolateFrame(this.current, this.next, this.debt / DT);
+    return {...result, finger: this.pendingHit};
   }
 }
