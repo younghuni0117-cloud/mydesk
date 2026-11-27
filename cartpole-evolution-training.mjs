@@ -1,5 +1,5 @@
-import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=hammer1';
-import {CartPPO} from './cartpole-evolution-ppo.mjs?v=hammer1';
+import {CartPole, EVAL_SECONDS, EVAL_TRIALS, HOLD_SECONDS, PASS_COUNT} from './cartpole-evolution-core.mjs?v=balance1';
+import {CartPPO} from './cartpole-evolution-ppo.mjs?v=balance1';
 import {Random} from './evolution-ppo.mjs?v=biped7';
 
 export const ROLLOUT = 1536;
@@ -60,7 +60,7 @@ export class Trainer {
     this.envs = Array.from({length: this.config.envs}, (_, i) => {
       if (previous[i]) return previous[i];
       const random = new Random((this.random.uniform() * 2 ** 32) >>> 0);
-      return new CartPole(this.level, () => random.uniform());
+      return new CartPole(this.level, () => random.uniform(), {mixedStarts: true});
     });
     this.streams = this.envs.map(() => []);
     this.count = 0;
@@ -81,7 +81,7 @@ export class Trainer {
       if (!next.terminated && !next.truncated) continue;
       if (next.invalid) {
         const random = new Random((this.random.uniform() * 2 ** 32) >>> 0);
-        this.envs[i] = new CartPole(this.level, () => random.uniform());
+        this.envs[i] = new CartPole(this.level, () => random.uniform(), {mixedStarts: true});
       } else {
         const result = {...env.result(), episode: ++this.episodes};
         this.bestHold = Math.max(this.bestHold, result.hold);

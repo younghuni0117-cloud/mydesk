@@ -1,5 +1,5 @@
 import {PPO, Adam, Random} from './evolution-ppo.mjs?v=biped7';
-import {inputSize} from './cartpole-evolution-core.mjs?v=hammer1';
+import {inputSize} from './cartpole-evolution-core.mjs?v=balance1';
 
 class DenseNetwork {
   constructor(input, random, outputScale) {

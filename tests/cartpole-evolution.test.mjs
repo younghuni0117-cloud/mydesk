@@ -253,3 +253,33 @@ test('hammer speed follows the selected load range and the impulse waits for con
   while (hard.env.steps * DT <= end + DT) hard.frame(.02);
   assert.equal(hard.pendingHit, null);
 });
+
+test('mixed training starts include down, tilted and upright from the first batch', () => {
+  const trainer = new Trainer(1, {envs: 5}, null, 791);
+  const kinds = new Set();
+  for (let i = 0; i < 60; i++) {
+    const env = trainer.envs[i % 5];
+    kinds.add(env.startKind);
+    env.reset();
+  }
+  assert.deepEqual([...kinds].sort(), ['down', 'tilted', 'upright']);
+});
+
+test('post-acquisition fast rotations cost more; sustained post-impact balance earns more', () => {
+  const pose = (angle, speed, acquired, impacted) => {
+    const env = new CartPole(1, () => .5, {gravity: 0, damping: 0});
+    const body = env.links[0];
+    body.setTransform({x: -.325 * Math.sin(angle), y: .325 * Math.cos(angle)}, angle);
+    body.setAngularVelocity(speed);
+    env.acquired = acquired;
+    if (impacted) env.impact(0);
+    return {env, reward: env.step(0, 30).reward};
+  };
+  assert.ok(pose(1, 6, false, false).reward > pose(1, 6, true, false).reward);
+  assert.ok(pose(0, 0, true, true).reward > pose(1, 6, true, true).reward);
+  const env = pose(0, 0, false, false).env;
+  for (let i = 0; i < 12; i++) env.step(0, 30);
+  assert.equal(env.acquired, true);
+  env.reset();
+  assert.equal(env.acquired, false);
+});

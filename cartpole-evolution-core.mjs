@@ -10,9 +10,10 @@ export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 export const inputSize = level => 2 + 3 * level;
 
 export class CartPole {
-  constructor(level, random, {gravity = GRAVITY, damping = .001, cartDamping = .025, substeps = DT / PHYSICS_DT} = {}) {
+  constructor(level, random, {gravity = GRAVITY, damping = .001, cartDamping = .025, substeps = DT / PHYSICS_DT, mixedStarts = false} = {}) {
     this.level = level;
     this.random = random;
+    this.mixedStarts = mixedStarts;
     this.world = new World(Vec2(0, -gravity));
     this.world.setAllowSleeping(false);
     this.substeps = substeps;
@@ -46,8 +47,12 @@ export class CartPole {
     this.cart.setAngularVelocity(0);
     this.cart.setLinearVelocity(Vec2(0, 0));
     let x = 0, y = 0;
+    const choice = this.mixedStarts ? this.random() : 0;
+    this.startKind = !this.mixedStarts || choice < .34 ? 'down' : choice < .67 ? 'tilted' : 'upright';
+    const base = this.startKind === 'down' ? Math.PI
+      : this.startKind === 'tilted' ? (this.random() < .5 ? -1 : 1) * (.35 + this.random() * 1.2) : 0;
     this.links.forEach((body, i) => {
-      const angle = Math.PI + (this.random() - .5) * .12, l = LENGTHS[i];
+      const angle = base + (this.random() - .5) * .12, l = LENGTHS[i];
       const dx = -l * Math.sin(angle), dy = l * Math.cos(angle);
       body.setTransform(Vec2(x + dx / 2, y + dy / 2), angle);
       body.setLinearVelocity(Vec2(0, 0));
@@ -60,6 +65,11 @@ export class CartPole {
     this.force = 0;
     this.lastImpact = null;
     this.nextImpact = null;
+    this.acquired = false;
+    this.stableSteps = 0;
+    this.impactWindowEnd = 0;
+    this.impactWorstAngle = 0;
+    this.impactHold = 0;
   }
 
   prepareImpact(load) {
@@ -74,6 +84,9 @@ export class CartPole {
     const point = body.getWorldPoint(Vec2(-hit.direction * .18, 0));
     body.applyLinearImpulse(Vec2(hit.direction * hit.load * .1, 0), point, true);
     this.lastImpact = {...hit, point: [point.x, point.y], time: this.steps * DT};
+    this.impactWindowEnd = this.steps * DT + 3;
+    this.impactWorstAngle = 0;
+    this.impactHold = 0;
     return this.lastImpact;
   }
 
@@ -121,6 +134,11 @@ export class CartPole {
     const mean = heights.reduce((sum, h) => sum + h, 0) / this.level;
     const all = Math.min(...heights);
     const safe = !terminated && all >= (1 + Math.cos(ANGLE_LIMIT)) / 2;
+    const errors = this.links.map(b => Math.abs(Math.atan2(Math.sin(b.getAngle()), Math.cos(b.getAngle()))));
+    const worstAngle = Math.max(...errors);
+    const worstSpeed = Math.max(...this.links.map(b => Math.abs(b.getAngularVelocity())));
+    this.stableSteps = safe && worstSpeed < 1 ? this.stableSteps + 1 : 0;
+    if (this.stableSteps >= 10) this.acquired = true;
     if (safe && this.firstUpright === null) this.firstUpright = this.steps * DT;
     this.hold = safe ? this.hold + 1 : 0;
     this.bestHold = Math.max(this.bestHold, this.hold);
@@ -129,8 +147,22 @@ export class CartPole {
       const angle = Math.atan2(Math.sin(b.getAngle()), Math.cos(b.getAngle()));
       return 1 / (1 + (angle / .23) ** 2 + (b.getAngularVelocity() / 2.5) ** 2);
     }));
+    const impactActive = this.lastImpact && this.steps * DT <= this.impactWindowEnd;
+    if (impactActive) {
+      this.impactWorstAngle = Math.max(this.impactWorstAngle, worstAngle);
+      this.impactHold = safe ? this.impactHold + DT : 0;
+    }
+    // Acquisition is sampled in every episode. Once established, rotations
+    // keep accumulating costs even if a full turn returns to upright.
+    const rotationCost = this.acquired ? .7 * (worstAngle / Math.PI) ** 2
+      + .35 * Math.min(4, (worstSpeed / 4) ** 2) : 0;
+    const impactBonus = this.acquired && impactActive
+      ? .45 * stability / (1 + (this.impactWorstAngle / .35) ** 2) : 0;
+    const impactCost = this.acquired && impactActive
+      ? .35 * Math.min(2, (worstAngle / .6) ** 2) : 0;
     const reward = terminated ? -5 : .32 * mean + .12 * all ** 3 + 1.2 * stability
       + (safe ? .12 * Math.min(1, this.hold * DT) : 0)
+      + impactBonus - rotationCost - impactCost
       - .05 * (x / X_LIMIT) ** 2 - .008 * action ** 2;
     this.totalReward += reward;
     return {obs, reward, terminated, truncated, invalid: !finite};
@@ -138,6 +170,8 @@ export class CartPole {
 
   result() {
     return {reward: this.totalReward, hold: this.bestHold * DT, first: this.firstUpright,
+      startKind: this.startKind, impactAngle: this.lastImpact ? this.impactWorstAngle : null,
+      impactHold: this.impactHold,
       travel: this.maxTravel, success: this.bestHold >= Math.round(HOLD_SECONDS / DT)};
   }
 
