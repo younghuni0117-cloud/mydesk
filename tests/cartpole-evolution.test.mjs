@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Worker} from 'node:worker_threads';
 import {readFileSync} from 'node:fs';
-import {CartPole, DT, EVAL_SECONDS, GRAVITY, HOLD_SECONDS, LENGTHS, MASSES, MAX_FORCE, CART_MASS, MOTOR_TIME, PHYSICS_VERSION, inputSize, postureReward} from '../cartpole-evolution-core.mjs';
+import {CartPole, DT, EVAL_SECONDS, GRAVITY, HOLD_SECONDS, LENGTHS, MASSES, MAX_FORCE, CART_MASS, MOTOR_TIME, PHYSICS_VERSION, inputSize, postureReward, ServoDrive, CONTINUOUS_FORCE} from '../cartpole-evolution-core.mjs';
 import {Trainer, evaluate, options} from '../cartpole-evolution-training.mjs';
 import {PreviewEpisode, railProjection} from '../cartpole-evolution-preview.mjs';
 import {DEFAULT_MENUS, validateMenus, withCartPoleEvolution} from '../navigation-data.mjs';
@@ -54,7 +54,7 @@ test('force moves cart and reacts through passive pole; timeout bootstraps and b
   const env = new CartPole(1, () => .5);
   env.step(2, 20);
   assert.ok(Math.abs(env.force - MAX_FORCE * (1 - Math.exp(-DT / MOTOR_TIME))) < 1e-10);
-  assert.equal(env.observe().at(-1), env.force / MAX_FORCE);
+  assert.equal(env.observe().at(-2), env.force / MAX_FORCE);
   assert.ok(env.cart.getPosition().x > 0 && env.cart.getLinearVelocity().x > 0);
   assert.ok(Math.abs(env.links[0].getAngularVelocity()) > .01);
   while (!env.step(1, 20).terminated) {}
@@ -64,12 +64,13 @@ test('force moves cart and reacts through passive pole; timeout bootstraps and b
   assert.deepEqual([env.step(0, 5).truncated, env.result().success], [true, false]);
 });
 
-test('25 N motor reaches 95 percent at 0.09 seconds and old physical checkpoints cannot reuse mismatched weights', () => {
+test('servo reaches 95 percent at 0.06 seconds and old physical checkpoints cannot reuse mismatched weights', () => {
   const env = new CartPole(1, () => .5);
-  for (let i = 0; i < 5; i++) env.step(1, 30);
-  assert.equal(MAX_FORCE, 25);
-  assert.equal(MOTOR_TIME, .03);
-  assert.ok(env.force > .95 * MAX_FORCE && env.force < MAX_FORCE);
+  const drive = new ServoDrive();
+  for (let i = 0; i < 12; i++) drive.step(80, 0, .005);
+  assert.equal(MAX_FORCE, 80);
+  assert.equal(MOTOR_TIME, .02);
+  assert.ok(drive.force >= .95 * MAX_FORCE && drive.force < MAX_FORCE);
   const previous = new Trainer(1, {}, null, 19).checkpoint();
   delete previous.physicsVersion;
   previous.episodes = 900;
@@ -79,6 +80,22 @@ test('25 N motor reaches 95 percent at 0.09 seconds and old physical checkpoints
   assert.notDeepEqual(current.policy.actor.w, previous.policy.actor);
   env.reset();
   assert.equal(env.force, 0);
+});
+
+test('servo limits peak time, recovers reserve under reduced demand and preserves high-speed braking', () => {
+  const drive = new ServoDrive();
+  let aboveContinuous = 0;
+  for (let i = 0; i < 200; i++) {
+    if (drive.step(80, 0, .005) > CONTINUOUS_FORCE + 1e-9) aboveContinuous += .005;
+  }
+  assert.ok(aboveContinuous <= .2 + 1e-9);
+  assert.ok(Math.abs(drive.force) <= 40);
+  for (let i = 0; i < 220; i++) drive.step(0, 0, .005);
+  assert.ok(drive.reserve > .19);
+  assert.ok(new ServoDrive().step(80, 2, .02) <= 40);
+  assert.equal(new ServoDrive().step(80, 3, .02), 0);
+  assert.equal(new ServoDrive().step(80, 4, .02), 0);
+  assert.ok(new ServoDrive().step(-80, 4, .02) < 0);
 });
 
 test('terminal does not fire at upright success; all absolute angles must qualify for 20 seconds', () => {

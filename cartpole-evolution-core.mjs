@@ -1,14 +1,36 @@
 import {World, Vec2, Box, PrismaticJoint, RevoluteJoint} from './vendor/planck.mjs';
 
 export const DT = .02, PHYSICS_DT = .005, X_LIMIT = 5;
-export const GRAVITY = 9.81, CART_MASS = 2, MAX_FORCE = 25, MOTOR_TIME = .03;
-export const PHYSICS_VERSION = 'experiment-2kg-300g-25N';
+export const GRAVITY = 9.81, CART_MASS = 2, MAX_FORCE = 80, MOTOR_TIME = .02;
+export const CONTINUOUS_FORCE = 40, MAX_SPEED = 3, PEAK_SECONDS = .2;
+export const PHYSICS_VERSION = 'servo-40N-80N-3mps';
 export const LENGTHS = Array(5).fill(.65);
 export const MASSES = Array(5).fill(.30);
 export const HOLD_SECONDS = 20, EVAL_SECONDS = 40, EVAL_TRIALS = 8, PASS_COUNT = 7;
 const ANGLE_LIMIT = Math.PI / 18, WIDTH = .022;
 export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
-export const inputSize = level => 3 + 3 * level;
+export const inputSize = level => 4 + 3 * level;
+export class ServoDrive {
+  constructor() { this.force = 0; this.reserve = PEAK_SECONDS; }
+  step(command, velocity, dt) {
+    const demand = clamp(command, -MAX_FORCE, MAX_FORCE);
+    const motoring = demand * velocity > 0;
+    const factor = motoring ? clamp((MAX_SPEED - Math.abs(velocity)) / 2, 0, 1) : 1;
+    const cap = (this.reserve > 1e-9 ? MAX_FORCE : CONTINUOUS_FORCE) * factor;
+    const desired = clamp(demand, -cap, cap);
+    const filtered = this.force + (desired - this.force) * (1 - Math.exp(-dt / MOTOR_TIME));
+    const exceeds = Math.abs(filtered) > CONTINUOUS_FORCE + 1e-9;
+    if (exceeds && this.reserve + 1e-9 < dt) {
+      this.force = clamp(filtered, -CONTINUOUS_FORCE * factor, CONTINUOUS_FORCE * factor);
+      this.reserve = 0;
+    } else {
+      this.force = clamp(filtered, -cap, cap);
+      this.reserve = exceeds ? Math.max(0, this.reserve - dt)
+        : Math.min(PEAK_SECONDS, this.reserve + (Math.abs(demand) <= CONTINUOUS_FORCE ? dt * .2 : 0));
+    }
+    return this.force;
+  }
+}
 export const REWARD_PROTOCOL = 'recovery-2';
 export function postureReward({angle, speed, stability, mean, all, x, action, acquired, impacted, progress, recovered}) {
   const nearUpright = Math.exp(-((angle / .65) ** 2));
@@ -78,6 +100,7 @@ export class CartPole {
     this.firstUpright = null;
     this.force = 0;
     this.commandForce = 0;
+    this.drive = new ServoDrive();
     this.lastImpact = null;
     this.nextImpact = null;
     this.acquired = false;
@@ -133,13 +156,13 @@ export class CartPole {
   observe() {
     return [this.cart.getPosition().x / X_LIMIT, clamp(this.cart.getLinearVelocity().x / 5, -4, 4),
       ...this.links.flatMap(b => [Math.sin(b.getAngle()), Math.cos(b.getAngle()), clamp(b.getAngularVelocity() / 10, -4, 4)]),
-      this.force / MAX_FORCE];
+      this.force / MAX_FORCE, this.drive.reserve / PEAK_SECONDS];
   }
 
   step(action, seconds) {
     this.commandForce = MAX_FORCE * clamp(action, -1, 1);
     for (let j = 0; j < this.substeps; j++) {
-      this.force += (this.commandForce - this.force) * (1 - Math.exp(-DT / this.substeps / MOTOR_TIME));
+      this.force = this.drive.step(this.commandForce, this.cart.getLinearVelocity().x, DT / this.substeps);
       this.cart.applyForceToCenter(Vec2(this.force, 0), true);
       if (this.damping) for (const joint of this.joints) {
         const torque = this.damping * joint.getJointSpeed();
