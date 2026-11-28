@@ -17,3 +17,8 @@ body .topbar .menu-toggle{box-sizing:border-box;width:26px;height:32px;flex-shri
 body .topbar .menu-toggle svg{display:block;width:20px;height:20px}
 body .topbar .menu-toggle:focus-visible{outline:2px solid #7892ad;outline-offset:3px}
 body[data-page=mindmap]:not(.menu-open) .sidebar{box-shadow:none}
+
+@media(max-width:440px){
+  body:is([data-page=home],[data-page=ai-office]) .topbar{padding-inline:12px;gap:8px}
+  body:is([data-page=home],[data-page=ai-office]) .topbar-location{gap:8px}
+}
