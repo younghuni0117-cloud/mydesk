@@ -1,0 +1,23 @@
+# 포스트잇 게시판
+
+`sticky.html` is an independent full content-area board, linked from home and the first shortcut after the existing menu toggle. Existing shortcut order and menu behavior remain unchanged. HTML entrypoints only bump the shared shell cache version. Existing application storage and data are untouched.
+
+Paper notes support direct multiline editing, a separate drag handle, keyboard movement/resizing, colors, resize limits (160–600 × 140–700 board units), slight rotation, stacking order, immutable creation date displayed in Asia/Seoul, archive/trash drop targets, restore and confirmed permanent deletion. CSS textures/tape/shadows and short drop animations need no image downloads. Reduced motion is respected. Logical coordinates, zoom-anchor math and device-local viewport state are separate from note content. Ctrl+wheel, blank-board pan and two-finger gestures are scoped to the board; text editing is excluded. Textarea focus permits native vertical scrolling without board zoom gestures.
+
+## Storage and access
+
+The existing Supabase project stores notes through `sticky_board` RPC. A new board uses a cryptographically random 256-bit capability (43 URL-safe characters). The capability is stored only in the browser and a user-copied fragment connection link. The server stores its SHA-256 digest. A different device needs that link once; knowing the public homepage URL alone does not grant access to an existing board. Anyone holding the connection link can read/write that board. There is no new login/password, and no existing private mindmap or resume credential is reused. Link fragments are removed from the address after safe local storage; if browser storage is unavailable the fragment remains so reload can retain access. No capability, personal memo, admin key or password is embedded in source control.
+
+Notes live in a non-exposed RLS-enabled schema with explicit deny policies and no direct anon/authenticated table privileges. Security-invoker public RPC calls a private function that scopes all operations to the verified high-entropy capability digest. Note revision checks prevent lost concurrent updates. Unrelated notes merge independently. Conflicting local content becomes a separate active copy and a local recovery backup. Permanent deletion is accepted only after trash is persisted, and a server tombstone prevents resurrection. Creation date is enforced server-side.
+
+IndexedDB holds the cached records, pending operations and recovery copies. The asynchronous local transaction queue runs before network mutation; failed network writes retain pending work. A storage failure is shown distinctly, with a backup download and close warning if no durable copy exists. The connection dialog can import a downloaded JSON backup as new-ID copies. Device-local zoom/pan are in namespaced localStorage. Remote changes poll every five seconds when visible and not editing/dragging; pending work retries on reconnect. No background automation was added.
+
+## Verification
+
+`node --test --test-isolation=none tests/sticky.test.mjs tests/sticky-header.test.mjs tests/navigation.test.mjs tests/calendar.test.mjs tests/mindmap-sync.test.mjs tests/restaurant-data.test.mjs tests/resume-model.test.mjs`
+
+Tests cover creation/overlap/date/state, coordinate preservation on zoom, two-device merges and same-note conflict recovery, offline reload recovery, deletion tombstones, local storage failure and header/menu compatibility, plus existing application regressions. `tests/sticky-db.sql` uses synthetic records inside a rolled-back transaction to test missing-key denial, board isolation, stale revision rejection, immutable date, archive/trash/purge restrictions and direct-table denial. Security advisors reported no findings.
+
+Interactive desktop/mobile drag, native keyboard/textarea scrolling and real device pinch gestures have not been browser-tested in this execution environment: managed browser preview is unavailable. No frame-rate guarantee is made. A connection link must be kept private; this is capability sharing, not a user-account login system.
+
+Concurrent upstream commit `4221bca` was integrated without changing its Neon Jump logic (only the shell cache version changed in that page). Expanded regression run: 36/37 passed; the `Double Trouble is playable` assertion also fails in a separate untouched worktree at upstream `4221bca`. This pre-existing upstream failure is not attributed to the sticky board and was not modified as part of this task. The requested board and calendar/mindmap/restaurant/resume/navigation regression set passed 32/32.

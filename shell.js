@@ -12,6 +12,7 @@ function mountHeaderShortcuts() {
   const nav = document.createElement('nav');
   nav.className = 'header-shortcuts'; nav.setAttribute('aria-label', '바로가기');
   const icons = [
+    ['sticky', '포스트잇 게시판', 'sticky.html', '<path d="M5 3h14a2 2 0 0 1 2 2v10l-6 6H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M15 21v-6h6M7 8h10M7 12h7"/>'],
     ['calendar', '가족 달력', 'calendar.html', '<rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M8 3v4m8-4v4M4 10h16m-11 4h.01M12 14h.01M15 14h.01M9 17h.01M12 17h.01M15 17h.01"/>'],
     ['mindmap', '마인드맵', 'mindmap.html', '<rect x="8" y="3" width="8" height="5" rx="1.5"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1.5"/><rect x="9" y="16" width="6" height="5" rx="1.5"/><rect x="16" y="16" width="6" height="5" rx="1.5"/>'],
     ['restaurants', '맛집 기록', 'restaurants.html', '<path d="M5 3v6a3 3 0 0 0 6 0V3M8 3v18m10-8v8m0-8c-4 0-4-10 0-10s4 10 0 10Z"/>']
