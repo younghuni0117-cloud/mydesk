@@ -63,11 +63,4 @@ export const account = {
   async remove(id) {
     return request('/rest/v1/ai_office_records?id=eq.' + encodeURIComponent(id), {method:'DELETE'}, await token());
   },
-  async aiStatus() {
-    return request('/functions/v1/ai-office-chat', {}, await token());
-  },
-  async chat(employeeId, content, id, signal) {
-    return request('/functions/v1/ai-office-chat', {method:'POST',signal,
-      body:JSON.stringify({employeeId, content, requestId:id, approved:true})}, await token());
-  },
 };

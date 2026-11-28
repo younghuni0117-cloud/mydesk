@@ -1,4 +1,4 @@
-import { openConversation } from './conversation.mjs';
+import { openConversation } from './conversation.mjs?v=manual1';
 import { employees, rooms, TILE, WIDTH, HEIGHT } from './office-map.mjs';
 import { actorStatus, createDemoSource, createMotion } from './office-motion.mjs';
 import { createBackground, drawOffice, drawPortrait } from './office-art.mjs';

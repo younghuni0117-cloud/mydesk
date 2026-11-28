@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <title>AI 비서 회사 | My Desk</title>
   <link rel="stylesheet" href="style.css?v=update69">
-  <link rel="stylesheet" href="ai-office/office.css?v=open2">
+  <link rel="stylesheet" href="ai-office/office.css?v=manual1">
 </head>
 <body data-page="ai-office">
   <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -58,7 +58,7 @@
         <aside class="office-card office-roster" aria-labelledby="roster-title">
           <div class="office-roster-heading"><h2 id="roster-title">직원 현황</h2><span>5명</span></div>
           <ul id="office-staff"></ul>
-          <p class="office-connection">이 화면의 업무·회의·휴식은 데모입니다. 직원을 선택해 상담 초안과 기억을 저장할 수 있습니다. 실제 AI 응답의 연결 상태는 직원 카드에서 확인하세요.</p>
+          <p class="office-connection">이 화면의 업무·회의·휴식은 데모입니다. 직원을 선택해 상담 초안과 기억을 저장할 수 있습니다. 직원 카드에서 상담문을 복사해 ChatGPT에서 상담하고 답변을 저장하세요.</p>
         </aside>
       </div>
     </main>
@@ -87,22 +87,35 @@
     </dl>
     <section id="office-conversation" aria-label="상담 기록">
       <label id="office-all-records" hidden><input id="office-all-toggle" type="checkbox">모든 직원 기록 조회</label>
-      <p class="office-connection">비서실장의 통합 조회에는 건강 상담을 포함한 모든 직원 기록이 표시됩니다. AI 응답은 서버 연결과 사용 한도 설정 후 활성화됩니다.</p>
+      <p class="office-connection">ChatGPT 직접 상담 · 상담문을 복사해 ChatGPT에 붙여 넣고, 답변을 이곳에 저장하세요. 비서실장의 통합 조회에는 건강 기록도 포함됩니다.</p>
       <p id="office-chat-status" role="status"></p>
       <div id="office-history" aria-label="저장된 기록"></div>
       <form id="office-compose">
         <label for="office-content">상담할 내용 또는 직원이 기억할 정보</label>
         <textarea id="office-content" rows="3" maxlength="12000" required></textarea>
-        <label><input type="checkbox" id="office-ai-consent">이 내용과 관련 기록을 OpenAI에 보내 응답받기 · 유료 API 사용</label>
+        <label><input type="checkbox" id="office-include-records">불러온 최근 기록 최대 12건을 상담문에 포함</label>
         <div class="office-scenes">
           <button class="office-button" id="office-save-draft" type="submit">상담 초안 저장</button>
           <button class="office-button" type="button" id="office-save-memory">기억 저장</button>
-          <button class="office-button" type="button" id="office-send-ai" disabled>AI에게 보내기</button>
+          <button class="office-button" type="button" id="office-build-prompt">ChatGPT 상담문 만들기</button>
         </div>
+      </form>
+      <section id="office-prompt-panel" hidden aria-label="ChatGPT에 전달할 상담문">
+        <label for="office-prompt">전달할 내용을 확인하고 수정하세요.</label>
+        <textarea id="office-prompt" rows="7"></textarea>
+        <div class="office-scenes">
+          <button type="button" id="office-copy-prompt" class="office-button">상담문 복사</button>
+          <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="office-button">ChatGPT 열기 · 새 탭</a>
+        </div>
+      </section>
+      <form id="office-import">
+        <label for="office-answer">ChatGPT 답변 붙여 넣기</label>
+        <textarea id="office-answer" rows="4" maxlength="12000" required></textarea>
+        <button type="submit" class="office-button" id="office-save-answer">답변 기록 저장</button>
       </form>
     </section>
   </dialog>
   <script src="shell.js?v=office1"></script>
-  <script type="module" src="ai-office/office.mjs?v=open2"></script>
+  <script type="module" src="ai-office/office.mjs?v=manual1"></script>
 </body>
 </html>
