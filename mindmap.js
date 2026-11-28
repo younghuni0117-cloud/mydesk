@@ -2,7 +2,7 @@ import {connectionKey,connectionLink} from './mindmap-connection.mjs?v=device2';
 import {MindmapSync,CONNECTION_KEY,validConnection} from './mindmap-sync.mjs?v=device2';
 import {validLibrary,libraryData} from './mindmap-data.mjs?v=sync1';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs?v=update88';
-import {fitMapView,nodeWidth,groupPositions,moveGroup,wouldCycle,MIN_WIDTH,MAX_WIDTH} from './mindmap-layout.mjs?v=screenFit1';
+import {fitMapView,nodeWidth,groupPositions,moveGroup,wouldCycle,MIN_WIDTH,MAX_WIDTH} from './mindmap-layout.mjs?v=visibleFit2';
 const release='device2';
 if(document.body.dataset.mapRelease!==release){const url=new URL(location.href);if(!(url.searchParams.get('map-update')||'').startsWith(release)){url.searchParams.set('map-update',release+'-'+Date.now());location.replace(url.href);}else{const status=document.getElementById('map-status');if(status)status.textContent='화면 파일 버전이 맞지 않습니다. 저장 자료를 삭제하지 말고 새로고침해 주세요.';}}else{
 const $=id=>document.getElementById('map-'+id),KEY='mydesk.mindmap.v2',NS='http://www.w3.org/2000/svg';
@@ -18,7 +18,7 @@ const colors=[['파랑','#6b98d3','#eef4fc','#d0def0'],['보라','#a28bce','#f4f
 function transform(){$('world').style.setProperty('--map-inverse-zoom',1/view.z);$('world').style.transform=`translate(${view.x}px,${view.y}px) scale(${view.z})`;$('zoom').textContent=Math.round(view.z*100)+'%';}
 function worldPoint(x,y){const r=$('viewport').getBoundingClientRect();return {x:(x-r.x-view.x)/view.z,y:(y-r.y-view.y)/view.z};}
 function paths(){const sizes=new Map([...$('nodes').children].map(n=>[n.dataset.id,{w:n.offsetWidth,h:n.offsetHeight}]));$('lines').replaceChildren();for(const [a,b]of data.edges){const A=data.nodes.find(n=>n.id===a),B=data.nodes.find(n=>n.id===b),as=sizes.get(a),bs=sizes.get(b);if(!A||!B||!as||!bs)continue;const right=B.x>=A.x,x1=A.x+(right?as.w:0),x2=B.x+(right?0:bs.w),y1=A.y+as.h/2,y2=B.y+bs.h/2,bend=Math.max(45,Math.abs(x2-x1)*.45)*(right?1:-1),path=document.createElementNS(NS,'path');path.setAttribute('d',`M${x1},${y1} C${x1+bend},${y1} ${x2-bend},${y2} ${x2},${y2}`);$('lines').append(path);}}
-function fit(){const boxes=[...$('nodes').children].map(el=>({x:parseFloat(el.style.left),y:parseFloat(el.style.top),width:el.offsetWidth,height:el.offsetHeight})),tools=document.querySelector('.map-view-tools');view=fitMapView(boxes,$('viewport').clientWidth,$('viewport').clientHeight,{padding:20,bottom:(tools?.offsetHeight||40)+24});transform();}
+function fit(){if($('viewport').clientWidth<80||$('viewport').clientHeight<80)return;const boxes=[...$('nodes').children].map(el=>({x:parseFloat(el.style.left),y:parseFloat(el.style.top),width:el.offsetWidth,height:el.offsetHeight})),tools=document.querySelector('.map-view-tools');view=fitMapView(boxes,$('viewport').clientWidth,$('viewport').clientHeight,{padding:20,bottom:(tools?.offsetHeight||40)+24});transform();}
 
 function list(){const options=library.maps.map(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.title||'제목 없는 맵';return o;});$('list').replaceChildren(...options);$('list').value=data.id;$('title').value=data.title;}
 function draftKey(){return data.id+':'+selected;}
@@ -71,7 +71,9 @@ window.addEventListener('hashchange',()=>{const key=linkKey(location.href);if(!k
 window.addEventListener('online',()=>{if(sync?.ready)sync.poll();else{const key=localStorage.getItem(CONNECTION_KEY);if(key)connectDevice(key);}});
 setInterval(()=>{if(!document.hidden)sync?.poll();},3000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync?.poll();else if(saveTimer)commit();});
-window.addEventListener('pagehide',()=>{if(saveTimer)commit();});list();draw();fit();new ResizeObserver(()=>{if(!drag&&!pinch){paths();fit();}}).observe($('viewport'));
+function sizeWorkspace(){const header=document.querySelector('.topbar').getBoundingClientRect().height,height=window.visualViewport?.height||window.innerHeight;document.querySelector('#main-content').style.height=Math.max(0,Math.floor(height-header))+'px';}
+window.addEventListener('resize',sizeWorkspace);window.visualViewport?.addEventListener('resize',sizeWorkspace);new ResizeObserver(sizeWorkspace).observe(document.querySelector('.topbar'));
+window.addEventListener('pagehide',()=>{if(saveTimer)commit();});sizeWorkspace();list();draw();fit();new ResizeObserver(()=>{if(!drag&&!pinch){paths();fit();}}).observe($('viewport'));
 lockEditor(true);const fragmentKey=linkKey(location.href),storedKey=localStorage.getItem(CONNECTION_KEY);if(validConnection(fragmentKey||storedKey))connectDevice(fragmentKey||storedKey);else{$('share').textContent='연결 링크 입력';$('status').textContent='모바일의 연결 링크를 한 번 입력하면 자동으로 동기화됩니다.';$('sync-dialog').showModal();}
 
 }

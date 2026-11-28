@@ -10,4 +10,6 @@ test('fit keeps every box visible on laptop, portrait and wide screens above the
   for(const b of boxes){assert.ok(v.x+b.x*v.z>=20-1e-8);assert.ok(v.x+(b.x+b.width)*v.z<=w-20+1e-8);assert.ok(v.y+b.y*v.z>=20-1e-8);assert.ok(v.y+(b.y+b.height)*v.z<=h-bottom-20+1e-8);}
  }
  assert.deepEqual(fitMapView([],1000,500),{x:0,y:0,z:1});
+ assert.deepEqual(fitMapView(boxes,0,0),{x:0,y:0,z:1});
+ assert.deepEqual(fitMapView(boxes,1000,0),{x:0,y:0,z:1});
 });
