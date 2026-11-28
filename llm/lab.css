@@ -180,3 +180,17 @@ body[data-page="llm-lab"] {
 .lab-status dd{font-size:.82rem}
 .lab-storage-note{margin-bottom:0}
 @media(max-width:660px){.learning-plan>p{margin:0;font-size:.75rem}.learning-plan label{font-size:.82rem}.lab-status div{border-left:0!important}.lab-status dt{font-size:.67rem}}
+.dataset-top{margin-bottom:10px}
+.data-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.dataset-top h2{margin:0;font-size:1rem}
+.dataset-top .lab-columns{grid-template-columns:1.5fr 1fr}
+.dataset-top select{width:100%}
+.dataset-top #doc-list{max-height:220px;overflow:auto}
+.dataset-top #doc-list .lab-text{max-height:150px}
+.dataset-top input[type=file]{font-size:.82rem}
+#clear-all{color:#963a31;background:#fff5f3}
+.learning-plan{margin-bottom:10px}
+.learning-plan>div>strong{display:none}
+.lab-status{margin-top:6px}
+#main-content{padding-top:12px}
+@media(max-width:660px){.dataset-top .lab-columns{grid-template-columns:1fr}.dataset-top .lab-columns>div+div{border-top:1px solid var(--line);padding-top:7px}.dataset-top .lab-buttons{gap:4px}.dataset-top .lab-buttons button{font-size:.76rem}#doc-list{max-height:180px}}

@@ -100,3 +100,14 @@ export async function saveTest(record) {
   tx.objectStore('tests').put(record);
   return done;
 }
+
+export async function clearLab() {
+  const db=await open();
+  const tx=db.transaction([...db.objectStoreNames],'readwrite');
+  const done=new Promise((resolve,reject)=>{
+    tx.oncomplete=resolve;
+    tx.onabort=()=>reject(tx.error??Error('전체 초기화를 완료하지 못했습니다.'));
+  });
+  for(const name of db.objectStoreNames) tx.objectStore(name).clear();
+  return done;
+}

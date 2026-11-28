@@ -1,5 +1,5 @@
 import {Transformer,ENGINE} from './engine.mjs';
-import {get,list,save,saveTest} from './storage.mjs';
+import {get,list,save,saveTest,clearLab} from './storage.mjs';
 
 let model, lastSave, timer, running=false, phase='ready', lastUpdate=0, savedStep=0;
 let pending=Promise.resolve();
@@ -90,6 +90,17 @@ async function openModel(id,key) {
 
 async function dispatch(action,args) {
   switch(action) {
+    case 'clearAll':
+      stop();
+      await clearLab();
+      model=undefined;
+      generation=undefined;
+      lastSave=undefined;
+      targetStep=0;
+      savedStep=0;
+      schedule.sent=0;
+      phase='ready';
+      return state();
     case 'init': {
       let models=[];
       try { models=await list('models'); }

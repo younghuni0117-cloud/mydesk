@@ -1,4 +1,5 @@
 import {makeDataset,samples} from './data.mjs';
+import {longSamples} from './long-samples.mjs';
 import {readDocument,validateText} from './import.mjs';
 import {help,helpLabels,drawLoss} from './metrics.mjs';
 import {connectEngine} from './client.mjs';
@@ -11,8 +12,8 @@ const percent=n=>Number.isFinite(n)?number(n*100,2)+'%':'—';
 const date=value=>value ? new Date(value).toLocaleString('ko-KR') : '—';
 const time=n=>Number.isFinite(n)?number(n/1000,1)+'초':'—';
 const currentTab=()=>document.querySelector('[role="tab"][aria-selected="true"]').id;
-const createDefaults={name:'MyDesk Transformer',datasetName:'한국어 연습 문장',documents:samples};
-let state={}, history=[], validation, prediction, testResult, busy=false, docs=samples.slice();
+const createDefaults={name:'MyDesk Transformer',datasetName:longSamples[0].name,documents:[longSamples[0]]};
+let state={}, history=[], validation, prediction, testResult, busy=false, docs=[longSamples[0]];
 let generating=false, generationCancelled=false;
 let weightData, engine, lastDatasetKey, testOptions, lastError='', readingDocuments=false;
 
@@ -37,7 +38,6 @@ function setMessage(message,error=false) {
   element.dataset.error=String(error);
   if(error) {
     lastError=message;
-    $('training-log').prepend(node('p',message,'lab-text'));
   }
 }
 
@@ -129,7 +129,7 @@ function renderProgress() {
   $('chart-empty').hidden=history.length>0;
   drawCharts();
   if(currentTab()==='tab-weights') renderResearch();
-  if(currentTab()==='tab-models') renderHistory();
+
 }
 
 function controls() {
@@ -140,8 +140,7 @@ function controls() {
   $('train-pause').disabled=!m||busy||!running;
   $('train-stop').disabled=!m||busy||!running;
   $('apply-data').disabled=!m||busy||running||readingDocuments;
-  $('reset-model').disabled=!m||busy||running;
-  $('new-model').disabled=$('new-from-data').disabled=busy||running||readingDocuments;
+  $('new-from-data').disabled=busy||running||readingDocuments;
   $('test-save').disabled=!testResult||busy;
   for(const button of document.querySelectorAll('[data-restore]')) button.disabled=busy||running;
 }
@@ -149,12 +148,16 @@ function controls() {
 function accept(next) {
   state=next;
   const m=next.model;
-  if(m) try { localStorage.setItem('mydesk.llm.active',m.id); } catch {}
+  try {
+    if(m) localStorage.setItem('mydesk.llm.active',m.id);
+    else localStorage.removeItem('mydesk.llm.active');
+  } catch {}
   const key=m ? m.id+'/'+m.datasetVersion : '';
   if(key!==lastDatasetKey) {
     lastDatasetKey=key;
-    docs=next.docs?.slice()??samples.slice();
+    docs=next.docs?.slice()??[longSamples[0]];
     $('dataset-name').value=m?.datasetName??createDefaults.datasetName;
+    $('example-choice').value=docs.length===1&&longSamples.some(doc=>doc.id===docs[0].id)?docs[0].id:'';
     prediction=undefined;
     testResult=undefined;
     weightData=undefined;
@@ -250,7 +253,6 @@ function row(title,subtitle,buttonLabel,callback) {
 }
 
 function renderDocuments() {
-  const name=$('dataset-name').value.trim();
   let stats, error;
   try {
     stats=docs.length===state.docs?.length&&docs.every((doc,index)=>doc===state.docs[index]) ? state.model.stats : makeDataset(docs).stats;
@@ -263,10 +265,10 @@ function renderDocuments() {
     ['검증 미등록',number(stats?.validationUnknowns),'data'],
     ['고정 평가',number(stats?.fixed),'data'],['고정 평가 미등록',number(stats?.fixedUnknowns),'data']
   ]);
-  $('new-dataset').textContent=error??name+' · 문서 '+docs.length+'개';
+  $('dataset-error').textContent=error??'';
   listRows('doc-list',docs,doc=>{
     const element=node('details'), summary=node('summary',doc.name);
-    const preview=node('div',Array.from(doc.text).slice(0,1000).join(''),'lab-text');
+    const preview=node('div',doc.text,'lab-text');
     const remove=node('button','삭제');
     remove.type='button';
     remove.addEventListener('click',()=>{
@@ -280,63 +282,7 @@ function renderDocuments() {
 }
 
 function renderLibrary() {
-  const m=state.model;
-  const architecture=$('architecture');
-  if(m) {
-    const c=m.config;
-    const details=node('details');
-    details.append(node('summary','파라미터 목록'),node('div',m.parameters.map(p=>p.name+'  '+p.rows+' × '+p.cols).join('\n'),'lab-text'));
-    architecture.replaceChildren(node('p','Decoder-only · '+c.layers+' 레이어 · '+c.width+' 차원 · '+c.heads+' 헤드 · 문맥 '+c.context,
-      'lab-hint'),node('p','문자 및 위치 임베딩 · Pre-LN · Causal Attention · ReLU FFN · Adam','lab-hint'),
-      node('p',m.datasetName+' · 버전 '+m.datasetVersion+' · 어휘 '+number(m.stats.vocabulary)+'개 · '+date(m.createdAt),'lab-hint'),details);
-  } else architecture.textContent='생성한 모델이 없습니다.';
-  const modelRows=(record,title,subtitle,key)=>{
-    const element=row(title,subtitle,'불러오기',()=>{
-      void action('restore',{id:record.id,key},'모델을 불러왔습니다.');
-    });
-    element.lastElementChild.dataset.restore='true';
-    element.lastElementChild.disabled=busy||state.running;
-    return element;
-  };
-  listRows('model-library',state.models??[],record=>modelRows(record,record.name,
-    number(record.count)+'개 · '+number(record.step)+' Step · '+number(record.tokens)+' 토큰 · '+record.datasetName+' · '+date(record.savedAt)),
-    '이 브라우저에 저장된 모델이 없습니다.');
-  listRows('checkpoint-library',state.checkpoints??[],record=>modelRows(record,
-    record.reason+' · Step '+number(record.step),
-    date(record.savedAt)+' · Training '+number(record.train,3)+' · Validation '+number(record.val,3)+' · 고정 평가 '+number(record.fixed,3),record.key),
-    '저장된 체크포인트가 없습니다.');
-  options($('test-checkpoint'),[['','현재 가중치'],...(state.checkpoints??[]).map(r=>[r.key,r.reason+' · Step '+number(r.step)])]);
-  listRows('test-library',state.tests??[],record=>{
-    const details=node('details');
-    details.append(node('summary','Step '+number(record.step)+' · '+date(record.time)),
-      node('p',record.prompt,'lab-text'),node('strong','학습 전'),node('p',record.initial||'∅','lab-text'),
-      node('strong','선택한 모델'),node('p',record.current||'∅','lab-text'));
-    return details;
-  },'저장된 생성 결과가 없습니다.');
-  const logs=(m?.logs??[]).slice(-30).reverse().map(item=>date(item.time)+' · '+item.level+' · '+item.message);
-  $('training-log').replaceChildren(node('p',logs.join('\n')||lastError||'기록 없음','lab-text'));
-  renderHistory();
-}
-
-function renderHistory() {
-  const recent=history.slice(-20).reverse();
-  if(!recent.length) {
-    $('training-history').textContent='학습을 시작하면 이력이 기록됩니다.';
-    return;
-  }
-  fillTable($('training-history'),['Step','데이터','Train','Valid','고정 평가','LR','토큰'],recent.map(m=>
-    [number(m.step),number(m.datasetVersion),number(m.train,3),number(m.val,3),number(m.fixed,3),decimal(m.rate),number(m.tokens)]));
-}
-
-function exportHistory() {
-  const columns=['step','datasetVersion','train','val','fixed','accuracy','validationAccuracy','fixedAccuracy','perplexity',
-    'validationPerplexity','rate','gradientNorm','weightNorm','updateRatio','clipped','epoch','tokens','tokensPerSecond','elapsed'];
-  const csv=[columns.join(','),...history.map(metric=>columns.map(key=>metric[key]??'').join(','))].join('\n');
-  const href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})), link=node('a');
-  link.href=href;
-  link.download='mydesk-llm-history.csv';
-  link.click();
-  setTimeout(()=>URL.revokeObjectURL(href),1000);
+  options($('test-checkpoint'),[['','현재 가중치']]);
 }
 
 function renderPrediction() {
@@ -551,7 +497,7 @@ function selectTab(tab,focus=false) {
   if(focus) tab.focus();
   if(tab.id==='tab-attention') renderAttention();
   if(tab.id==='tab-weights') void inspectWeights();
-  if(tab.id==='tab-models') renderLibrary();
+
 }
 
 function bind() {
@@ -590,7 +536,6 @@ function bind() {
     ['train-pause','pause','일시정지했습니다. 체크포인트를 저장했습니다.'],
     ['train-stop','stop','학습을 종료하고 체크포인트를 저장했습니다.'],
     ['train-save','save','체크포인트를 저장했습니다.'],
-    ['reset-model','reset','새 가중치로 모델을 생성했습니다.']
   ]) $(id).addEventListener('click',()=>void action(name,name==='start'?{steps:+$('training-steps').value,resume:false}:{},message));
 
   $('predict-form').addEventListener('submit',event=>{event.preventDefault();void predict();});
@@ -599,17 +544,41 @@ function bind() {
   for(const id of ['attention-layer','attention-head','attention-source']) $(id).addEventListener('change',renderAttention);
   $('weight-name').addEventListener('change',()=>{$('weight-offset').value=0;void inspectWeights();});
   $('weight-refresh').addEventListener('click',()=>void inspectWeights());
+  options($('example-choice'),[['','예시글을 선택하세요'],...longSamples.map(doc=>[doc.id,doc.name+' · '+number([...doc.text].length)+'자'])]);
+  $('example-choice').addEventListener('change',()=>{
+    const doc=longSamples.find(item=>item.id===$('example-choice').value);
+    if(!doc) return;
+    docs=[doc];
+    $('dataset-name').value=doc.name;
+    renderDocuments();
+    $('doc-list details')?.setAttribute('open','');
+    setMessage('글을 확인한 뒤 선택한 글로 새 학습을 눌러 주세요.');
+  });
+  $('clear-all').addEventListener('click',()=>{$('clear-error').textContent='';$('clear-dialog').showModal();});
+  $('confirm-clear').addEventListener('click',async()=>{
+    if(busy) return;
+    generationCancelled=true;
+    if(await action('clearAll',{},'전체 초기화했습니다.')) {
+      $('clear-dialog').close();
+      $('example-choice').value='';
+      $('test-input').value='나는 ';
+      $('generation-status').textContent='';
+      $('generation-candidates').replaceChildren();
+      $('training-steps').value=500;
+      $('current-training-text').textContent='학습을 시작하면 실제로 처리한 글이 표시됩니다.';
+      await action('create',createDefaults,'초기화했습니다. 학습할 글을 선택하세요.');
+    } else $('clear-error').textContent=lastError;
+  });
   $('generation-stop').addEventListener('click',()=>generationCancelled=true);
-  $('choose-data').addEventListener('click',()=>{selectTab($('tab-data'),true);$('panel-data').scrollIntoView({block:'start',behavior:'smooth'});});
+  $('choose-data').addEventListener('click',()=>$('panel-data').scrollIntoView({block:'start',behavior:'smooth'}));
   $('test-form').addEventListener('submit',event=>{event.preventDefault();void generate();});
   $('test-next').addEventListener('click',()=>void generate(true));
   $('test-save').addEventListener('click',()=>void action('saveTest',{result:testResult,options:testOptions},'생성 결과를 저장했습니다.'));
   $('run-eval').addEventListener('click',()=>void evaluate());
-  $('export-history').addEventListener('click',exportHistory);
 
   $('add-samples').addEventListener('click',()=>{
     const selection=new Set(docs.map(doc=>doc.id));
-    $('sample-list').replaceChildren(...samples.map(doc=>{
+    $('sample-list').replaceChildren(...[...longSamples,...samples].map(doc=>{
       const label=node('label'), box=node('input');
       box.type='checkbox';
       box.value=doc.id;
@@ -622,7 +591,8 @@ function bind() {
   $('sample-form').addEventListener('submit',event=>{
     event.preventDefault();
     const selected=new Set([...$('sample-list').querySelectorAll('input:checked')].map(box=>box.value));
-    docs=[...samples.filter(doc=>selected.has(doc.id)),...docs.filter(doc=>!doc.id.startsWith('sample-'))];
+    docs=[...[...longSamples,...samples].filter(doc=>selected.has(doc.id)),...docs.filter(doc=>!doc.id.startsWith('sample-')&&!doc.id.startsWith('long-'))];
+    $('dataset-name').value=docs.length===1?docs[0].name:'선택한 글 '+docs.length+'개';
     renderDocuments();
     $('sample-dialog').close();
   });
@@ -644,8 +614,13 @@ function bind() {
     readingDocuments=true;
     controls();
     const errors=[];
+    let imported=false;
     for(const file of input.files) {
-      try { addDocument({name:file.name,...await readDocument(file)}); }
+      try {
+        const document={name:file.name,...await readDocument(file)};
+        if(!imported) { docs=[]; imported=true; $('dataset-name').value='업로드한 글'; }
+        addDocument(document);
+      }
       catch(error) { errors.push(file.name+' · '+error.message); }
     }
     input.value='';
@@ -654,22 +629,11 @@ function bind() {
     controls();
     setMessage(errors.length?errors.join(' / '):'문서를 추가했습니다. 미리 보기에서 본문을 확인하세요.',errors.length>0);
   });
-  const showModelDialog=()=>{
-    $('model-error').textContent='';
-    renderDocuments();
-    $('model-dialog').showModal();
-  };
-  $('new-model').addEventListener('click',showModelDialog);
-  $('new-from-data').addEventListener('click',showModelDialog);
-  $('model-form').addEventListener('submit',async event=>{
-    event.preventDefault();
-    const name=$('new-name').value.trim();
-    if(!name) { $('model-error').textContent='모델 이름을 입력하세요.';return; }
-    const config=Object.fromEntries(['layers','width','heads','context','rate'].map(key=>[key,+$('cfg-'+key).value]));
-    const success=await action('create',{name,datasetName:$('dataset-name').value.trim()||'사용자 데이터셋',documents:docs,config},'새 모델을 만들었습니다.');
-    if(success) $('model-dialog').close();
-    else $('model-error').textContent=lastError;
-  });
+  $('new-from-data').addEventListener('click',()=>void action('create',{
+    name:$('dataset-name').value.trim()||'내 모델',datasetName:$('dataset-name').value.trim()||'선택한 글',
+    documents:docs,config:state.model?.config??{layers:1,width:24,heads:3,context:16,rate:.003}
+  },'선택한 글로 학습할 준비가 되었습니다.'));
+
 }
 
 function addDocument(document) {
