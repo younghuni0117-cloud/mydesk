@@ -17,7 +17,11 @@ async function request(path, options = {}, token) {
       ...(token ? {Authorization: 'Bearer ' + token} : {}), ...options.headers},
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw Error(data?.message || data?.error_description || data?.error || '서버에 연결하지 못했습니다.');
+  if (!response.ok) {
+    const error = Error(data?.message || data?.error_description || data?.error || '서버에 연결하지 못했습니다.');
+    Object.assign(error,{status:response.status,code:data?.code,retryAt:data?.retryAt});
+    throw error;
+  }
   return data;
 }
 async function token() {
@@ -80,6 +84,15 @@ export const account = {
       method:'POST', headers:{Prefer:'resolution=merge-duplicates'},
       body:JSON.stringify({...profile, user_id:session.user.id, employee_id:employeeId}),
     }, authorization);
+  },
+  async geminiStatus() {
+    return request('/functions/v1/ai-office-chat');
+  },
+  async chat(body) {
+    return request('/functions/v1/ai-office-chat',{method:'POST',body:JSON.stringify(body)},await token());
+  },
+  async jobs() {
+    return request('/rest/v1/ai_office_gemini_jobs?select=id,employee_id,state,attempted_at,retry_at,error_code&order=attempted_at.desc&limit=30',{},await token());
   },
   async remove(id) {
     return request('/rest/v1/ai_office_records?id=eq.' + encodeURIComponent(id), {method:'DELETE'}, await token());

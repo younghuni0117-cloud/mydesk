@@ -1,4 +1,4 @@
-import { openConversation } from './conversation.mjs?v=continue1';
+import { openConversation } from './conversation.mjs?v=gemini1';
 import { employees, rooms, TILE, WIDTH, HEIGHT } from './office-map.mjs';
 import { actorStatus, createDemoSource, createMotion } from './office-motion.mjs';
 import { createBackground, drawOffice, drawPortrait } from './office-art.mjs';
@@ -26,6 +26,7 @@ let paused = motionPreference.matches;
 let time = 0;
 let lastFrame = null;
 let frame = null;
+const actualStates = new Map();
 let currentEmployee = null;
 let opener = null;
 
@@ -36,7 +37,7 @@ function showEmployee(actor, trigger) {
   for (const field of ['name', 'role', 'duties', 'style']) {
     document.getElementById('employee-' + field).textContent = field === 'style' ? (employee.tone || employee.style) : employee[field];
   }
-  employeeState.textContent = labels[actorStatus(actor)];
+  employeeState.textContent = actualStates.get(employee.id) || labels[actorStatus(actor)];
   drawPortrait(document.getElementById('employee-portrait'), employee);
   openConversation(employee.id);
   dialog.showModal();
@@ -102,6 +103,15 @@ window.addEventListener('office-profiles-updated', () => {
   }
 });
 
+window.addEventListener('office-ai-status', event => {
+  const names = {running:'Gemini 상담 중',complete:'Gemini 답변 완료',rate_limited:'한도 대기',failed:'상담 오류'};
+  actualStates.clear();
+  for(const job of event.detail) {
+    if(!actualStates.has(job.employee_id)) actualStates.set(job.employee_id,names[job.state]);
+  }
+  render();
+});
+
 function render() {
   const sorted = drawOffice(ctx, background, motion.actors, time);
   sorted.forEach(({ actor, anchor: [x, y] }, index) => {
@@ -109,7 +119,7 @@ function render() {
     target.style.left = (x / WIDTH * 100) + '%';
     target.style.top = (y / HEIGHT * 100) + '%';
     target.style.zIndex = index + 1;
-    const label = labels[actorStatus(actor)];
+    const label = actualStates.get(actor.employee.id) || labels[actorStatus(actor)];
     if (state.textContent !== label) state.textContent = label;
     if (currentEmployee === actor.employee.id && employeeState.textContent !== label) employeeState.textContent = label;
   });

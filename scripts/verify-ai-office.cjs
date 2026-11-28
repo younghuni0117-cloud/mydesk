@@ -17,7 +17,10 @@ const {chromium} = require('playwright');
     const profiles = [];
     const errors = [];
     const aiCalls = [];
-    let failNextSave = false;
+    const completed = new Map();
+    let modelCalls = 0;
+    let failNextAi = false;
+    let quotaNextAi = false;
     let staleMemory = false;
     page.on('pageerror',error => errors.push(error.message));
     await page.route('**/*',async route => {
@@ -38,10 +41,28 @@ const {chromium} = require('playwright');
         }});
       }
       if(url.pathname.includes('/auth/v1/logout')) return route.fulfill({json:{}});
-      if(url.pathname.includes('/functions/v1/') || url.hostname === 'api.openai.com') {
-        aiCalls.push(url.pathname);
-        return route.abort();
+      if(url.pathname.includes('/functions/v1/')) {
+        if(method==='GET') return route.fulfill({json:{ready:true,model:'gemini-test',message:'Gemini 키 등록됨'}});
+        const data = route.request().postDataJSON();
+        aiCalls.push(data);
+        assert.equal(data.consent,true);
+        assert.equal(data.apiKey,undefined);
+        assert.equal(data.systemInstruction,undefined);
+        if(quotaNextAi) {
+          quotaNextAi = false;
+          return route.fulfill({status:429,json:{code:'quota',message:'사용 한도 대기',retryAt:new Date(Date.now()+60000).toISOString()}});
+        }
+        if(completed.has(data.requestId)) return route.fulfill({json:{record:completed.get(data.requestId),reused:true}});
+        modelCalls++;
+        const record = {id:data.requestId,user_id:currentUser,employee_id:data.employeeId,
+          kind:'gemini',question:data.question,thread_id:data.threadId,
+          source_model:'gemini-test',content:'서버 Gemini 답변 '+modelCalls,created_at:new Date().toISOString()};
+        rows.unshift(record);
+        completed.set(data.requestId,record);
+        if(failNextAi) {failNextAi = false; return route.abort();}
+        return route.fulfill({json:{record}});
       }
+      if(url.pathname.includes('/rest/v1/ai_office_gemini_jobs')) return route.fulfill({json:[]});
       if(url.pathname.includes('/rest/v1/ai_office_profiles')) {
         if(method === 'POST') {
           const profile = route.request().postDataJSON();
@@ -55,7 +76,6 @@ const {chromium} = require('playwright');
         if(method === 'POST') {
           const row = route.request().postDataJSON();
           if(!rows.some(item => item.id === row.id)) rows.unshift({...row,created_at:new Date().toISOString()});
-          if(failNextSave) {failNextSave = false; return route.abort();}
           return route.fulfill({status:201,body:''});
         }
         if(method === 'PATCH') {
@@ -78,54 +98,49 @@ const {chromium} = require('playwright');
       if(url.pathname.includes('/rest/v1/')) return route.fulfill({json:[]});
       return route.abort();
     });
+
     await page.goto('https://office.test/ai-office.html');
+    await page.waitForSelector('.office-actor');
+    assert.equal(await page.locator('#office-build-prompt').count(),0);
     await page.getByRole('button',{name:'한유진 · AI 비서실장'}).click();
-    await page.locator('#office-content').fill('로그인 전 상담');
-    await page.getByRole('button',{name:'ChatGPT 상담문 만들기',exact:true}).click();
-    assert.ok((await page.locator('#office-prompt').inputValue()).includes('로그인 전 상담'));
-    await page.keyboard.press('Escape');
-    await page.getByRole('button',{name:'로그인',exact:true}).click();
+    await page.locator('#office-content').fill('일반적인 회의 준비를 도와줘');
+    await page.getByRole('button',{name:'Gemini에게 질문하기',exact:true}).click();
+    await page.locator('#account-dialog').waitFor({state:'visible'});
     await page.locator('#office-email').fill('test@example.test');
     await page.locator('#office-password').fill('test-password');
     await page.locator('#office-login').getByRole('button',{name:'로그인',exact:true}).click();
     await page.locator('#account-dialog').waitFor({state:'hidden'});
-    await page.getByRole('button',{name:'한유진 · AI 비서실장'}).click();
     await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('기존에 저장한 단독 답변'));
-    await page.locator('#office-content').fill('첫 질문');
-    await page.getByRole('button',{name:'ChatGPT 상담문 만들기',exact:true}).click();
-    assert.ok(!(await page.locator('#office-prompt').inputValue()).includes('간결한 보고 선호'));
+    await page.getByRole('button',{name:'Gemini에게 질문하기',exact:true}).click();
+    assert.equal(aiCalls.length,0);
     await page.locator('.office-record').filter({hasText:'간결한 보고 선호'}).getByRole('checkbox').check();
-    await page.getByRole('button',{name:'ChatGPT 상담문 만들기',exact:true}).click();
-    assert.ok((await page.locator('#office-prompt').inputValue()).includes('간결한 보고 선호'));
     await page.getByRole('button',{name:'기억 수정',exact:true}).click();
     await page.getByRole('textbox',{name:'기억 수정 내용'}).fill('표로 정리한 보고 선호');
     await page.getByRole('button',{name:'수정 저장',exact:true}).click();
     await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('표로 정리한 보고 선호'));
-    await page.locator('#office-answer').fill('첫 답변');
-    failNextSave = true;
-    await page.getByRole('button',{name:'질문·답변 함께 저장',exact:true}).click();
-    await page.waitForFunction(() => !document.getElementById('office-save-answer').disabled);
-    await page.getByRole('button',{name:'질문·답변 함께 저장',exact:true}).click();
-    await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('첫 답변'));
-    assert.equal(rows.filter(row => row.kind === 'consultation').length,1);
-    assert.equal(rows.find(row => row.kind === 'consultation').question,'첫 질문');
-    const threadId = rows.find(row => row.kind === 'consultation').thread_id;
-    await page.locator('#office-content').fill('두 번째 질문');
-    await page.locator('#office-answer').fill('두 번째 답변');
-    await page.getByRole('button',{name:'질문·답변 함께 저장',exact:true}).click();
-    await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('두 번째 답변'));
-    assert.ok(rows.filter(row => row.kind === 'consultation').every(row => row.thread_id === threadId));
-    await page.getByRole('button',{name:'새 상담 시작',exact:true}).click();
-    await page.locator('.office-record').filter({hasText:'첫 답변'}).getByRole('button',{name:'이 상담 이어하기'}).click();
-    await page.locator('#office-content').fill('이어서 세 번째 질문');
-    await page.getByRole('button',{name:'ChatGPT 상담문 만들기',exact:true}).click();
-    const prompt = await page.locator('#office-prompt').inputValue();
-    for(const text of ['첫 질문','첫 답변','두 번째 질문','두 번째 답변','이어서 세 번째 질문']) assert.ok(prompt.includes(text),text);
+    await page.locator('#office-gemini-consent').check();
+    failNextAi = true;
+    await page.getByRole('button',{name:'Gemini에게 질문하기',exact:true}).click();
+    await page.waitForFunction(() => !document.getElementById('office-send-gemini').disabled);
+    assert.equal(aiCalls.length,1);
+    assert.equal(aiCalls[0].recordIds.length,1);
+    await page.locator('#office-send-gemini').click();
+    await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('서버 Gemini 답변 1'));
+    assert.equal(aiCalls[0].requestId,aiCalls[1].requestId);
+    assert.equal(modelCalls,1);
+    assert.equal(rows.filter(row=>row.kind==='gemini').length,1);
+    const firstThread = aiCalls[0].threadId;
+    assert.ok(!(await page.locator('#office-gemini-consent').isChecked()));
+    await page.locator('#office-content').fill('이어서 공개 발표 준비 순서를 알려줘');
+    await page.locator('#office-gemini-consent').check();
+    await page.locator('#office-send-gemini').click();
+    await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('서버 Gemini 답변 2'));
+    assert.equal(aiCalls.at(-1).threadId,firstThread);
     await page.getByRole('button',{name:'기억만 보기',exact:true}).click();
     await page.waitForFunction(() => document.querySelectorAll('.office-record').length === 1);
     staleMemory = true;
     await page.getByRole('button',{name:'기억 수정',exact:true}).click();
-    await page.getByRole('textbox',{name:'기억 수정 내용'}).fill('다른 내용');
+    await page.getByRole('textbox',{name:'기억 수정 내용'}).fill('충돌하는 기억');
     await page.getByRole('button',{name:'수정 저장',exact:true}).click();
     await page.waitForFunction(() => document.getElementById('office-chat-status').textContent.includes('다른 화면에서'));
     staleMemory = false;
@@ -136,17 +151,26 @@ const {chromium} = require('playwright');
     await page.locator('#office-profile-tone').fill('짧고 명확한 존댓말');
     await page.getByRole('button',{name:'직원 설정 저장',exact:true}).click();
     await page.waitForFunction(() => document.getElementById('employee-name').textContent === '민서');
-    await page.getByRole('button',{name:'ChatGPT 상담문 만들기',exact:true}).click();
-    for(const text of ['민서','꼼꼼한 성격','짧고 명확한 존댓말']) assert.ok((await page.locator('#office-prompt').inputValue()).includes(text));
     await page.keyboard.press('Escape');
     await page.reload();
     await page.waitForSelector('[aria-label="민서 · AI 비서실장"]');
     await page.getByRole('button',{name:'민서 · AI 비서실장'}).click();
-    await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('첫 답변'));
+    await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('서버 Gemini 답변 2'));
+    await page.getByRole('button',{name:'새 상담 시작',exact:true}).click();
     await page.locator('.office-record').filter({hasText:'기존에 저장한 단독 답변'}).getByRole('button',{name:'이 상담 이어하기'}).click();
-    await page.locator('#office-content').fill('이전 답변에 대해 다시 질문');
-    await page.getByRole('button',{name:'ChatGPT 상담문 만들기',exact:true}).click();
-    assert.ok((await page.locator('#office-prompt').inputValue()).includes('기존에 저장한 단독 답변'));
+    await page.locator('#office-content').fill('일반적인 후속 질문');
+    await page.locator('#office-gemini-consent').check();
+    quotaNextAi = true;
+    await page.clock.install({time:new Date()});
+    await page.locator('#office-send-gemini').click();
+    await page.waitForFunction(() => document.getElementById('office-chat-status').textContent.includes('사용 한도'));
+    const beforeRetry = aiCalls.length;
+    await page.locator('#office-send-gemini').click();
+    assert.equal(aiCalls.length,beforeRetry);
+    await page.clock.fastForward(61000);
+    await page.locator('#office-send-gemini').click();
+    await page.waitForFunction(() => document.getElementById('office-history').textContent.includes('서버 Gemini 답변 3'));
+    assert.equal(aiCalls.at(-1).requestId,aiCalls.at(-2).requestId);
     for(const [width,height] of [[320,740],[390,844],[768,1024],[960,600],[1440,900]]) {
       await page.setViewportSize({width,height});
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -160,16 +184,12 @@ const {chromium} = require('playwright');
     await page.locator('#office-login').getByRole('button',{name:'로그인',exact:true}).click();
     await page.locator('#account-dialog').waitFor({state:'hidden'});
     await page.waitForSelector('[aria-label="한유진 · AI 비서실장"]');
-    assert.equal(await page.locator('#office-prompt').inputValue(),'');
     await page.getByRole('button',{name:'한유진 · AI 비서실장'}).click();
     await page.waitForFunction(() => document.getElementById('office-history').textContent === '저장된 기록이 없습니다.');
     assert.equal(await page.locator('#office-selected-count').textContent(),'선택한 기록 0건');
     await page.keyboard.press('Escape');
     await page.getByRole('button',{name:'로그아웃',exact:true}).click();
-    await page.waitForSelector('[aria-label="한유진 · AI 비서실장"]');
-    assert.equal(await page.locator('#office-prompt').inputValue(),'');
     assert.deepEqual(errors,[]);
-    assert.deepEqual(aiCalls,[]);
-    console.log('Passed guest prompt, paired/retried saves, continuation, selected/edited memories, stale edit handling, profile persistence/reset, account switch cleanup, legacy records, five viewports, zero AI requests');
+    console.log('Passed direct Gemini chat, consent, automatic save, idempotent retry, quota waiting, memory edits, profile restore, legacy continuation, account isolation and five viewports');
   } finally {await browser.close();}
 })().catch(error => {console.error(error);process.exit(1);});
