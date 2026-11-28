@@ -41,13 +41,15 @@ export function createHandler({env, fetch:send = globalThis.fetch}) {
   }
   return async req => {
     if(req.method === 'OPTIONS') return new Response(null,{status:204,headers});
-    const standardKey = env('GEMINI_API_KEY');
-    const storedKey = standardKey?.trim() ? standardKey : (env('gemini_key') ?? standardKey);
+    const registeredKey = env('gemini_key');
+    const storedKey = registeredKey?.trim() ? registeredKey : (env('GEMINI_API_KEY') ?? registeredKey);
     const apiKey = storedKey?.trim();
     if(req.method === 'GET') return reply({
       provider:'gemini', model:GEMINI_MODEL, ready:!!apiKey,
       keyState:storedKey === undefined ? 'missing' : apiKey ? 'configured' : 'empty',
       projectRef:new URL(base).hostname.split('.')[0],
+      configuredSecret:registeredKey?.trim() ? 'gemini_key' : 'GEMINI_API_KEY',
+      keyHasWrappingQuotes:!!apiKey && [34,39].includes(apiKey.charCodeAt(0)) && apiKey.at(-1)===apiKey[0],
       message:apiKey ? 'Gemini 키 등록됨 · 질문을 보내 상담을 시작하세요.' : storedKey === undefined ? '서버에 GEMINI_API_KEY를 등록해 주세요.' : 'GEMINI_API_KEY의 Value가 비어 있습니다. Google 키 값을 저장해 주세요.',
     });
     if(req.method !== 'POST') return reply({message:'지원하지 않는 요청입니다.'},405);

@@ -14,7 +14,7 @@ function fixture({key = 'test-only-key', quota = false, blocked = false, foreign
   let modelCalls = 0;
   let sentPrompt;
   const env = name => ({
-    SUPABASE_URL:'https://db.test',SUPABASE_SERVICE_ROLE_KEY:'test-service',GEMINI_API_KEY:alias ? undefined : key,gemini_key:alias ? key : undefined,
+    SUPABASE_URL:'https://db.test',SUPABASE_SERVICE_ROLE_KEY:'test-service',GEMINI_API_KEY:alias ? 'old-unused-canonical-key' : key,gemini_key:alias ? key : undefined,
   })[name];
   const json = (value,status = 200) => new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
   const send = async (address,options = {}) => {
