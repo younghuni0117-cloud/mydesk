@@ -33,3 +33,9 @@ Connection/backup UI has been removed at the owner's request; archive/new/trash 
 ## Drag continuity
 
 Gesture moves/releases are tracked on the document with the initiating pointer ID, while pointer capture is retained. Releasing one finger after a pinch rebases the remaining finger as a pan instead of terminating it. Rendering is deferred while a gesture is active; storage upload/polling also waits for gesture completion. Final movement merges geometry into the latest note to preserve concurrent text/status changes. Read-only note text suppresses native selection/drag/context-menu takeover while editing text retains native editing behavior. A regression verifies busy-state persistence and deferred upload. Physical device touch reproduction remains unverified in the current environment.
+
+## Editing-only formatting
+
+Each memo may store `format: {bold, underline, size, color}`. A tiny B/U/size/color toolbar sits next to the creation date only while the textarea or its formatting tools have editing focus. Blank-board touch and leaving the editor hide it. Buttons keep text focus, and selector focus is included in editing state. Format applies to the entire memo, not individual text ranges. Sizes: 14/16/18/20/24/28/32px; text colors: red/blue/green/black. Existing notes default to 18px plain black. Text remains plain text, with bounded CSS values selected from fixed maps; no rich HTML is stored or rendered. Formatting persists through existing server/cache/archive paths without a schema or access change. Note drag handlers exclude the format toolbar.
+
+Validation: 36 unit/regression tests pass, including bounded formats, old-note compatibility and server-fixture restore/archive round trips. Rollback-only real database test checks that the existing RPC preserves the format object. Actual mobile focus/selector behavior remains unverified in this environment.

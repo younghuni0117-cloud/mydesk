@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {newNote,validNote,boardPoint,zoomAt,changeStatus,createdDate} from '../sticky-data.mjs';
+import {newNote,validNote,boardPoint,zoomAt,changeStatus,createdDate,textStyle} from '../sticky-data.mjs';
 import {NoteStorage} from '../sticky-storage.mjs';
 test('note creation avoids exact overlap and preserves date, logical coordinates and independent state',()=>{
  const n=newNote([],{x:50,y:70},'2026-11-28T00:00:00.000Z'),b=newNote([n],{x:50,y:70});assert.ok(validNote(n));assert.notEqual(b.x,n.x);assert.equal(createdDate(n),'2026.11.28');assert.equal(changeStatus(n,'archived').createdAt,n.createdAt);assert.equal(n.status,'active');assert.equal(changeStatus(n,'trashed').status,'trashed');assert.ok(!validNote({...n,width:10}));
@@ -27,4 +27,15 @@ test('dragging defers server mutation and polling without losing pending changes
  const f=fixture(),s=f.create();await s.init();let dragging=true;s.busy=()=>dragging;
  const n=newNote([],{x:20,y:30});s.queue(n);await s.flush();await s.poll();assert.equal(f.remote.size,0);assert.equal(s.pending.size,1);
  dragging=false;await s.flush();assert.equal(f.remote.size,1);assert.equal(s.pending.size,0);clearTimeout(s.timer);
+});
+test('formatting is bounded and legacy memo text remains compatible',()=>{
+ const n=newNote([],{x:0,y:0});assert.deepEqual(textStyle(n),{bold:false,underline:false,size:18,color:'black'});
+ assert.ok(validNote({...n,format:{bold:true,underline:true,size:24,color:'red'}}));
+ assert.ok(!validNote({...n,format:{bold:true,underline:false,size:100,color:'red'}}));
+ assert.ok(!validNote({...n,format:{bold:false,underline:false,size:18,color:'url(evil)'}}));
+});
+test('bold underline size and text color survive server save, reload and archive restoration',async()=>{
+ const f=fixture(),a=f.create();await a.init();const n={...newNote([],{x:0,y:0}),format:{bold:true,underline:true,size:24,color:'blue'}};
+ a.queue(n);await a.flush();const b=f.create();await b.init();assert.deepEqual(b.notes[0].format,n.format);
+ b.queue(changeStatus(b.notes[0],'archived'));await b.flush();b.queue(changeStatus(b.notes[0],'active'));await b.flush();await a.poll();assert.deepEqual(a.notes[0].format,n.format);assert.equal(a.notes[0].createdAt,n.createdAt);clearTimeout(a.timer);clearTimeout(b.timer);
 });

@@ -1,4 +1,4 @@
-import {validNote,validKey} from './sticky-data.mjs?v=1';
+import {validNote,validKey} from './sticky-data.mjs?v=format1';
 export class NoteStorage{
  constructor({key,url,apiKey,cache,fetcher=globalThis.fetch.bind(globalThis),onchange=()=>{},status=()=>{},busy=()=>false}){Object.assign(this,{key,url,apiKey,cache,fetcher,onchange,status,busy});this.scope=key.slice(-20);this.records=new Map();this.pending=new Map();this.backups=[];this.chain=Promise.resolve();this.working=false;this.ready=false;this.failedLocal=false;}
  get notes(){const map=new Map([...this.records].map(([id,r])=>[id,r.note]));for(const [id,p]of this.pending)map.set(id,p.change.deleted||p.purgeAfter?null:p.change);return [...map.values()].filter(n=>n&&validNote(n));}
