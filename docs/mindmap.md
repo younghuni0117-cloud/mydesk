@@ -40,3 +40,9 @@ The mindmap workspace uses the actual `100dvh` height with a fixed-size shared h
 ### Definite-height correction
 
 The first flex/grid conversion could leave the percentage-height grid without a definite containing height, collapsing its flexible canvas. Main now has a CSS fallback height and an explicit pixel height measured from the visual viewport minus the rendered shared header; header/window/visual-viewport resizing refreshes it. The canvas has a visible minimum height, and fit skips unmeasured tiny viewports so initial zero dimensions cannot shrink all nodes to an effectively invisible scale. A metadata-only server read confirmed both maps and finite normal coordinate bounds are present; no data or credentials were changed. Zero-viewport fit regressions are tested. Actual browser reproduction was unavailable because this chat does not offer desktop control.
+
+## Double click and drop parenting
+
+A double click/double tap enters node text editing, while a single click still selects. Release-time node tap tracking handles pointer-capture retargeting so desktop and touch input can use the same gesture. The visible right resize marker is reduced to a 3×9px graphic while retaining a larger invisible interaction target and inverse zoom scaling.
+
+Dropping a moving node on an unrelated node highlights that destination, replaces incoming parent edges to the moved root with the new parent edge, retains descendant links, and positions the moved subtree alongside its parent. Self/descendant drops and new cycles are rejected. One pre-drag undo snapshot covers both movement and parenting. Positions, text and data schemas otherwise remain unchanged. Graph/layout/connection/synchronization tests pass 14/14. Existing older manual browser fixtures describe pre-sync/no-double-click editing behavior and are not validation of this update; live desktop/touch gestures remain unverified in this environment.
