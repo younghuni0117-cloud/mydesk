@@ -5,7 +5,7 @@ function mountHeaderShortcuts() {
   const map = document.querySelector('.map-app');
   if (!location && !map) return;
   const sheet = document.createElement('link');
-  sheet.rel = 'stylesheet'; sheet.href = 'header-shortcuts.css?v=office1';
+  sheet.rel = 'stylesheet'; sheet.href = 'header-shortcuts.css?v=removeoffice1';
   document.head.append(sheet);
   const toggle = document.getElementById('menu-toggle');
   if (toggle) toggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
@@ -17,9 +17,6 @@ function mountHeaderShortcuts() {
     ['mindmap', '마인드맵', 'mindmap.html', '<rect x="8" y="3" width="8" height="5" rx="1.5"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1.5"/><rect x="9" y="16" width="6" height="5" rx="1.5"/><rect x="16" y="16" width="6" height="5" rx="1.5"/>'],
     ['restaurants', '맛집 기록', 'restaurants.html', '<path d="M5 3v6a3 3 0 0 0 6 0V3M8 3v18m10-8v8m0-8c-4 0-4-10 0-10s4 10 0 10Z"/>']
   ];
-  if (['home', 'ai-office'].includes(document.body.dataset.page)) {
-    icons.push(['ai-office', 'AI 비서 회사', 'ai-office.html', '<path d="M3 21h18M5 21V7h5V3h8v18m-9 0v-4h5v4M8 10h1m-1 3h1m4-6h2m-2 3h2m-2 3h2"/>']);
-  }
   for (const [page, label, href, paths] of icons) {
     const link = document.createElement('a');
     link.href = href; link.title = label; link.setAttribute('aria-label', label);
@@ -39,7 +36,7 @@ const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.getElementById('sidebar');
 const backdrop = document.getElementById('sidebar-backdrop');
 const isGamePage = document.body.classList.contains('game-page') || ['robotdog', 'evolution'].includes(document.body.dataset.page);
-const mobileMenu = window.matchMedia(['llm-lab', 'ai-office'].includes(document.body.dataset.page) ? '(max-width: 1000px)' : document.body.dataset.page === 'mindmap' ? '(min-width: 0px)' : isGamePage ? '(max-width: 1100px), (pointer: coarse)' : '(max-width: 760px)');
+const mobileMenu = window.matchMedia(document.body.dataset.page === 'llm-lab' ? '(max-width: 1000px)' : document.body.dataset.page === 'mindmap' ? '(min-width: 0px)' : isGamePage ? '(max-width: 1100px), (pointer: coarse)' : '(max-width: 760px)');
 function setMenu(open, restoreFocus = false) {
   const visible = open && mobileMenu.matches;
   document.body.classList.toggle('menu-open', visible);
@@ -81,4 +78,4 @@ function syncCalendarMenuLinks(){
 syncCalendarMenuLinks();window.addEventListener('pageshow',syncCalendarMenuLinks);window.addEventListener('storage',e=>{if(e.key==='mydesk.calendar.family')syncCalendarMenuLinks();});
 
 // Navigation is shared by all pages and refreshed from the server.
-import('./site-navigation.mjs?v=llm1').then(module=>module.loadNavigation()).catch(()=>{});
+import('./site-navigation.mjs?v=removeoffice1').then(module=>module.loadNavigation()).catch(()=>{});

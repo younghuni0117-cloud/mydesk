@@ -20,18 +20,8 @@ export async function saveNavigation(menus,token,postMoves=[]){
 function makeLink(label,href,active=false){const a=document.createElement('a');a.className='nav-item';a.textContent=label;a.href=href;if(active){a.classList.add('is-current');a.setAttribute('aria-current','page');}if(href.startsWith('https://')&&new URL(href).origin!==location.origin){a.target='_blank';a.rel='noopener noreferrer';}return a;}
 export function renderNavigation(){
  const nav=document.querySelector('#sidebar nav');if(!nav)return;
- const open=new Set([...nav.querySelectorAll('details[open]')].map(el=>el.dataset.menuId)),menus=visibleMenus(state.menus).filter(m=>!['maze','cartpole'].includes(m.id)&&!['maze.html','cartpole.html'].includes(m.href?.split(/[?#]/)[0])),query=new URLSearchParams(location.search),selected=selection??legacyMenuId(query,menus),ancestors=new Set(menuPath(menus,selected).map(m=>m.id));
+ const open=new Set([...nav.querySelectorAll('details[open]')].map(el=>el.dataset.menuId)),menus=visibleMenus(state.menus).filter(m=>!['maze','cartpole','ai-office'].includes(m.id)&&!['maze.html','cartpole.html','ai-office.html'].includes(m.href?.split(/[?#]/)[0])),query=new URLSearchParams(location.search),selected=selection??legacyMenuId(query,menus),ancestors=new Set(menuPath(menus,selected).map(m=>m.id));
  const currentFile=location.pathname.split('/').pop()||'index.html';
- const officeFile='ai-office.html';
- const isOfficeLink=href=>href?.split(/[?#]/)[0]===officeFile;
- function addOfficeIcon(link){
-  const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  icon.setAttribute('viewBox','0 0 16 16');icon.setAttribute('aria-hidden','true');
-  const building=document.createElementNS(icon.namespaceURI,'path');
-  building.setAttribute('fill','currentColor');
-  building.setAttribute('d','M2 6h4V2h7v12h2v1H1v-1h1zm2 2v2h1V8zm4-4v2h2V4zm0 4v2h2V8zm0 4v2h2v-2z');
-  icon.append(building);link.prepend(icon);
- }
  const activeLinkAncestors=new Set(menuPath(menus,currentFile==='llm-lab.html' ? menus.find(item=>item.href===currentFile)?.id : null).map(item=>item.id));
  function build(parent){const fragment=document.createDocumentFragment();for(const m of menus.filter(m=>m.parent_id===parent)){
   const href=m.kind==='folder'?'blog.html?menu='+encodeURIComponent(m.id):m.href;
@@ -41,16 +31,8 @@ export function renderNavigation(){
    const d=document.createElement('details');d.className='nav-group';d.dataset.menuId=m.id;d.open=open.has(m.id)||ancestors.has(m.id)||['learning','experiments'].includes(m.id)||activeLinkAncestors.has(m.id);
    const summary=document.createElement('summary'),label=document.createElement('a');label.className='nav-folder-link';label.textContent=m.label;label.href=href;if(active)label.setAttribute('aria-current','page');summary.append(m.id==='llm-lab' ? m.label : label);d.append(summary);
    const children=document.createElement('div');children.className='nav-submenu';children.append(build(m.id));d.append(children);fragment.append(d);
-  }else{const a=makeLink(m.label,href,active);a.dataset.menuId=m.id;if(isOfficeLink(href))addOfficeIcon(a);fragment.append(a);}
+  }else{const a=makeLink(m.label,href,active);a.dataset.menuId=m.id;fragment.append(a);}
  }return fragment;}
- nav.replaceChildren(build(null));
- if(!menus.some(item=>item.kind==='link'&&isOfficeLink(item.href))){
-  const link=makeLink('AI 비서 회사',officeFile,currentFile===officeFile);
-  link.dataset.menuId='ai-office';
-  addOfficeIcon(link);
-  const home=nav.querySelector('[data-menu-id="home"]');
-  if(home)home.after(link);else nav.prepend(link);
- }
- window.syncCalendarMenuLinks?.();
+ nav.replaceChildren(build(null));window.syncCalendarMenuLinks?.();
 }
 renderNavigation();

@@ -1,4 +1,4 @@
-import {loadNavigation,navigationState} from './site-navigation.mjs?v=llm1';
+import {loadNavigation,navigationState} from './site-navigation.mjs?v=removeoffice1';
 import {postMenuId} from './navigation-data.mjs?v=update69';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 const list=document.querySelector('.resource-list');
