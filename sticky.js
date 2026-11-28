@@ -1,4 +1,4 @@
-import {formatControls,applyTextFormat} from './sticky-format.mjs?v=1';
+import {formatControls,applyTextFormat} from './sticky-format.mjs?v=picker2';
 import {COLORS,clamp,validKey,newKey,newNote,validNote,boardPoint,zoomAt,changeStatus,createdDate} from './sticky-data.mjs?v=format1';
 import {NoteStorage} from './sticky-storage.mjs?v=format1';
 import {cache} from './sticky-cache.mjs?v=1';
