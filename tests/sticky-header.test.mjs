@@ -6,7 +6,7 @@ test('shared shortcut puts sticky first after unchanged menu toggle and preserve
 
 test('home embeds compact board, with new memo first in bottom controls and no zoom toolbar',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8'),js=readFileSync(new URL('../sticky.js',import.meta.url),'utf8');
- assert.ok(html.includes('id="sticky-home-board"'));assert.ok(html.indexOf('id="board"')<html.indexOf('class="page-heading"'));
+ assert.ok(html.includes('id="sticky-home-board"'));assert.ok(!html.includes('class="page-heading"'));assert.ok(!html.includes('class="welcome-panel"'));
  assert.ok(html.indexOf('class="board-bins"')<html.indexOf('id="new-note"'));assert.ok(html.indexOf('id="new-note"')<html.indexOf('id="archive-bin"'));
  assert.ok(!html.includes('id="zoom-in"'));assert.ok(!html.includes('오늘의 작은 생각들'));assert.ok(!js.includes('for(const color of COLORS)'));
 });
