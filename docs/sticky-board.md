@@ -29,3 +29,7 @@ The board is embedded directly as the first section of `index.html`, above exist
 ## Smaller corner controls
 
 Connection/backup UI has been removed at the owner's request; archive/new/trash controls are reduced to compact icons. Existing private storage and automatic local recovery remain intact. Automatic cross-device public-board conversion is NOT deployed: automatic approval review rejected creating an unauthenticated shared RPC because syncing the owner's devices does not clearly authorize granting every visitor read/write access. Explicit owner approval of that public access boundary is pending. No public-board table/function was applied.
+
+## Drag continuity
+
+Gesture moves/releases are tracked on the document with the initiating pointer ID, while pointer capture is retained. Releasing one finger after a pinch rebases the remaining finger as a pan instead of terminating it. Rendering is deferred while a gesture is active; storage upload/polling also waits for gesture completion. Final movement merges geometry into the latest note to preserve concurrent text/status changes. Read-only note text suppresses native selection/drag/context-menu takeover while editing text retains native editing behavior. A regression verifies busy-state persistence and deferred upload. Physical device touch reproduction remains unverified in the current environment.

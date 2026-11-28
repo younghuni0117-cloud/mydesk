@@ -23,3 +23,8 @@ test('permanent deletion persists trash first, leaves a tombstone and never revi
 test('local storage failure does not discard pending content or falsely mark it synchronized',async()=>{
  const s=new NoteStorage({key:'a'.repeat(43),url:'https://example.test',apiKey:'synthetic',cache:{read:async()=>undefined,write:async()=>{throw Error('quota');}},fetcher:async()=>{throw Error('offline');}});await s.init();s.queue(newNote([],{x:0,y:0}));await s.flush();assert.equal(s.failedLocal,true);assert.equal(s.pending.size,1);assert.equal(s.notes.length,1);clearTimeout(s.timer);
 });
+test('dragging defers server mutation and polling without losing pending changes',async()=>{
+ const f=fixture(),s=f.create();await s.init();let dragging=true;s.busy=()=>dragging;
+ const n=newNote([],{x:20,y:30});s.queue(n);await s.flush();await s.poll();assert.equal(f.remote.size,0);assert.equal(s.pending.size,1);
+ dragging=false;await s.flush();assert.equal(f.remote.size,1);assert.equal(s.pending.size,0);clearTimeout(s.timer);
+});
