@@ -3,6 +3,7 @@ import {get,list,save,saveTest} from './storage.mjs';
 
 let model, lastSave, timer, running=false, phase='ready', lastUpdate=0, savedStep=0;
 let pending=Promise.resolve();
+let targetStep=0, generation;
 
 function enqueue(fn) {
   pending=pending.then(fn).catch(error=>{
@@ -15,7 +16,7 @@ function enqueue(fn) {
 }
 
 function log(message,level='정보') {
-  if(model) model.logs.push({time:new Date().toISOString(),level,message,step:model.step});
+  if(model) model.logs.push({time:new Date().toISOString(),level,message,step:model.step,currentText:model.currentText});
 }
 
 async function catalog() {
@@ -33,7 +34,7 @@ async function state(extra={}) {
   let library;
   try { library=await catalog(); }
   catch(error) { library={models:[],checkpoints:[],tests:[],storageError:error.message}; }
-  return {model:model?.summary(),docs:model?.documents,saved:lastSave?.savedAt,running,phase,...library,...extra,engine:ENGINE};
+  return {model:model?.summary(),docs:model?.documents,saved:lastSave?.savedAt,running,phase,targetStep,...library,...extra,engine:ENGINE};
 }
 
 async function checkpoint(reason) {
@@ -50,7 +51,7 @@ function schedule() {
   timer=setTimeout(()=>enqueue(async()=>{
     if(!running) return;
     const start=performance.now();
-    for(let i=0;i<4 && performance.now()-start<20;i++) model.train();
+    for(let i=0;i<4 && model.step<targetStep && performance.now()-start<20;i++) model.train();
     const now=performance.now();
     if(model.step-savedStep>=100||now-lastUpdate>=150) {
       postMessage({type:'progress',metrics:model.history.slice(schedule.sent??0),step:model.step});
@@ -61,7 +62,15 @@ function schedule() {
       await checkpoint('자동');
       postMessage({type:'saved',saved:lastSave.savedAt,record:lastSave});
     }
-    if(running) schedule();
+    if(model.step>=targetStep) {
+      stop();
+      phase='completed';
+      const evaluation=model.evaluate(model.dataset.validating);
+      Object.assign(model.history.at(-1),{val:evaluation.loss,validationPerplexity:Math.exp(evaluation.loss),validationAccuracy:evaluation.accuracy});
+      log('선택한 학습 횟수 완료');
+      await checkpoint('완료');
+      postMessage({type:'completed',state:await state()});
+    } else if(running) schedule();
   }),12);
 }
 
@@ -98,6 +107,7 @@ async function dispatch(action,args) {
         vocabulary:source.tokenizer?.vocabulary,partitions:source.dataset?.partitions,id:crypto.randomUUID(),seed:crypto.getRandomValues(new Uint32Array(1))[0]});
       stop();
       model=next;
+      targetStep=0;
       phase='ready';
       schedule.sent=0;
       savedStep=0;
@@ -112,6 +122,7 @@ async function dispatch(action,args) {
       const next=new Transformer(snapshot,snapshot);
       stop();
       model=next;
+      targetStep=0;
       lastSave=record;
       phase=(chosen===record.key&&record.reason==='종료') ? 'stopped' : next.step ? 'paused' : 'ready';
       if(chosen!==record.key) {
@@ -130,6 +141,9 @@ async function dispatch(action,args) {
     case 'start':
       if(!model) throw Error('먼저 모델을 만들어 주세요.');
       if(!running) {
+        const count=Number(args.steps??500);
+        if(!Number.isInteger(count)||count<1||count>100000) throw Error('학습 횟수는 1~100,000으로 입력하세요.');
+        targetStep=args.resume&&targetStep>model.step ? targetStep : model.step+count;
         running=true;
         phase='running';
         log('학습 시작 또는 재개');
@@ -160,6 +174,19 @@ async function dispatch(action,args) {
         throw error;
       }
       return state();
+    }
+    case 'generationStart': {
+      let snapshot=model.checkpoint();
+      if(args.key) snapshot=(await openModel(model.id,args.key)).snapshot;
+      generation={token:crypto.randomUUID(),model:new Transformer(snapshot,snapshot),prompt:args.prompt,options:args.options};
+      return {token:generation.token,step:generation.model.step};
+    }
+    case 'generationNext': {
+      if(!generation||generation.token!==args.token) throw Error('생성 세션이 종료되었습니다.');
+      const result=generation.model.predict(generation.prompt,{...generation.options,length:1,
+        seed:crypto.getRandomValues(new Uint32Array(1))[0]});
+      generation.prompt+=result.generated;
+      return {current:result,vocabulary:generation.model.tokenizer.vocabulary};
     }
     case 'predict': {
       let source=model;

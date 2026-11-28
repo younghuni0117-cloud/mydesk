@@ -111,6 +111,7 @@ export class Transformer {
     const sequence=pool[Math.floor(this.random()*pool.length)];
     const start=Math.floor(this.random()*Math.max(1,sequence.length-context));
     const chunk=sequence.slice(start,start+context+1);
+    this.currentText=this.tokenizer.decode(chunk);
     const params=Object.values(this.parameters);
     for(const matrix of params) matrix.grad.fill(0);
     const tape=new Tape(true);

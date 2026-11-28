@@ -29,7 +29,7 @@ export function drawLoss(canvas,history) {
   const ctx=canvas.getContext('2d');
   ctx.scale(scale,scale);
   const startX=37, endX=width-15, top=12, bottom=height-25;
-  const first=history[0]?.step??0, last=Math.max(first+1,history.at(-1)?.step??1);
+  const first=0, last=Math.max(first+1,history.at(-1)?.step??1);
   let maximum=1;
   for(const m of history) maximum=Math.max(maximum,m.train,m.val??0);
   maximum=maximum>2 ? Math.ceil(maximum) : Math.ceil(maximum*4)/4;

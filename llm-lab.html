@@ -32,13 +32,18 @@
       </div>
       <dl class="lab-status" aria-label="현재 모델 상태">
         <div><dt>현재 모델</dt><dd id="model-name">—</dd></div>
-        <div><dt>파라미터</dt><dd id="parameter-count">—</dd></div>
-        <div><dt>실행 환경</dt><dd>CPU · Worker</dd></div>
+        <div hidden><dt>파라미터</dt><dd id="parameter-count">—</dd></div>
+
         <div><dt>Step</dt><dd id="status-step">—</dd></div>
-        <div><dt>처리 토큰</dt><dd id="status-tokens">—</dd></div>
+        <div hidden><dt>처리 토큰</dt><dd id="status-tokens">—</dd></div>
         <div><dt>학습 시간</dt><dd id="status-time">—</dd></div>
         <div><dt>마지막 저장</dt><dd id="status-saved">—</dd></div>
       </dl>
+      <section class="lab-card learning-plan">
+        <div><strong>학습할 글</strong><p id="active-documents"></p><details><summary>최근 학습 구간 보기</summary><p id="current-training-text">학습을 시작하면 실제로 처리한 글이 표시됩니다.</p></details><button id="choose-data">글 선택·추가</button></div>
+        <label>추가 학습 횟수 <input id="training-steps" type="number" min="1" max="100000" value="500" step="1"> 회</label>
+        <p id="training-plan">선택한 횟수만큼 가중치를 갱신한 뒤 자동 저장하고 완료합니다. 학습 중에도 아래에서 글 생성을 테스트할 수 있습니다.</p>
+      </section>
       <div class="lab-dashboard">
         <section class="lab-card lab-loss">
           <div class="lab-card-heading">
@@ -51,7 +56,7 @@
             <p class="lab-chart-empty" id="chart-empty">학습을 시작하면 손실이 기록됩니다.</p>
           </div>
           <div class="lab-chart-footer"><span id="loss-gap">같은 Step의 학습·검증 손실 차이가 여기에 표시됩니다.</span><span>검증 10 Step 간격</span></div>
-        </section>
+        <p id="fit-assessment" class="fit-assessment"></p></section>
         <section class="lab-card lab-training" aria-labelledby="training-heading">
           <div class="lab-card-heading"><h2 id="training-heading">학습 제어</h2><button class="lab-small" id="training-info" data-info="checkpoint" aria-label="체크포인트 설명">저장 안내</button></div>
           <div class="lab-controls">
@@ -61,20 +66,21 @@
             <button id="train-save" data-needs-model disabled>저장</button>
           </div>
           <p id="lab-message" class="lab-message" role="status">이 브라우저에 저장된 모델을 확인하고 있습니다.</p>
-          <dl class="lab-metrics" id="metrics"></dl>
+          <progress id="training-progress" max="1" value="0"></progress><p id="training-progress-label" class="lab-hint"></p><dl class="lab-metrics" id="metrics"></dl>
         </section>
       </div>
 
       <section class="lab-card lab-inspector" aria-label="연구 도구">
-        <div class="lab-tabs" role="tablist" aria-label="연구 도구">
-          <button role="tab" id="tab-predict" aria-controls="panel-predict" aria-selected="true">토큰 예측</button>
-          <button role="tab" id="tab-attention" aria-controls="panel-attention" aria-selected="false" tabindex="-1">Attention</button>
-          <button role="tab" id="tab-weights" aria-controls="panel-weights" aria-selected="false" tabindex="-1">가중치</button>
-          <button role="tab" id="tab-test" aria-controls="panel-test" aria-selected="false" tabindex="-1">AI 테스트</button>
+        <button id="toggle-analysis" class="lab-small" aria-expanded="false">상세 분석 열기</button><div class="lab-tabs" role="tablist" aria-label="연구 도구">
+          <button role="tab" id="tab-test" aria-controls="panel-test" aria-selected="true">글 생성</button>
+          <button hidden role="tab" id="tab-predict" aria-controls="panel-predict" aria-selected="false" tabindex="-1">토큰 예측</button>
+          <button hidden role="tab" id="tab-attention" aria-controls="panel-attention" aria-selected="false" tabindex="-1">Attention</button>
+          <button hidden role="tab" id="tab-weights" aria-controls="panel-weights" aria-selected="false" tabindex="-1">가중치</button>
+
           <button role="tab" id="tab-data" aria-controls="panel-data" aria-selected="false" tabindex="-1">데이터셋</button>
           <button role="tab" id="tab-models" aria-controls="panel-models" aria-selected="false" tabindex="-1">모델·이력</button>
         </div>
-        <div class="lab-panel" id="panel-predict" role="tabpanel" aria-labelledby="tab-predict">
+        <div class="lab-panel" id="panel-predict" role="tabpanel" aria-labelledby="tab-predict" hidden>
           <div class="lab-columns">
             <div>
               <form id="predict-form">
@@ -117,23 +123,23 @@
           <div class="lab-columns" id="histograms"></div>
           <details><summary>추가 학습 지표와 실행 환경</summary><dl class="lab-metrics" id="research-metrics"></dl><div id="token-loss"></div></details>
         </div>
-        <div class="lab-panel" id="panel-test" role="tabpanel" aria-labelledby="tab-test" hidden>
+        <div class="lab-panel" id="panel-test" role="tabpanel" aria-labelledby="tab-test">
           <div class="lab-columns">
             <form id="test-form">
               <label for="test-input">생성에 사용할 문장</label>
               <textarea id="test-input" maxlength="512" rows="2">나는 </textarea>
               <div class="lab-settings">
-                <label>모델 <select id="test-checkpoint"><option value="">현재 가중치</option></select></label>
-                <label>Temperature <input id="test-temp" type="number" min=".1" max="3" step=".1" value="1"></label>
-                <label>선택 방식 <select id="test-mode"><option value="sample">Sampling</option><option value="greedy">Greedy</option></select></label>
+                <label hidden>모델 <select id="test-checkpoint"><option value="">현재 가중치</option></select></label>
+                <label>다양성 <input id="test-temp" type="number" min=".1" max="3" step=".1" value="1"></label>
+                <label>선택 방식 <select id="test-mode"><option value="sample">확률에 따라 선택</option><option value="greedy">가장 높은 확률</option></select></label>
                 <label>생성 토큰 <input id="test-length" type="number" min="1" max="64" value="24"></label>
               </div>
-              <div class="lab-buttons"><button class="lab-primary" data-needs-model disabled>문장 생성</button><button type="button" id="test-next" data-needs-model disabled>한 토큰 생성</button></div>
+              <div class="lab-buttons"><button class="lab-primary" data-needs-model disabled>문장 생성</button><button type="button" id="generation-stop">생성 멈추기</button><button type="button" id="test-next" data-needs-model disabled>한 토큰 생성</button></div>
               <p class="lab-hint">초소형 모델은 일반 질문에 답하기 어려울 수 있습니다. 테스트 입력은 학습 데이터로 등록되지 않습니다.</p>
             </form>
             <div>
-              <div id="test-results"></div>
-              <div class="lab-buttons"><button id="test-save" disabled>결과 저장</button><button id="run-eval" data-needs-model disabled>고정 평가 실행</button></div>
+              <div id="test-results" aria-live="off"></div><p id="generation-status" role="status"></p><div id="generation-candidates"></div>
+              <div class="lab-buttons"><button id="test-save" hidden disabled>결과 저장</button><button hidden id="run-eval" data-needs-model disabled>고정 평가 실행</button></div>
               <p id="eval-results" class="lab-hint"></p>
             </div>
           </div>
@@ -172,7 +178,7 @@
               <h3>학습 이력</h3>
               <div id="training-history" class="lab-scroll"></div>
               <button id="export-history" data-needs-model disabled>전체 이력 CSV</button>
-              <h3>저장된 생성 결과</h3><div id="test-library"></div>
+              <div id="test-library" hidden></div>
               <details><summary>학습 로그 및 오류</summary><div id="training-log"></div></details>
             </div>
           </div>

@@ -13,6 +13,7 @@ const time=n=>Number.isFinite(n)?number(n/1000,1)+'초':'—';
 const currentTab=()=>document.querySelector('[role="tab"][aria-selected="true"]').id;
 const createDefaults={name:'MyDesk Transformer',datasetName:'한국어 연습 문장',documents:samples};
 let state={}, history=[], validation, prediction, testResult, busy=false, docs=samples.slice();
+let generating=false, generationCancelled=false;
 let weightData, engine, lastDatasetKey, testOptions, lastError='', readingDocuments=false;
 
 function node(tag,text='',className) {
@@ -86,7 +87,7 @@ function formatToken(id,vocab=state.model?.vocabulary) {
 }
 
 function drawCharts() {
-  drawLoss($('loss-chart'),history.slice(-500));
+  drawLoss($('loss-chart'),history);
   if($('chart-dialog').open) drawLoss($('expanded-loss'),history);
 }
 
@@ -103,17 +104,28 @@ function renderProgress() {
   metrics('metrics',[
     ['Training Loss',number(latest?.train,3),'train'],
     ['Validation Loss',number(validation?.val,3),'validation'],
-    ['Perplexity',number(validation?.validationPerplexity,2),'perplexity'],
-    ['Learning Rate',decimal(latest?.rate??m?.config.rate),'rate'],
-    ['Gradient Norm',number(latest?.gradientNorm,3),'gradientNorm'],
-    ['Step / Epoch',number(latest?.step??m?.step)+' / '+number(latest?.epoch,2),'epoch'],
-    ['Tokens/sec',number(latest?.tokensPerSecond),'speed'],
-    ['누적 처리 토큰',number(latest?.tokens??m?.tokens),'tokens'],
     ['누적 학습 시간',time(latest?.elapsed??m?.elapsed),'time']
   ]);
   $('loss-gap').textContent=validation
     ? 'Step '+number(validation.step)+' · 검증 − 학습 '+number(validation.val-validation.train,3)
     : '같은 Step의 검증 − 학습 손실 차이';
+  const step=latest?.step??m?.step??0, target=state.targetStep??0;
+  $('training-progress').max=Math.max(1,target);
+  $('training-progress').value=step;
+  $('training-progress-label').textContent=target ? '누적 '+number(step)+' / '+number(target)+'회 · 남은 횟수 '+number(Math.max(0,target-step)) : '학습 횟수를 정하고 시작하세요.';
+  const points=history.filter(row=>row.val!==undefined&&row.datasetVersion===m?.datasetVersion);
+  let assessment='학습·검증 기록이 쌓이면 최근 추세를 함께 살펴봅니다. 과소적합 여부는 데이터와 모델 크기도 함께 확인해야 합니다.';
+  if(points.length>=6) {
+    const recent=points.slice(-3), earlier=points.slice(-6,-3);
+    const average=(rows,key)=>rows.reduce((sum,row)=>sum+row[key],0)/rows.length;
+    const train=average(recent,'train')-average(earlier,'train');
+    const valid=average(recent,'val')-average(earlier,'val');
+    assessment=train<0&&valid>0 ? '과적합 징후가 보입니다. 최근 학습 손실은 낮아지고 검증 손실은 높아졌습니다. 학습을 멈추거나 글을 늘려 비교해 보세요.' :
+      train<0&&valid<0 ? '학습·검증 손실이 함께 낮아지고 있습니다. 현재 구간에서는 두 손실이 함께 개선되고 있습니다.' :
+      '최근 손실이 정체되거나 흔들리고 있습니다. 과소적합 가능성과 데이터 차이를 살펴보세요. 이 추세만으로 확정하기는 어렵습니다.';
+  }
+  $('fit-assessment').textContent=assessment;
+  $('active-documents').textContent=m ? m.datasetName+' · '+(state.docs??[]).map(doc=>doc.name).join(' · ') : '학습할 글을 선택하세요.';
   $('chart-empty').hidden=history.length>0;
   drawCharts();
   if(currentTab()==='tab-weights') renderResearch();
@@ -158,7 +170,7 @@ function accept(next) {
     options($('attention-head'),Array.from({length:m.config.heads},(_,i)=>[i,i+1]));
     options($('weight-name'),m.parameters.map(p=>[p.name,p.name+' · '+p.rows+'×'+p.cols]));
   }
-  setStatus(next.storageError?'저장 오류':next.running?'학습 중':next.phase==='stopped'?'학습 종료':next.phase==='paused'?'일시정지':m?'준비 완료':'모델 없음',
+  setStatus(next.storageError?'저장 오류':next.running?'학습 중':next.phase==='completed'?'학습 완료':next.phase==='stopped'?'학습 종료':next.phase==='paused'?'일시정지':m?'준비 완료':'모델 없음',
     next.storageError?'error':next.running?'running':'idle');
   renderLibrary();
   renderProgress();
@@ -166,12 +178,14 @@ function accept(next) {
 }
 
 function onEvent(event) {
+  if(event.type==='completed') { accept(event.state);setMessage('선택한 횟수의 학습을 완료하고 저장했습니다.');return; }
   if(event.type==='progress') {
     if(!state.model||!event.metrics.length||event.metrics.at(-1)?.step<=(history.at(-1)?.step??0)) return;
     for(const metric of event.metrics) if(metric.step>(history.at(-1)?.step??0)) {
       history.push(metric);
       if(metric.val!==undefined) validation=metric;
     }
+    if(event.currentText) $('current-training-text').textContent=event.currentText;
     renderProgress();
   } else if(event.type==='saved') {
     state.saved=event.saved;
@@ -484,25 +498,39 @@ async function inspectWeights() {
 }
 
 async function generate(single=false) {
-  if(!state.model||!$('test-form').reportValidity()) return;
-  const id=state.model.id;
-  const prompt=$('test-input').value;
-  const options={mode:$('test-mode').value,temperature:+$('test-temp').value,length:single?1:+$('test-length').value,
-    seed:crypto.getRandomValues(new Uint32Array(1))[0]};
-  $('test-results').replaceChildren(node('p','현재 스냅샷에서 계산 중','lab-hint'));
+  if(generating||!state.model||!$('test-form').reportValidity()) return;
+  generating=true;
+  generationCancelled=false;
+  const modelId=state.model.id, prompt=$('test-input').value;
+  const count=single?1:+$('test-length').value;
+  const output=node('p',prompt,'lab-text generation-output');
+  $('test-results').replaceChildren(output);
   try {
-    const result=await engine.request('predict',{prompt,options,key:$('test-checkpoint').value});
-    if(state.model?.id!==id||$('test-input').value!==prompt) return;
-    testResult=result;
-    testOptions=options;
-    const {current,initial}=result;
-    $('test-results').replaceChildren(
-      node('h3','학습 전 · Step 0'),node('p',initial.generated||'∅','lab-text'),
-      node('h3','생성 결과 · Step '+number(current.step)),node('p',current.generated||'∅','lab-text'),
-      node('p','입력 · '+(prompt||'∅')+(current.unknowns?' · 미등록 문자 '+current.unknowns+'개':''),'lab-hint'));
-    if(single) $('test-input').value=(prompt+current.generated).slice(-512);
+    const session=await engine.request('generationStart',{prompt,key:$('test-checkpoint').value,
+      options:{temperature:+$('test-temp').value,mode:$('test-mode').value}});
+    for(let i=0;i<count&&!generationCancelled&&state.model?.id===modelId;i++) {
+      const result=await engine.request('generationNext',{token:session.token});
+      if(generationCancelled||state.model?.id!==modelId) break;
+      const current=result.current;
+      const candidates=current.candidates.slice(0,6);
+      if(!candidates.some(item=>item.id===current.selected)) candidates.push({id:current.selected,probability:current.selectedProbability});
+      $('generation-candidates').replaceChildren(...candidates.map(candidate=>{
+        const item=node('div','','generation-candidate');
+        item.dataset.selected=String(candidate.id===current.selected);
+        const meter=node('meter');
+        meter.min=0;meter.max=1;meter.value=candidate.probability;
+        item.append(node('span',formatToken(candidate.id,result.vocabulary)),meter,node('span',percent(candidate.probability)));
+        return item;
+      }));
+      $('generation-status').textContent='Step '+session.step+'의 가중치 · '+(i+1)+' / '+count+'자 · 선택 '+formatToken(current.selected,result.vocabulary)+' '+percent(current.selectedProbability);
+      await new Promise(resolve=>setTimeout(resolve,220));
+      output.append(document.createTextNode(current.generated));
+      output.scrollTop=output.scrollHeight;
+      if(single) $('test-input').value=(prompt+current.generated).slice(-512);
+    }
+    $('generation-status').append(document.createTextNode(generationCancelled?' · 생성 중지':' · 생성 완료'));
   } catch(error) { setMessage(error.message,true); }
-  controls();
+  finally { generating=false; }
 }
 
 async function evaluate() {
@@ -528,13 +556,20 @@ function selectTab(tab,focus=false) {
 
 function bind() {
   const tabs=[...document.querySelectorAll('[role="tab"]')];
+  $('toggle-analysis').addEventListener('click',()=>{
+    const open=$('toggle-analysis').getAttribute('aria-expanded')!=='true';
+    $('toggle-analysis').setAttribute('aria-expanded',String(open));
+    $('toggle-analysis').textContent=open?'상세 분석 접기':'상세 분석 열기';
+    for(const id of ['tab-predict','tab-attention','tab-weights']) $(id).hidden=!open;
+    if(!open) selectTab($('tab-test'));
+  });
   tabs.forEach((tab,index)=>{
     tab.addEventListener('click',()=>selectTab(tab));
     tab.addEventListener('keydown',event=>{
       const next={ArrowLeft:(index+tabs.length-1)%tabs.length,ArrowRight:(index+1)%tabs.length,Home:0,End:tabs.length-1}[event.key];
       if(next===undefined) return;
       event.preventDefault();
-      selectTab(tabs[next],true);
+      if(!tabs[next].hidden) selectTab(tabs[next],true);
     });
   });
   document.addEventListener('click',event=>{
@@ -556,7 +591,7 @@ function bind() {
     ['train-stop','stop','학습을 종료하고 체크포인트를 저장했습니다.'],
     ['train-save','save','체크포인트를 저장했습니다.'],
     ['reset-model','reset','새 가중치로 모델을 생성했습니다.']
-  ]) $(id).addEventListener('click',()=>void action(name,{},message));
+  ]) $(id).addEventListener('click',()=>void action(name,name==='start'?{steps:+$('training-steps').value,resume:false}:{},message));
 
   $('predict-form').addEventListener('submit',event=>{event.preventDefault();void predict();});
   $('predict-append').addEventListener('click',()=>void predict(true));
@@ -564,6 +599,8 @@ function bind() {
   for(const id of ['attention-layer','attention-head','attention-source']) $(id).addEventListener('change',renderAttention);
   $('weight-name').addEventListener('change',()=>{$('weight-offset').value=0;void inspectWeights();});
   $('weight-refresh').addEventListener('click',()=>void inspectWeights());
+  $('generation-stop').addEventListener('click',()=>generationCancelled=true);
+  $('choose-data').addEventListener('click',()=>{selectTab($('tab-data'),true);$('panel-data').scrollIntoView({block:'start',behavior:'smooth'});});
   $('test-form').addEventListener('submit',event=>{event.preventDefault();void generate();});
   $('test-next').addEventListener('click',()=>void generate(true));
   $('test-save').addEventListener('click',()=>void action('saveTest',{result:testResult,options:testOptions},'생성 결과를 저장했습니다.'));

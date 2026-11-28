@@ -158,3 +158,25 @@ body[data-page="llm-lab"] {
   .lab-status div{padding-block:4px}
   .lab-loss,.lab-training,.lab-panel{padding-block:7px}
 }
+.lab-status{grid-template-columns:1.5fr repeat(3,1fr)}
+.learning-plan{display:flex;align-items:center;gap:18px;padding:13px 16px;margin-bottom:12px}
+.learning-plan>div{flex:1}.learning-plan p{margin:4px 0;font-size:.85rem;color:var(--lab-muted)}
+.learning-plan>p{max-width:320px}.learning-plan input{width:100px;padding:7px;border:1px solid #cbd6e6;border-radius:6px;font:inherit}
+.learning-plan button{background:#edf2fc;color:#283e88;border:1px solid #cbd6e6;border-radius:6px;padding:7px 12px;font:inherit}
+.fit-assessment{margin:10px 0 0;padding:10px;background:#edf2fc;border-radius:7px;font-size:.85rem;color:#334b76;line-height:1.6}
+#training-progress{width:100%;accent-color:#405dc2}
+.generation-output{min-height:100px;font-size:1.15rem;line-height:1.9}
+.generation-output:after{content:'▎';color:#405dc2}
+.generation-candidate{display:grid;grid-template-columns:40px 1fr 65px;gap:8px;align-items:center;font-size:.85rem}
+.generation-candidate meter{width:100%}
+.generation-candidate[data-selected="true"]{background:#e2f3ed;border-radius:4px;font-weight:700}
+#tab-attention,#tab-weights,#tab-predict{font-size:.8rem}
+@media(max-width:660px){.learning-plan{flex-wrap:wrap;gap:8px;padding:10px}.learning-plan>div{flex-basis:100%}.learning-plan>p{max-width:none}.lab-status{grid-template-columns:1.5fr repeat(3,1fr)}.lab-status div:last-child{grid-column:auto}.lab-metrics{grid-template-columns:repeat(3,1fr)}}
+.learning-plan>p{font-size:.78rem}
+.learning-plan>div>p{max-height:3.2em;overflow:auto}
+#toggle-analysis{float:right;margin:5px 8px;font-size:.78rem}
+.lab-tabs{clear:both}
+#current-training-text{white-space:pre-wrap;background:#f2f5fa;border-radius:6px;padding:8px}
+.lab-status dd{font-size:.82rem}
+.lab-storage-note{margin-bottom:0}
+@media(max-width:660px){.learning-plan>p{margin:0;font-size:.75rem}.learning-plan label{font-size:.82rem}.lab-status div{border-left:0!important}.lab-status dt{font-size:.67rem}}
