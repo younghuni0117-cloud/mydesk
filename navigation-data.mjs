@@ -1,6 +1,8 @@
 export const DEFAULT_MENUS=[
  {id:'simulation-lab',parent_id:null,label:'Simulation',kind:'folder',href:null},
  {id:'fem-live',parent_id:'simulation-lab',label:'FEM 시각화',kind:'link',href:'fem-live.html'},
+ {id:'llm-lab',parent_id:null,label:'LLM 만들기',kind:'folder',href:null},
+ {id:'llm-grow',parent_id:'llm-lab',label:'LLM 성장시키기',kind:'link',href:'llm-lab.html'},
  {id:'home',parent_id:null,label:'홈',kind:'link',href:'index.html'},
  {id:'calendar',parent_id:null,label:'가족 달력',kind:'link',href:'calendar.html'},
  {id:'mindmap',parent_id:null,label:'마인드맵',kind:'link',href:'mindmap.html'},
@@ -95,4 +97,12 @@ export function withNeonJumpMenu(menus){
  if(menus.length>=100||menus.some(m=>m.id===entry.id||m.href===entry.href))return menus;
  if(!menus.some(m=>m.id===entry.parent_id&&m.kind==='folder'))return menus;
  return [...menus,{...entry}];
+}
+
+export function withLLMMenu(menus){
+ const [folder,link]=DEFAULT_MENUS.filter(m=>m.id==='llm-lab'||m.id==='llm-grow');
+ if(menus.some(m=>m.id===link.id||m.href===link.href))return menus;
+ const existing=menus.find(m=>m.id===folder.id);
+ if(existing?.kind==='link'||menus.length+(existing?1:2)>100)return menus;
+ return [...menus,...(existing?[]:[{...folder}]),{...link}];
 }

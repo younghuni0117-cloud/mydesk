@@ -9,6 +9,7 @@
 | 파일 | 내용 |
 | --- | --- |
 | `index.html` | 홈, 자료 목록과 콘텐츠 안내 |
+| `llm-lab.html` | [LLM 성장시키기](docs/llm-lab.md) · 브라우저 Transformer 학습 연구실 |
 | `resources.html` | 정보·자료, 강화학습 기초와 용어 노트 |
 | `maze.html` | Q-learning 미로 탐험 |
 | `cartpole.html` | 카트폴 균형 잡기 |

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fa">
+  <meta name="description" content="웹브라우저에서 실제 Transformer 언어 모델을 학습하고 관찰하는 My Desk 연구실.">
+  <title>LLM 성장시키기 | My Desk</title>
+  <link rel="stylesheet" href="style.css?v=update69">
+  <link rel="stylesheet" href="llm/lab.css">
+</head>
+<body data-page="llm-lab">
+  <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+  <aside class="sidebar" id="sidebar" aria-label="사이드 메뉴">
+    <a class="brand" href="index.html"><span class="brand-mark">M<span>·</span></span><span>My Desk<small>나의 정보와 기록</small></span></a>
+    <nav aria-label="주 메뉴">
+      <a class="nav-item" href="index.html">홈</a>
+      <details class="nav-group" open><summary>LLM 만들기</summary><a class="nav-item is-current" href="llm-lab.html" aria-current="page">LLM 성장시키기</a></details>
+    </nav>
+    <a class="nav-manage" href="menus.html">메뉴 관리</a>
+  </aside>
+  <button class="sidebar-backdrop" id="sidebar-backdrop" hidden aria-label="메뉴 닫기" tabindex="-1"></button>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="topbar-location"><button class="menu-toggle" id="menu-toggle" aria-label="메뉴 열기" aria-controls="sidebar" aria-expanded="false">☰</button></div>
+      <span class="lab-location">LLM 만들기 <span aria-hidden="true">/</span> LLM 성장시키기</span>
+    </header>
+    <main id="main-content" tabindex="-1">
+      <div class="lab-heading">
+        <div><h1>LLM 성장시키기</h1><span class="lab-subtitle">Transformer 연구실</span></div>
+        <div class="lab-badge" id="status" data-status="idle">준비 중</div>
+      </div>
+      <dl class="lab-status" aria-label="현재 모델 상태">
+        <div><dt>현재 모델</dt><dd id="model-name">—</dd></div>
+        <div><dt>파라미터</dt><dd id="parameter-count">—</dd></div>
+        <div><dt>실행 환경</dt><dd>CPU · Worker</dd></div>
+        <div><dt>Step</dt><dd id="status-step">—</dd></div>
+        <div><dt>처리 토큰</dt><dd id="status-tokens">—</dd></div>
+        <div><dt>학습 시간</dt><dd id="status-time">—</dd></div>
+        <div><dt>마지막 저장</dt><dd id="status-saved">—</dd></div>
+      </dl>
+      <div class="lab-dashboard">
+        <section class="lab-card lab-loss">
+          <div class="lab-card-heading">
+            <h2>학습 곡선</h2>
+            <button class="lab-small" id="expand-chart" type="button" aria-haspopup="dialog">그래프 확대</button>
+          </div>
+          <div class="lab-legend"><span><i></i>Training Loss</span><span><i></i>Validation Loss</span><button class="lab-info" data-info="validation" aria-label="검증 손실 설명">?</button></div>
+          <div class="lab-chart-box">
+            <canvas class="lab-chart" id="loss-chart" role="img" aria-label="Step별 학습 손실 및 검증 손실"></canvas>
+            <p class="lab-chart-empty" id="chart-empty">학습을 시작하면 손실이 기록됩니다.</p>
+          </div>
+          <div class="lab-chart-footer"><span id="loss-gap">같은 Step의 학습·검증 손실 차이가 여기에 표시됩니다.</span><span>검증 10 Step 간격</span></div>
+        </section>
+        <section class="lab-card lab-training" aria-labelledby="training-heading">
+          <div class="lab-card-heading"><h2 id="training-heading">학습 제어</h2><button class="lab-small" id="training-info" data-info="checkpoint" aria-label="체크포인트 설명">저장 안내</button></div>
+          <div class="lab-controls">
+            <button class="lab-primary" id="train-start" data-needs-model disabled>학습 시작</button>
+            <button id="train-pause" disabled>일시정지</button>
+            <button id="train-stop" disabled>학습 종료</button>
+            <button id="train-save" data-needs-model disabled>저장</button>
+          </div>
+          <p id="lab-message" class="lab-message" role="status">이 브라우저에 저장된 모델을 확인하고 있습니다.</p>
+          <dl class="lab-metrics" id="metrics"></dl>
+        </section>
+      </div>
+
+      <section class="lab-card lab-inspector" aria-label="연구 도구">
+        <div class="lab-tabs" role="tablist" aria-label="연구 도구">
+          <button role="tab" id="tab-predict" aria-controls="panel-predict" aria-selected="true">토큰 예측</button>
+          <button role="tab" id="tab-attention" aria-controls="panel-attention" aria-selected="false" tabindex="-1">Attention</button>
+          <button role="tab" id="tab-weights" aria-controls="panel-weights" aria-selected="false" tabindex="-1">가중치</button>
+          <button role="tab" id="tab-test" aria-controls="panel-test" aria-selected="false" tabindex="-1">AI 테스트</button>
+          <button role="tab" id="tab-data" aria-controls="panel-data" aria-selected="false" tabindex="-1">데이터셋</button>
+          <button role="tab" id="tab-models" aria-controls="panel-models" aria-selected="false" tabindex="-1">모델·이력</button>
+        </div>
+        <div class="lab-panel" id="panel-predict" role="tabpanel" aria-labelledby="tab-predict">
+          <div class="lab-columns">
+            <div>
+              <form id="predict-form">
+                <label for="predict-input">입력 문장</label>
+                <div class="lab-input-row"><input id="predict-input" value="나는 " maxlength="512" autocomplete="off"><button class="lab-primary" data-needs-model disabled>확률 계산</button></div>
+                <div class="lab-settings">
+                  <label>Temperature <input id="predict-temp" type="number" min=".1" max="3" step=".1" value="1"></label>
+                  <label>토큰 선택 <select id="predict-mode"><option value="greedy">Greedy</option><option value="sample">Sampling</option></select></label>
+                  <button id="predict-append" type="button" data-needs-model disabled>한 토큰 추가</button>
+                </div>
+              </form>
+              <p id="predict-summary" class="lab-hint">모델이 준비되면 확률을 계산할 수 있습니다.</p>
+              <details><summary>토큰화부터 다음 토큰까지</summary><div id="trace"></div></details>
+            </div>
+            <div>
+              <div class="lab-card-heading"><h3>다음 토큰 후보</h3><span class="lab-hint" id="predict-step"></span></div>
+              <div id="probabilities" class="lab-probabilities"></div>
+            </div>
+          </div>
+        </div>
+        <div class="lab-panel" id="panel-attention" role="tabpanel" aria-labelledby="tab-attention" hidden>
+          <div class="lab-settings">
+            <label>레이어 <select id="attention-layer"></select></label>
+            <label>헤드 <select id="attention-head"></select></label>
+            <label>비교 <select id="attention-source"><option value="current">예측 시점</option><option value="initial">학습 전</option><option value="difference">학습 전후 차이</option></select></label>
+            <button id="attention-refresh" type="button" data-needs-model disabled>현재 가중치로 다시 계산</button>
+          </div>
+          <p id="attention-caption" class="lab-hint"></p>
+          <div class="lab-scroll" id="attention-map"></div>
+          <p class="lab-hint">행은 조회 토큰, 열은 참조 토큰입니다. Attention 값은 토큰 사이의 참조 비중이며 의미 이해를 판단하려면 별도 평가가 필요합니다.</p>
+        </div>
+        <div class="lab-panel" id="panel-weights" role="tabpanel" aria-labelledby="tab-weights" hidden>
+          <div class="lab-settings">
+            <label>가중치 텐서 <select id="weight-name"></select></label>
+            <label>시작 인덱스 <input id="weight-offset" type="number" min="0" step="1" value="0"></label>
+            <button id="weight-refresh" data-needs-model disabled>가중치 확인</button>
+          </div>
+          <p class="lab-hint" id="weight-caption"></p>
+          <div class="lab-scroll" id="weights-table"></div>
+          <div class="lab-columns" id="histograms"></div>
+          <details><summary>추가 학습 지표와 실행 환경</summary><dl class="lab-metrics" id="research-metrics"></dl><div id="token-loss"></div></details>
+        </div>
+        <div class="lab-panel" id="panel-test" role="tabpanel" aria-labelledby="tab-test" hidden>
+          <div class="lab-columns">
+            <form id="test-form">
+              <label for="test-input">생성에 사용할 문장</label>
+              <textarea id="test-input" maxlength="512" rows="2">나는 </textarea>
+              <div class="lab-settings">
+                <label>모델 <select id="test-checkpoint"><option value="">현재 가중치</option></select></label>
+                <label>Temperature <input id="test-temp" type="number" min=".1" max="3" step=".1" value="1"></label>
+                <label>선택 방식 <select id="test-mode"><option value="sample">Sampling</option><option value="greedy">Greedy</option></select></label>
+                <label>생성 토큰 <input id="test-length" type="number" min="1" max="64" value="24"></label>
+              </div>
+              <div class="lab-buttons"><button class="lab-primary" data-needs-model disabled>문장 생성</button><button type="button" id="test-next" data-needs-model disabled>한 토큰 생성</button></div>
+              <p class="lab-hint">초소형 모델은 일반 질문에 답하기 어려울 수 있습니다. 테스트 입력은 학습 데이터로 등록되지 않습니다.</p>
+            </form>
+            <div>
+              <div id="test-results"></div>
+              <div class="lab-buttons"><button id="test-save" disabled>결과 저장</button><button id="run-eval" data-needs-model disabled>고정 평가 실행</button></div>
+              <p id="eval-results" class="lab-hint"></p>
+            </div>
+          </div>
+        </div>
+        <div class="lab-panel" id="panel-data" role="tabpanel" aria-labelledby="tab-data" hidden>
+          <div class="lab-columns">
+            <div>
+              <label>데이터셋 이름 <input id="dataset-name" maxlength="80" value="한국어 연습 문장"></label>
+              <dl class="lab-metrics" id="dataset-metrics"></dl>
+              <div class="lab-buttons"><button id="add-samples">기본 샘플 선택</button><button id="apply-data" data-needs-model disabled>현재 모델에 적용</button><button id="new-from-data">새 모델로 사용</button></div>
+              <p class="lab-hint">문장 또는 연속 텍스트 구간을 나눠 검증용으로 보관합니다. 학습 어휘에 새 문자가 있으면 새 모델을 만드세요.</p>
+              <div id="doc-list"></div>
+            </div>
+            <div>
+              <form id="text-form">
+                <label>문서 제목 <input id="doc-name" maxlength="80" placeholder="직접 입력"></label>
+                <label>학습 텍스트 <textarea id="doc-text" rows="4" maxlength="200000"></textarea></label>
+                <div class="lab-buttons"><button>텍스트 추가</button></div>
+              </form>
+              <label>파일 추가 <input id="dataset-files" type="file" accept=".txt,.docx,.pdf" multiple></label>
+              <p class="lab-hint">TXT, DOCX, 텍스트 PDF · 파일당 최대 12 MB / 10만 자</p>
+            </div>
+          </div>
+        </div>
+        <div class="lab-panel" id="panel-models" role="tabpanel" aria-labelledby="tab-models" hidden>
+          <div class="lab-columns">
+            <div>
+              <h3>모델 구성</h3>
+              <div id="architecture"></div>
+              <div class="lab-buttons"><button class="lab-primary" id="new-model">신규 모델 생성</button><button id="reset-model" data-needs-model disabled>초기화 모델 만들기</button></div>
+              <h3>저장 모델</h3><div id="model-library"></div>
+              <h3>체크포인트</h3><div id="checkpoint-library"></div>
+              <p class="lab-hint">이전 체크포인트를 불러오면 그 시점의 새 모델이 생성됩니다.</p>
+            </div>
+            <div>
+              <h3>학습 이력</h3>
+              <div id="training-history" class="lab-scroll"></div>
+              <button id="export-history" data-needs-model disabled>전체 이력 CSV</button>
+              <h3>저장된 생성 결과</h3><div id="test-library"></div>
+              <details><summary>학습 로그 및 오류</summary><div id="training-log"></div></details>
+            </div>
+          </div>
+        </div>
+      </section>
+      <p class="lab-storage-note">체크포인트는 이 브라우저에 저장됩니다. 화면 잠금이나 페이지를 벗어나면 학습이 중단될 수 있습니다.</p>
+    </main>
+  </div>
+  <dialog class="lab-dialog" id="chart-dialog"><form method="dialog"><button>닫기</button></form><h2>학습 곡선</h2><div class="lab-legend"><span><i></i>Training Loss</span><span><i></i>Validation Loss</span></div><canvas id="expanded-loss" role="img" aria-label="확대된 학습 및 검증 손실 그래프"></canvas></dialog>
+  <dialog class="lab-dialog" id="info-dialog"><form method="dialog"><button>닫기</button></form><h2 id="info-title"></h2><dl id="info-content"></dl></dialog>
+  <dialog class="lab-dialog" id="sample-dialog">
+    <form id="sample-form"><h2>기본 샘플</h2><div id="sample-list"></div><div class="lab-buttons"><button class="lab-primary">선택 적용</button><button type="button" data-close="sample-dialog">닫기</button></div></form>
+  </dialog>
+  <dialog class="lab-dialog" id="model-dialog">
+    <form id="model-form"><h2>신규 모델 생성</h2>
+      <label>모델 이름 <input id="new-name" value="MyDesk Transformer" required maxlength="64"></label>
+      <p class="lab-hint" id="new-dataset"></p>
+      <details><summary>상세 모델 설정</summary>
+        <div class="lab-settings">
+          <label>레이어 <input id="cfg-layers" type="number" min="1" max="3" value="1" required></label>
+          <label>은닉 차원 <input id="cfg-width" type="number" min="8" max="64" value="24" required></label>
+          <label>헤드 <input id="cfg-heads" type="number" min="1" max="8" value="3" required></label>
+          <label>문맥 길이 <input id="cfg-context" type="number" min="4" max="48" value="16" required></label>
+          <label>학습률 <input id="cfg-rate" type="number" min=".00001" max=".03" step=".00001" value=".003" required></label>
+        </div>
+      </details>
+      <p id="model-error" class="lab-hint" role="status"></p>
+      <div class="lab-buttons"><button class="lab-primary">생성</button><button type="button" data-close="model-dialog">취소</button></div>
+    </form>
+  </dialog>
+  <script src="shell.js?v=llm1"></script>
+  <script type="module" src="llm/lab.mjs"></script>
+</body>
+</html>

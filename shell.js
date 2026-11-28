@@ -36,7 +36,7 @@ const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.getElementById('sidebar');
 const backdrop = document.getElementById('sidebar-backdrop');
 const isGamePage = document.body.classList.contains('game-page') || ['robotdog', 'evolution'].includes(document.body.dataset.page);
-const mobileMenu = window.matchMedia(document.body.dataset.page === 'mindmap' ? '(min-width: 0px)' : isGamePage ? '(max-width: 1100px), (pointer: coarse)' : '(max-width: 760px)');
+const mobileMenu = window.matchMedia(document.body.dataset.page === 'llm-lab' ? '(max-width: 1000px)' : document.body.dataset.page === 'mindmap' ? '(min-width: 0px)' : isGamePage ? '(max-width: 1100px), (pointer: coarse)' : '(max-width: 760px)');
 function setMenu(open, restoreFocus = false) {
   const visible = open && mobileMenu.matches;
   document.body.classList.toggle('menu-open', visible);
@@ -78,4 +78,4 @@ function syncCalendarMenuLinks(){
 syncCalendarMenuLinks();window.addEventListener('pageshow',syncCalendarMenuLinks);window.addEventListener('storage',e=>{if(e.key==='mydesk.calendar.family')syncCalendarMenuLinks();});
 
 // Navigation is shared by all pages and refreshed from the server.
-import('./site-navigation.mjs?v=neon1').then(module=>module.loadNavigation()).catch(()=>{});
+import('./site-navigation.mjs?v=llm1').then(module=>module.loadNavigation()).catch(()=>{});
