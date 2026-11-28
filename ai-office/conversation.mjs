@@ -419,7 +419,7 @@ async function sendGemini() {
     status('Gemini 답변을 저장했습니다. 같은 상담에서 다음 질문을 이어갈 수 있습니다.');
   } catch(error) {
     if(error.retryAt) retryAt = Date.parse(error.retryAt) || Date.now()+60000;
-    if(['failed','retry_limit','blocked','deleted'].includes(error.code)) {
+    if(['failed','retry_limit','blocked','deleted','provider_configuration'].includes(error.code)) {
       chatAttempt.newRequestAllowed = true;
       $('office-send-gemini').textContent = '새 요청으로 다시 보내기';
     } else {

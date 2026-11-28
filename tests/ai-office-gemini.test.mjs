@@ -7,14 +7,14 @@ const requestId = '20000000-0000-4000-8000-000000000001';
 const threadId = '30000000-0000-4000-8000-000000000001';
 const memoryId = '40000000-0000-4000-8000-000000000001';
 const body = {requestId,threadId,employeeId:'chief',question:'일반적인 회의 준비 순서를 알려줘',recordIds:[],consent:true};
-function fixture({key = 'test-only-key', quota = false, blocked = false, foreignRecord = false, saveLostResponse = false} = {}) {
+function fixture({key = 'test-only-key', quota = false, blocked = false, foreignRecord = false, saveLostResponse = false, alias = false, invalidKey = false} = {}) {
   const jobs = new Map();
   const records = [];
   const calls = [];
   let modelCalls = 0;
   let sentPrompt;
   const env = name => ({
-    SUPABASE_URL:'https://db.test',SUPABASE_SERVICE_ROLE_KEY:'test-service',GEMINI_API_KEY:key,
+    SUPABASE_URL:'https://db.test',SUPABASE_SERVICE_ROLE_KEY:'test-service',GEMINI_API_KEY:alias ? undefined : key,gemini_key:alias ? key : undefined,
   })[name];
   const json = (value,status = 200) => new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
   const send = async (address,options = {}) => {
@@ -27,6 +27,7 @@ function fixture({key = 'test-only-key', quota = false, blocked = false, foreign
       assert.equal(options.headers['x-goog-api-key'],'test-only-key');
       assert.ok(address.endsWith('/'+GEMINI_MODEL+':generateContent'));
       sentPrompt = data;
+      if(invalidKey) return json({error:{details:[{reason:'API_KEY_INVALID'}]}},400);
       if(quota) return json({error:{details:[{retryDelay:'120s'}]}},429);
       if(blocked) return json({promptFeedback:{blockReason:'SAFETY'}});
       return json({candidates:[{finishReason:'STOP',content:{parts:[{thought:true,text:'hidden thought'},{text:'회의 목적과 참석자를 먼저 정리하세요.'}]}}],usageMetadata:{promptTokenCount:50,candidatesTokenCount:20}});
@@ -131,4 +132,23 @@ test('only selected owned records are included, with no hidden chain of thought'
   assert.equal(result.status,200);
   assert.ok(app.sentPrompt.contents[0].parts[0].text.includes('공개 발표 자료'));
   assert.ok(!(await result.json()).record.content.includes('hidden thought'));
+});
+
+test('registered gemini_key alias is accepted without exposing the secret',async () => {
+  const app = fixture({alias:true});
+  const status = await app.handler(new Request('https://edge.test'));
+  const data = await status.json();
+  assert.equal(data.ready,true);
+  assert.ok(!JSON.stringify(data).includes('test-only-key'));
+  assert.equal((await app.invoke()).status,200);
+});
+test('invalid Gemini keys produce actionable errors without secret values',async () => {
+  const app = fixture({invalidKey:true});
+  const result = await app.invoke();
+  assert.equal(result.status,502);
+  const data = await result.json();
+  assert.equal(data.providerError.reason,'API_KEY_INVALID');
+  assert.ok(data.message.includes('새 Gemini API 키'));
+  assert.ok(!JSON.stringify(data).includes('test-only-key'));
+  assert.equal(app.records.length,0);
 });

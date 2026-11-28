@@ -41,7 +41,8 @@ export function createHandler({env, fetch:send = globalThis.fetch}) {
   }
   return async req => {
     if(req.method === 'OPTIONS') return new Response(null,{status:204,headers});
-    const storedKey = env('GEMINI_API_KEY');
+    const standardKey = env('GEMINI_API_KEY');
+    const storedKey = standardKey?.trim() ? standardKey : (env('gemini_key') ?? standardKey);
     const apiKey = storedKey?.trim();
     if(req.method === 'GET') return reply({
       provider:'gemini', model:GEMINI_MODEL, ready:!!apiKey,
@@ -53,6 +54,7 @@ export function createHandler({env, fetch:send = globalThis.fetch}) {
     const authorization = req.headers.get('Authorization');
     if(!authorization?.startsWith('Bearer ')) return reply({message:'먼저 로그인해 주세요.'},401);
     let jobId = null;
+    let providerError = null;
     try {
       const verified = await send(base+'/auth/v1/user',{headers:{apikey:serviceKey,Authorization:authorization}});
       if(!verified.ok) return reply({message:'로그인이 만료되었습니다. 다시 로그인해 주세요.'},401);
@@ -139,7 +141,14 @@ export function createHandler({env, fetch:send = globalThis.fetch}) {
         jobId = null;
         return quotaReply(new Date(Date.now()+retrySeconds*1000).toISOString());
       }
-      if(!generated.ok) throw Error(generated.status===400 || generated.status===403 ? 'provider_configuration' : 'provider');
+      if(!generated.ok) {
+        const reason = result.error?.details?.find(item=>typeof item.reason==='string')?.reason;
+        providerError = {
+          status:generated.status,
+          reason:typeof reason==='string' && /^[A-Z_]{1,80}$/.test(reason) ? reason : null,
+        };
+        throw Error([400,403,404].includes(generated.status) ? 'provider_configuration' : 'provider');
+      }
       const candidate = result.candidates?.[0];
       let answer = (candidate?.content?.parts || []).filter(part=>!part.thought && typeof part.text==='string').map(part=>part.text).join('\n').trim();
       if(!answer || !['STOP','MAX_TOKENS'].includes(candidate.finishReason)) throw Error('blocked');
@@ -162,13 +171,13 @@ export function createHandler({env, fetch:send = globalThis.fetch}) {
         } catch { /* A subsequent status lookup can recover a completed transaction. */ }
       }
       const code = ['storage','provider_configuration','blocked'].includes(error.message) ? error.message : 'provider';
-      const message = {
+      const message = providerError?.reason==='API_KEY_INVALID' ? 'Google이 등록된 키를 유효하지 않은 API 키로 거부했습니다. Google AI Studio에서 새 Gemini API 키를 발급해 서버의 키 값을 교체해 주세요.' : {
         storage:'응답 기록 서버에 연결하지 못했습니다. 기록을 새로고침해 결과를 확인해 주세요.',
         provider_configuration:'Gemini 키·모델 접근 권한을 확인해 주세요. 유료 모델로 자동 전환하지 않습니다.',
         blocked:'Gemini가 답변을 제공하지 않았습니다. 질문을 수정해 주세요.',
         provider:'Gemini 응답을 완료하지 못했습니다. 잠시 후 기록을 확인해 주세요.',
       }[code];
-      return reply({code,message},502);
+      return reply({code,message,providerError},502);
     }
   };
 }
