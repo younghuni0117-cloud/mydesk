@@ -25,3 +25,7 @@ Concurrent upstream commit `4221bca` was integrated without changing its Neon Ju
 ## Home layout correction
 
 The board is embedded directly as the first section of `index.html`, above existing home content. Its shortcut points to that section. `sticky.html` only redirects legacy links to home while retaining the connection fragment; IndexedDB, server records and capability keys remain unchanged. The board title/chalk heading, color chooser and zoom buttons are removed. New notes are 160×150 logical units with automatic pastel colors; existing notes are resized once with a compact flag, without altering text or creation date. The new-note control is the first item in the lower-right bin group. Pinch and Ctrl+wheel remain supported. Existing homepage content is retained below the board.
+
+## Smaller corner controls
+
+Connection/backup UI has been removed at the owner's request; archive/new/trash controls are reduced to compact icons. Existing private storage and automatic local recovery remain intact. Automatic cross-device public-board conversion is NOT deployed: automatic approval review rejected creating an unauthenticated shared RPC because syncing the owner's devices does not clearly authorize granting every visitor read/write access. Explicit owner approval of that public access boundary is pending. No public-board table/function was applied.
