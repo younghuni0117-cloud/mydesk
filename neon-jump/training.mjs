@@ -1,6 +1,6 @@
-import { advance, DECISION_STEPS, initialState, observe, PHYSICS_VERSION, progress, STEP } from './physics.mjs';
+import { advance, DECISION_STEPS, initialState, observe, PHYSICS_VERSION, progress, STEP } from './physics.mjs?v=4';
 import { CONFIG, DQN, forward, greedy, randomSource, validWeights } from './dqn.mjs';
-import { reward } from './reward.mjs';
+import { reward } from './reward.mjs?v=4';
 
 export function runPolicy(level, weights, { offset = 0, randomSeed } = {}) {
   const rng = randomSeed === undefined ? null : randomSource(randomSeed);

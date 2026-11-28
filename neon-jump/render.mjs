@@ -1,4 +1,4 @@
-import { obstacleVertices, SIZE } from './physics.mjs?v=3';
+import { obstacleVertices, SIZE } from './physics.mjs?v=4';
 
 const palettes = [
   ['#111636', '#2d3c88', '#8de9ff', '#619eff'],
@@ -171,6 +171,10 @@ export function render(canvas, level, state, effects = true, crashAge = 0, attem
   }
   ctx.restore();
 
+  ctx.fillStyle = '#eff8ff';
+  ctx.font = '700 16px system-ui';
+  ctx.fillText('점수 ' + (state.score ?? 0), 14, 27);
+
   if (attempt && state.tick < 85 && state.status === 'running') {
     ctx.save();
     ctx.globalAlpha = Math.min(1, (85 - state.tick) / 24);
@@ -188,14 +192,17 @@ export function drawChart(canvas, rows) {
   ctx.clearRect(0, 0, width, height);
   const left = 35, right = width - 8, top = 7, bottom = height - 17;
   if (right <= left || bottom <= top) return '';
-  const y = value => bottom - (bottom - top) * value;
+  const values = rows.map(row => row.score);
+  const low = Math.min(0, ...values);
+  const high = Math.max(10, ...values);
+  const y = value => bottom - (bottom - top) * (value - low) / (high - low);
   ctx.strokeStyle = '#dce2ed';
   ctx.fillStyle = '#435a71';
   ctx.font = '10px system-ui';
   ctx.beginPath();
-  for (const mark of [0, .5, 1]) {
+  for (const mark of [low, (low + high) / 2, high]) {
     ctx.moveTo(left, y(mark)); ctx.lineTo(right, y(mark));
-    ctx.fillText(mark * 100 + '%', 2, y(mark) + 3);
+    ctx.fillText(Math.round(mark) + '점', 2, y(mark) + 3);
   }
   ctx.stroke();
   if (!rows.length) return '아직 완료된 학습 기록이 없습니다.';
@@ -205,7 +212,7 @@ export function drawChart(canvas, rows) {
     ctx.fillText(rows.at(-1).episode + '회', right, height - 3);
     ctx.textAlign = 'left';
   }
-  for (const [key, color] of [['best', '#245683'], ['average', '#9464cc']]) {
+  for (const [key, color] of [['score', '#245683']]) {
     ctx.strokeStyle = ctx.fillStyle = color;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -217,5 +224,5 @@ export function drawChart(canvas, rows) {
     ctx.stroke();
   }
   const last = rows.at(-1);
-  return '파랑 최고 ' + (last.best * 100).toFixed(1) + '% · 보라 평균 ' + (last.average * 100).toFixed(1) + '%';
+  return '에피소드 누적 상벌점 · 최근 ' + last.score.toFixed(1) + '점';
 }

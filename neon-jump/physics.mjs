@@ -1,5 +1,5 @@
 export const STEP = 1 / 60;
-export const PHYSICS_VERSION = 1;
+export const PHYSICS_VERSION = 2;
 export const SIZE = 24;
 export const DECISION_STEPS = 3;
 export const INPUTS = 19;
@@ -29,14 +29,14 @@ export function validateLevels(levels) {
 export const levelKey = level => level.id + ':' + level.version;
 
 export async function loadLevels() {
-  const response = await fetch(new URL('./levels.json?v=3', import.meta.url));
+  const response = await fetch(new URL('./levels.json?v=4', import.meta.url));
   if (!response.ok) throw Error('스테이지를 불러올 수 없습니다.');
   return validateLevels(await response.json());
 }
 
 export function initialState(level, offset = 0) {
   return { x: level.start + offset, y: 0, vy: 0, grounded: true, tick: 0,
-    passed: 0, status: 'running', hit: null, angle: 0 };
+    score: 0, jumpPassed: null, passed: 0, status: 'running', hit: null, angle: 0 };
 }
 
 export function progress(level, state) {
@@ -72,6 +72,12 @@ function intersects(cube, obstacle) {
 export function step(level, state, jump = false) {
   if (state.status !== 'running') return state;
   const launched = jump && state.grounded;
+  state.score ??= 0;
+  const previousY = state.y;
+  const previousPassed = state.passed;
+  if (launched) state.jumpPassed = state.passed;
+  if (state.grounded && state.y > 0 && !level.obstacles.some(o =>
+    o.type === 'block' && o.h === state.y && state.x + SIZE > o.x && state.x < o.x + o.w)) state.grounded = false;
   state.x += level.speed * STEP;
   state.tick++;
   if (!state.grounded || launched) {
@@ -81,6 +87,17 @@ export function step(level, state, jump = false) {
     if (state.grounded) state.vy = 0;
     state.angle = state.grounded ? 0 : state.angle + Math.PI / 42;
   }
+  if (state.vy <= 0) {
+    const platform = level.obstacles.find(o => o.type === 'block'
+      && state.x + SIZE > o.x && state.x < o.x + o.w
+      && previousY >= o.h && state.y <= o.h);
+    if (platform) {
+      state.y = platform.h;
+      state.vy = 0;
+      state.grounded = true;
+      state.angle = 0;
+    }
+  }
   const center = state.x + SIZE / 2;
   const cos = Math.cos(state.angle);
   const sin = Math.sin(state.angle);
@@ -89,6 +106,11 @@ export function step(level, state, jump = false) {
   const cy = Math.max(state.y + radius, extent);
   while (level.obstacles[state.passed]?.x + level.obstacles[state.passed]?.w < center - extent) {
     state.passed++;
+  }
+  state.score += (state.passed - previousPassed) * 10;
+  if (state.grounded && state.jumpPassed != null) {
+    if (state.passed === state.jumpPassed) state.score -= 3;
+    state.jumpPassed = null;
   }
   for (let i = state.passed; i < level.obstacles.length; i++) {
     const obstacle = level.obstacles[i];

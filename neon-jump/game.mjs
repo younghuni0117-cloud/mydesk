@@ -1,14 +1,14 @@
-import { DECISION_STEPS, initialState, levelKey, loadLevels, observe, progress, step, STEP } from './physics.mjs?v=3';
+import { DECISION_STEPS, initialState, levelKey, loadLevels, observe, progress, step, STEP } from './physics.mjs?v=4';
 import { forward, greedy } from './dqn.mjs';
-import { compatible, makeReplay } from './training.mjs?v=3';
-import { drawChart, render } from './render.mjs?v=3';
+import { compatible, makeReplay } from './training.mjs?v=4';
+import { drawChart, render } from './render.mjs?v=4';
 import { enableAudio, playJump } from './sound.mjs';
 import { put, read, saveManual } from './storage.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('course');
 let worker;
-try { worker = new Worker(new URL('./worker.mjs?v=3', import.meta.url), { type: 'module' }); }
+try { worker = new Worker(new URL('./worker.mjs?v=4', import.meta.url), { type: 'module' }); }
 catch { /* Manual play can run without a Worker. */ }
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobile = matchMedia('(pointer: coarse)');

@@ -1,6 +1,6 @@
-import { levelKey, loadLevels, observe } from './physics.mjs?v=3';
+import { levelKey, loadLevels, observe } from './physics.mjs?v=4';
 import { forward } from './dqn.mjs';
-import { runPolicy, Training } from './training.mjs?v=3';
+import { runPolicy, Training } from './training.mjs?v=4';
 import { checkpoint, read } from './storage.mjs';
 
 const levels = loadLevels();
