@@ -1,11 +1,11 @@
-import {COLORS,clamp,validKey,newKey,newNote,validNote,boardPoint,zoomAt,changeStatus,createdDate} from './sticky-data.mjs?v=home1';
+import {COLORS,clamp,validKey,newKey,newNote,validNote,boardPoint,zoomAt,changeStatus,createdDate} from './sticky-data.mjs?v=zoom10';
 import {NoteStorage} from './sticky-storage.mjs?v=smallbins1';
 import {cache} from './sticky-cache.mjs?v=1';
 import {SHARED_MODEL_URL,SHARED_MODEL_KEY} from './robot-shared-config.mjs';
 const $=id=>document.getElementById(id),board=$('board'),world=$('board-world'),node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
 const paint={yellow:'#f7e8a2',pink:'#f0ccd1',blue:'#c7e0e9',green:'#d7e5b7',purple:'#dfd0e9'},names={yellow:'노랑',pink:'분홍',blue:'하늘',green:'연두',purple:'보라'};
 let key,localAvailable=true;const incoming=new URLSearchParams(location.hash.slice(1)).get('board');try{key=validKey(incoming)?incoming:localStorage.getItem('mydesk.sticky.connection.v1');if(!validKey(key))key=newKey();localStorage.setItem('mydesk.sticky.connection.v1',key);}catch{localAvailable=false;key=validKey(incoming)?incoming:newKey();}if(incoming||!localAvailable){const u=new URL(location.href);u.hash=localAvailable?'':'board='+key;history.replaceState(null,'',u);}
-const viewKey='mydesk.sticky.view.'+key.slice(-20);let view={x:0,y:0,z:1};try{const saved=JSON.parse(localStorage.getItem(viewKey)||'null');if(saved&&['x','y','z'].every(k=>Number.isFinite(saved[k]))&&saved.z>=.35&&saved.z<=2.5)view=saved;}catch{}
+const viewKey='mydesk.sticky.view.'+key.slice(-20);let view={x:0,y:0,z:1};try{const saved=JSON.parse(localStorage.getItem(viewKey)||'null');if(saved&&['x','y','z'].every(k=>Number.isFinite(saved[k]))&&saved.z>=.1&&saved.z<=2.5)view=saved;}catch{}
 function boardRect(){const r=board.getBoundingClientRect();return {left:r.left+board.clientLeft,top:r.top+board.clientTop,width:board.clientWidth,height:board.clientHeight};}
 let selected=null,drag=null,pinch=null,listMode='archived',persistTimer,suppressNoteClick=false;const elements=new Map(),pointers=new Map();
 const store=new NoteStorage({key,url:SHARED_MODEL_URL.replace(/robot_shared_model$/,'rpc/sticky_board'),apiKey:SHARED_MODEL_KEY,cache:cache(),onchange:render,status:text=>$('save-status').textContent=text});
