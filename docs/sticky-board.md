@@ -2,7 +2,7 @@
 
 `sticky.html` is an independent full content-area board, linked from home and the first shortcut after the existing menu toggle. Existing shortcut order and menu behavior remain unchanged. HTML entrypoints only bump the shared shell cache version. Existing application storage and data are untouched.
 
-Paper notes support direct multiline editing, a separate drag handle, keyboard movement/resizing, colors, resize limits (160–600 × 140–700 board units), slight rotation, stacking order, immutable creation date displayed in Asia/Seoul, archive/trash drop targets, restore and confirmed permanent deletion. CSS textures/tape/shadows and short drop animations need no image downloads. Reduced motion is respected. Logical coordinates, zoom-anchor math and device-local viewport state are separate from note content. Ctrl+wheel, blank-board pan and two-finger gestures are scoped to the board; text editing is excluded. Textarea focus permits native vertical scrolling without board zoom gestures.
+Paper notes support direct multiline editing, a separate drag handle, keyboard movement/resizing, colors, resize limits (160–600 × 140–700 board units), slight rotation, stacking order, immutable creation date displayed in Asia/Seoul, archive/trash drop targets, restore and confirmed permanent deletion. CSS textures/tape/shadows and short drop animations need no image downloads. Reduced motion is respected. Logical coordinates, zoom-anchor math and device-local viewport state are separate from note content. Ctrl+wheel, blank-board pan and two-finger gestures are scoped to the board; text editing is excluded. Touch scrolling inside overflowing textareas is handled separately from board gestures; native text selection is not intercepted.
 
 ## Storage and access
 
