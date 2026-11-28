@@ -30,3 +30,9 @@ HTML/controller에는 `layout3` 릴리스 표식을 추가했다. 이전 HTML과
 
 - `node --test tests/mindmap-layout.test.mjs`: 방향성 자손 이동, 공유 자손 중복 방지, 독립 노드 보존, 기존 순환 그래프 종료, 새 순환 감지, 기본/제한 너비.
 - `NODE_PATH=/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules node scripts/verify-mindmap.cjs`: 실제 Chromium에서 38px 높이·글자 굵기, 클릭/더블클릭 시 편집 방지, 메뉴로만 편집, 키보드 메뉴/이름 변경, 마우스/터치 리사이즈, 줄바꿈과 연결선, 부모/자손 이동, 이름 변경 저장/취소, 재접속 후 너비·상세 글 복원, 여러 맵, 삭제 확인/되돌리기, 실제 두 손가락 확대, 다섯 화면 크기, 기존 저장본/다른 앱 보존, 이전 HTML 캐시 복구를 확인한다. 데이터 API는 합성 읽기 응답으로 대체하고 실제 사용자 맵은 읽지 않는다.
+
+## Laptop viewport fit
+
+The mindmap workspace uses the actual `100dvh` height with a fixed-size shared header and a min-height-zero flex/grid canvas, rather than a guessed viewport height plus overflowing detail content. Footer height is automatic; the preserved detail editor is a collapsed `<details>` panel that expands within a bounded scroll area. The canvas fills remaining space, and window/viewport resizing recomputes the view. No map data, node coordinates or connection credentials are changed.
+
+`fitMapView` centers the complete rendered node bounds in the available canvas area, reserving actual bottom-toolbar height and padding. The previous 25% fit floor no longer cuts off large maps. Manual zoom now supports 1% to 300% for compatibility with fitted large maps. Bounds tests use laptop, wide desktop and portrait sizes. Connection/layout/sync tests: 12 pass. Actual notebook browser layout was not interactively tested in this environment.

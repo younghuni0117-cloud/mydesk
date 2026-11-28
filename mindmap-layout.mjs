@@ -5,3 +5,9 @@ export function subtreeIds(nodes,edges,root){const existing=new Set(nodes.map(n=
 export const wouldCycle=(nodes,edges,parent,child)=>parent===child||subtreeIds(nodes,edges,child).has(parent);
 export function groupPositions(nodes,edges,root){const ids=subtreeIds(nodes,edges,root);return nodes.filter(n=>ids.has(n.id)).map(n=>({id:n.id,x:n.x,y:n.y}));}
 export function moveGroup(nodes,positions,dx,dy){const byId=new Map(nodes.map(n=>[n.id,n]));for(const old of positions){const n=byId.get(old.id);if(n){n.x=old.x+dx;n.y=old.y+dy;}}}
+export function fitMapView(boxes,width,height,{padding=24,bottom=70}={}){
+ if(!boxes.length)return {x:0,y:0,z:1};
+ const minX=Math.min(...boxes.map(b=>b.x)),minY=Math.min(...boxes.map(b=>b.y)),maxX=Math.max(...boxes.map(b=>b.x+b.width)),maxY=Math.max(...boxes.map(b=>b.y+b.height));
+ const availableW=Math.max(1,width-padding*2),availableH=Math.max(1,height-bottom-padding*2),z=Math.min(1,availableW/Math.max(1,maxX-minX),availableH/Math.max(1,maxY-minY));
+ return {z,x:padding+(availableW-(maxX-minX)*z)/2-minX*z,y:padding+(availableH-(maxY-minY)*z)/2-minY*z};
+}
