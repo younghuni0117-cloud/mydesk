@@ -50,15 +50,36 @@ export const account = {
     try { await request('/auth/v1/logout', {method:'POST'}, await token()); }
     finally { keep(null); }
   },
-  async list(employeeId) {
-    return request('/rest/v1/ai_office_records?select=*&order=created_at.desc,id.desc&limit=100' +
-      (employeeId ? '&employee_id=eq.' + encodeURIComponent(employeeId) : ''), {}, await token());
+  async list(employeeId, {offset = 0, memoriesOnly = false} = {}) {
+    const query = new URLSearchParams({select:'*', order:'created_at.desc,id.desc', limit:'100', offset:String(offset)});
+    if(employeeId) query.set('employee_id','eq.' + employeeId);
+    if(memoriesOnly) query.set('kind','eq.memory');
+    return request('/rest/v1/ai_office_records?' + query, {}, await token());
   },
-  async save(employeeId, kind, content, id) {
+  async save(employeeId, kind, content, id, details = {}) {
+    const authorization = await token();
     return request('/rest/v1/ai_office_records?on_conflict=id', {
       method: 'POST', headers: {Prefer:'resolution=ignore-duplicates'},
-      body: JSON.stringify({id, user_id: session?.user.id, employee_id:employeeId, kind, content}),
+      body: JSON.stringify({...details, id, user_id: session.user.id, employee_id:employeeId, kind, content}),
+    }, authorization);
+  },
+  async editMemory(row, content) {
+    const query = new URLSearchParams({id:'eq.' + row.id, kind:'eq.memory', revision:'eq.' + (row.revision || 1)});
+    const updated = await request('/rest/v1/ai_office_records?' + query, {
+      method:'PATCH', headers:{Prefer:'return=representation'}, body:JSON.stringify({content}),
     }, await token());
+    if(!updated?.length) throw Error('다른 화면에서 수정하거나 삭제한 기억입니다. 새로고침 후 다시 확인해 주세요.');
+    return updated[0];
+  },
+  async profiles() {
+    return request('/rest/v1/ai_office_profiles?select=employee_id,name,personality,tone', {}, await token());
+  },
+  async saveProfile(employeeId, profile) {
+    const authorization = await token();
+    return request('/rest/v1/ai_office_profiles?on_conflict=user_id,employee_id', {
+      method:'POST', headers:{Prefer:'resolution=merge-duplicates'},
+      body:JSON.stringify({...profile, user_id:session.user.id, employee_id:employeeId}),
+    }, authorization);
   },
   async remove(id) {
     return request('/rest/v1/ai_office_records?id=eq.' + encodeURIComponent(id), {method:'DELETE'}, await token());

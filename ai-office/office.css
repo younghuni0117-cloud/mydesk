@@ -84,3 +84,10 @@ body[data-page=ai-office]{--office-ink:#263c36;--office-muted:#586c62;--office-l
 .office-record p{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--office-ink);font-size:.9rem;margin:5px 0}
 .office-record small{font-size:.78rem}
 @media(max-width:560px){.office-heading{flex-wrap:wrap}.office-heading>div:last-child{gap:6px}}
+.office-thread-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid var(--office-line);margin-top:12px}
+#office-profile{border-block:1px solid var(--office-line);padding:9px 0}
+#office-profile summary{cursor:pointer;font-weight:650}
+#office-selected-count{font-size:.85rem;margin:8px 0}
+.office-record h3{font-size:.9rem;margin:7px 0 3px}
+.office-record .office-scenes{margin-top:8px}
+.office-memory-editor{width:100%;min-height:100px}

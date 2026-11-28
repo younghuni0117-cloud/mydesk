@@ -1,4 +1,4 @@
-import { openConversation } from './conversation.mjs?v=manual1';
+import { openConversation } from './conversation.mjs?v=continue1';
 import { employees, rooms, TILE, WIDTH, HEIGHT } from './office-map.mjs';
 import { actorStatus, createDemoSource, createMotion } from './office-motion.mjs';
 import { createBackground, drawOffice, drawPortrait } from './office-art.mjs';
@@ -34,7 +34,7 @@ function showEmployee(actor, trigger) {
   currentEmployee = employee.id;
   opener = trigger;
   for (const field of ['name', 'role', 'duties', 'style']) {
-    document.getElementById('employee-' + field).textContent = employee[field];
+    document.getElementById('employee-' + field).textContent = field === 'style' ? (employee.tone || employee.style) : employee[field];
   }
   employeeState.textContent = labels[actorStatus(actor)];
   drawPortrait(document.getElementById('employee-portrait'), employee);
@@ -87,8 +87,20 @@ for (const actor of motion.actors) {
   target.setAttribute('aria-label', employee.name + ' · ' + employee.role);
   target.addEventListener('click', () => showEmployee(actor, target));
   targets.append(target);
-  employeeViews.set(employee.id, { state, target });
+  employeeViews.set(employee.id, { state, target, name });
 }
+
+window.addEventListener('office-profiles-updated', () => {
+  for(const employee of employees) {
+    const view = employeeViews.get(employee.id);
+    view.name.textContent = employee.name;
+    view.target.setAttribute('aria-label', employee.name + ' · ' + employee.role);
+    if(currentEmployee === employee.id) {
+      document.getElementById('employee-name').textContent = employee.name;
+      document.getElementById('employee-style').textContent = employee.tone || employee.style;
+    }
+  }
+});
 
 function render() {
   const sorted = drawOffice(ctx, background, motion.actors, time);
